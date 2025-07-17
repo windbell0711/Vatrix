@@ -4,17 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="05845bb8-2591-414a-99ff-7de001aa2510" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/pvztoolkit/src/data.py" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit/src/data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit/src/pvz.py" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit/src/pvz.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit/src/pvztoolkit.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit/src/pvztoolkit.ui" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/inc/code.h" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/inc/code.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/inc/data.h" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/inc/data.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/inc/process.h" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/inc/process.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/inc/pvz.h" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/inc/pvz.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/src/code.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/src/code.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pvztoolkit_notused/src/pvz.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/pvztoolkit_notused/src/pvz.cpp" afterDir="false" />
+    <list default="true" id="05845bb8-2591-414a-99ff-7de001aa2510" name="Changes" comment="basic func ok!! finally!!!">
+      <change beforePath="$PROJECT_DIR$/.idea/Vatrix.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Vatrix.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,7 +21,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/pvztoolkit" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -54,24 +46,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.adventure_1.executor&quot;: &quot;Run&quot;,
-    &quot;Python.pvz (1).executor&quot;: &quot;Run&quot;,
-    &quot;Python.pvz.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Documents/Jetbrains/PycharmProjects/Vatrix&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.adventure_1.executor": "Run",
+    "Python.pvz (1).executor": "Run",
+    "Python.pvz.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "D:/Documents/Jetbrains/PycharmProjects/Vatrix",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Documents\Jetbrains\PycharmProjects\Vatrix" />
@@ -180,8 +172,18 @@
       <workItem from="1752159849042" duration="20000" />
       <workItem from="1752194869193" duration="10254000" />
       <workItem from="1752317347378" duration="1022000" />
-      <workItem from="1752328241574" duration="2798000" />
+      <workItem from="1752328241574" duration="3088000" />
+      <workItem from="1752332265249" duration="95000" />
     </task>
+    <task id="LOCAL-00001" summary="basic func ok!! finally!!!">
+      <option name="closed" value="true" />
+      <created>1752331791885</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1752331791885</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -197,6 +199,10 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="basic func ok!! finally!!!" />
+    <option name="LAST_COMMIT_MESSAGE" value="basic func ok!! finally!!!" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

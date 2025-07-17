@@ -1,4 +1,5 @@
-.vscode
+.vscode/
+pvztoolkit_notused/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
