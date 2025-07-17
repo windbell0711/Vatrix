@@ -115,8 +115,8 @@ class Level:
                         if vase_category != '0':
                             name, style = vase_pools[vase_category].pop()  # 取出并删除最后一项
                             code = alias2code[name]
-                            style = {'q': 3, 'p': 4, 'z': 5}[style]
-                            game.put_vase(row=row, col=col, vase_type=style, vase_content_type=(code >= 100) + 1,
+                            style = {'q': 3, 'p': 4, 'z': 5, 'e': 3}[style]
+                            game.put_vase(row=row, col=col, vase_type=style, vase_content_type=((code // 100) + 1),
                                           plant_type=code, zombie_type=code-100, sun_shine_count=50)
                         # 放置场景植物/僵尸
                         if self.scene_array is not None:
@@ -160,4 +160,4 @@ if __name__ == '__main__':
     # levels_pool[0].show(WindowMem(process_name="popcapgame1.exe"))
     g = PvzModifier()
     g.wait_for_game()
-    levels_pool[2].show(g)
+    levels_pool[20].show(g)
