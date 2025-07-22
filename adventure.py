@@ -8,7 +8,7 @@ import os
 import random
 
 # from memory import WindowMem
-from pvz_toolkit.src.pvz import PvzModifier
+from pvztoolkit.pvz import PvzModifier
 import csv
 
 

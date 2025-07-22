@@ -9,7 +9,7 @@ from PyQt5.Qt import *
 from PyQt5.QtGui import QDesktopServices
 
 from pvz import *
-from pvz_toolkit import *
+from pvztoolkit import *
 
 
 class PvzToolkit(QMainWindow, Ui_MainWindow):

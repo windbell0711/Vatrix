@@ -1,3 +1,5 @@
+raise NotImplementedError
+
 import zlib
 import base64
 

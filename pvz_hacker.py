@@ -1,5 +1,5 @@
 import struct
-from pvz_toolkit.src.pvz import PvzModifier
+from pvztoolkit.pvz import PvzModifier
 
 game = PvzModifier()
 game.wait_for_game()

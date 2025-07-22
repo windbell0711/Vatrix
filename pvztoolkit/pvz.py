@@ -9,9 +9,9 @@ import ctypes
 import threading
 import copy
 
-from pvz_toolkit.src.data import Data, Hack
-from pvz_toolkit.src.asm_inject import AsmInjector, Reg
-from pvz_toolkit.src.lineup import Lineup
+from pvztoolkit.data import Data, Hack
+from pvztoolkit.asm_inject import AsmInjector, Reg
+from pvztoolkit.lineup import Lineup
 
 
 MAY_ASLEEP = [0, 0, 0, 0, 0, 0, 0, 0,
@@ -1379,7 +1379,6 @@ class PvzModifier:
         return (int(80.63 * x + 75.592),
                 int(97.00 * y + 110.67))
 
-    @property
     def click_avai(self) -> bool:
         if not self.is_open():
             return False

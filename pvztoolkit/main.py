@@ -1,3 +1,5 @@
+raise NotImplementedError
+
 import sys
 import win32event
 import win32api
