@@ -1,8 +1,7 @@
-import pvz_hacker as pvz
+import pvz_hacker as vb
 import adventure
 import time
 
-vb = pvz.VbHacker()
 adventure.import_data()
 adventure.levels_pool[1].show(vb.game)
 
@@ -15,6 +14,6 @@ for i in (6, 7):
 
 vb.update()
 for k in (0, 1, 2):
-    vb.plc(vb.cards[k], x=8, y=k+1)
+    vb.cards[k].plc(x=8, y=k+1)
 
 print("coding end")

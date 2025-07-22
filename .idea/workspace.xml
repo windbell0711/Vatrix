@@ -4,8 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="05845bb8-2591-414a-99ff-7de001aa2510" name="Changes" comment="change">
+    <list default="true" id="05845bb8-2591-414a-99ff-7de001aa2510" name="Changes" comment="upd">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pvz_hacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/pvz_hacker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/user_coding_place/1_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/user_coding_place/1_2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,6 +24,7 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="RESET_MODE" value="MIXED" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -46,29 +49,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.1_1.executor": "Run",
-    "Python.1_2.executor": "Run",
-    "Python.adventure_1.executor": "Run",
-    "Python.pvz (1).executor": "Run",
-    "Python.pvz.executor": "Run",
-    "Python.pvz_hacker.executor": "Run",
-    "Python.user_coding_place (1).executor": "Run",
-    "Python.user_coding_place.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "D:/Documents/Jetbrains/PycharmProjects/Vatrix",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.1_1.executor&quot;: &quot;Run&quot;,
+    &quot;Python.1_2.executor&quot;: &quot;Run&quot;,
+    &quot;Python.adventure_1.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pvz (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.pvz.executor&quot;: &quot;Run&quot;,
+    &quot;Python.pvz_hacker.executor&quot;: &quot;Run&quot;,
+    &quot;Python.user_coding_place (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.user_coding_place.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Documents/Jetbrains/PycharmProjects/Vatrix&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.DirectoryMappings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Documents\Jetbrains\PycharmProjects\Vatrix" />
@@ -77,8 +80,8 @@
       <recent name="D:\Documents\Jetbrains\PycharmProjects\Vatrix\user_coding_place" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.1_2">
-    <configuration name="0_0" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.0_0 (1)">
+    <configuration name="0_0 (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Vatrix" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -87,12 +90,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/user_coding_place" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="D:\Documents\Jetbrains\PycharmProjects\Vatrix\user_coding_place\0_0.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/user_coding_place/0_0.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -195,11 +198,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.1_2" />
+        <item itemvalue="Python.0_0 (1)" />
         <item itemvalue="Python.1_1" />
+        <item itemvalue="Python.1_2" />
         <item itemvalue="Python.pvz_hacker" />
         <item itemvalue="Python.1_1" />
-        <item itemvalue="Python.0_0" />
       </list>
     </recent_temporary>
   </component>
@@ -233,7 +236,9 @@
       <workItem from="1752758329386" duration="5076000" />
       <workItem from="1752796524561" duration="9699000" />
       <workItem from="1752971968447" duration="16525000" />
-      <workItem from="1753083452226" duration="2716000" />
+      <workItem from="1753083452226" duration="3335000" />
+      <workItem from="1753108451715" duration="733000" />
+      <workItem from="1753146642453" duration="1335000" />
     </task>
     <task id="LOCAL-00001" summary="basic func ok!! finally!!!">
       <option name="closed" value="true" />
@@ -275,7 +280,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753105726908</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="upd">
+      <option name="closed" value="true" />
+      <created>1753107555693</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1753107555693</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -298,7 +311,8 @@
     <MESSAGE value="first try" />
     <MESSAGE value="1-2" />
     <MESSAGE value="change" />
-    <option name="LAST_COMMIT_MESSAGE" value="change" />
+    <MESSAGE value="upd" />
+    <option name="LAST_COMMIT_MESSAGE" value="upd" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

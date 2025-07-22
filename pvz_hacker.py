@@ -1,6 +1,9 @@
 import struct
-
 from pvz_toolkit.src.pvz import PvzModifier
+
+game = PvzModifier()
+game.wait_for_game()
+
 
 class Object:
     def __init__(self, idt: int, name: str, typ: int):
@@ -68,8 +71,8 @@ class Zombie(Object):
 
     def __str__(self):
         return (f"Zombie {self.idt}" + "\t!Hypnotic\n" if self.hypnotic else "\n" +
-                f"{self.typ} {self.name}\t{self.row + 1}行 距家{self.dis + 1}\n"
-                f"Hp: {self.hp[0]}/{self.hp[1]}\tSlow: {self.slow}\tButter: {self.butter}\tFrozen: {self.frozen}")
+                                                                             f"{self.typ} {self.name}\t{self.row + 1}行 距家{self.dis + 1}\n"
+                                                                             f"Hp: {self.hp[0]}/{self.hp[1]}\tSlow: {self.slow}\tButter: {self.butter}\tFrozen: {self.frozen}")
 
 
 class Card(Object):
@@ -91,8 +94,14 @@ class Card(Object):
                 f"{self.typ} {self.name}\t位置：{self.x}, {self.y}\n"
                 f"消失倒计时：{self.lost_time}")
 
-    def place(self, pos: list[int, int], delay=0) -> bool:
-        pass  # TODO
+    def plc(self, x: int, y: int) -> bool:
+        if not game.click_avai():
+            return False
+        # game.left_click(card.x + 25, card.y + 35)
+        # print(card.x + 25, card.y + 35)
+        game.left_click(self.x, self.y)
+        game.left_click(*game.xy_to_pos(x, y))
+        return   # TODO
 
 
 # class Scene:
@@ -152,63 +161,55 @@ class Card(Object):
 # 
 #         # TO-DO: update self.vases, self.bdc
 
+
+cards: list[Card] = []
+
+
 def rescan_as_float(x: int) -> float:
     """四字节整数重新识别为单精度浮点数"""
     return struct.unpack('f', struct.pack('i', x))[0]
 
-class VbHacker:
-    def __init__(self):
-        self.game = PvzModifier()
-        self.data = self.game.data
-        self.game.wait_for_game()
 
-        self.cards: list[Card] = []
-        self.update()
+def update():
+    _update_cards()
 
-    def update(self):
-        self._update_cards()
 
-    def _update_cards(self):
-        # 更新卡片信息
-        self.cards = []
-        cnt_item_current  = self.game.read_offset((self.data.lawn, self.data.lawn.board, self.data.lawn.board.item_count))
-        print(cnt_item_current)
-        cnt_item_max_ever = self.game.read_offset((self.data.lawn, self.data.lawn.board, self.data.lawn.board.item_count_max))
-        addr_item = self.game.read_offset((self.data.lawn, self.data.lawn.board, self.data.lawn.board.items))
-        for i in range(0, cnt_item_max_ever * 0xD8, 0xD8):
-            # if self.game.read_memory(addr_item + self.data.lawn.board.items.invisible + i, 1):
-            #         # or self.game.read_memory(addr_item + self.data.lawn.board.items.exist + i, 2) != b'k\xdf':
-            if self.game.read_memory(addr_item + self.data.lawn.board.items.exist + i, 2) == 0:
-                continue  # 不存在
-            # print(f"隐形：{self.game.read_memory(addr_item + self.data.lawn.board.items.invisible + i, 1)}")
-            # print(f"存在：{self.game.read_memory(addr_item + self.data.lawn.board.items.exist + i, 2)}")
-            if self.game.read_memory(addr_item + 0x58 + i, 4) in (9, 16):  # 卡牌
-                self.cards.append(Card(idt=self.game.read_memory(addr_item + 0xD4 + i, 4),
-                                       name='null',
-                                       typ=self.game.read_memory(addr_item + 0x68 + i, 4),
-                                       x=int(rescan_as_float(self.game.read_memory(addr_item + 0x24 + i, 4)))+25,
-                                       y=int(rescan_as_float(self.game.read_memory(addr_item + 0x28 + i, 4)))+35,
-                                       lost_time=self.game.read_memory(addr_item + 0x54 + i, 4)))
+def _update_cards():
+    global cards
+    # 更新卡片信息
+    cards = []
+    cnt_item_current = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.item_count))
+    print(cnt_item_current)
+    cnt_item_max_ever = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.item_count_max))
+    addr_item = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.items))
+    for i in range(0, cnt_item_max_ever * 0xD8, 0xD8):
+        # if game.read_memory(addr_item + game.data.lawn.board.items.invisible + i, 1):
+        #         # or game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2) != b'k\xdf':
+        if game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2) == 0:
+            continue  # 不存在
+        # print(f"隐形：{game.read_memory(addr_item + game.data.lawn.board.items.invisible + i, 1)}")
+        # print(f"存在：{game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2)}")
+        if game.read_memory(addr_item + 0x58 + i, 4) in (9, 16):  # 卡牌
+            cards.append(Card(idt=game.read_memory(addr_item + 0xD4 + i, 4),
+                              name='null',
+                              typ=game.read_memory(addr_item + 0x68 + i, 4),
+                              x=int(rescan_as_float(game.read_memory(addr_item + 0x24 + i, 4))) + 25,
+                              y=int(rescan_as_float(game.read_memory(addr_item + 0x28 + i, 4))) + 35,
+                              lost_time=game.read_memory(addr_item + 0x54 + i, 4)))
 
-    def brk(self, x: int, y: int) -> None:
-        """
-        To break a vase existing.
-        :param x: which to break ([0-5, 0-8])
-        :param y: which to break ([0-5, 0-8])
-        :param delay: (deleted) break the vase after how many seconds
-        :return: (deleted) Object/None/False/int(sun)
-        """
-        if not self.game.click_avai:
-            return
-        self.game.left_click(*self.game.xy_to_pos(x, y))
 
-    def plc(self, card: Card, x: int, y: int) -> None:
-        if not self.game.click_avai:
-            return
-        # self.game.left_click(card.x + 25, card.y + 35)
-        self.game.left_click(card.x, card.y)
-        # print(card.x + 25, card.y + 35)
-        self.game.left_click(*self.game.xy_to_pos(x, y))
+def brk(x: int, y: int) -> None:
+    """
+    To break a vase existing.
+    :param x: which to break ([0-5, 0-8])
+    :param y: which to break ([0-5, 0-8])
+    :param delay: (deleted) break the vase after how many seconds
+    :return: (deleted) Object/None/False/int(sun)
+    """
+    if not game.click_avai():
+        return
+    game.left_click(*game.xy_to_pos(x, y))
+
 
 if __name__ == '__main__':
-    VbHacker().game.left_click(262, 138)
+    game.left_click(262, 138)
