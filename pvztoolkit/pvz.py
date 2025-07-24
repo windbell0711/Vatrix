@@ -11,7 +11,6 @@ import copy
 
 from pvztoolkit.data import Data, Hack
 from pvztoolkit.asm_inject import AsmInjector, Reg
-from pvztoolkit.lineup import Lineup
 
 
 MAY_ASLEEP = [0, 0, 0, 0, 0, 0, 0, 0,
@@ -59,7 +58,7 @@ class PvzModifier:
         self.phand = self.OpenProcess(0x000f0000 | 0x00100000 | 0xfff, False, pid)
         return 1
 
-    def read_memory(self, address, length=4):
+    def read_memory(self, address, length=4) -> int:
         addr = ctypes.c_ulonglong()
         self.ReadProcessMemory(self.phand, address, ctypes.byref(addr), length, None)
         return addr.value
@@ -70,7 +69,7 @@ class PvzModifier:
         self.WriteProcessMemory(self.phand, address, ctypes.byref(data), length, None)
         self.lock.release()
 
-    def read_offset(self, offsets, length=4):
+    def read_offset(self, offsets, length=4) -> int:
         if isinstance(offsets, int):
             offsets = (offsets,)
         addr = 0
@@ -988,36 +987,36 @@ class PvzModifier:
         self.write_memory(0x4177d7, reset_rake_col_code, 4)
         self.hack(self.data.rake_unlimited, False)
 
-    def screen_shot(self):
-        if not self.is_open():
-            return
-        left, top, right, bottom = win32gui.GetWindowRect(self.hwnd)
-        width = right - left
-        height = bottom - top
-        hdc_window = win32gui.GetDC(self.hwnd)
-        if not hdc_window:
-            win32gui.ReleaseDC(self.hwnd, hdc_window)
-        hdc_mem = win32gui.CreateCompatibleDC(hdc_window)
-        if not hdc_mem:
-            win32gui.DeleteObject(hdc_mem)
-            win32gui.ReleaseDC(self.hwnd, hdc_window)
-        screen = win32gui.CreateCompatibleBitmap(hdc_window, width, height)
-        if not screen:
-            win32gui.DeleteObject(screen)
-            win32gui.DeleteObject(hdc_mem)
-            win32gui.ReleaseDC(self.hwnd, hdc_window)
-        win32gui.SelectObject(hdc_mem, screen)
-        if win32gui.BitBlt(hdc_mem, 0, 0, width, height, hdc_window, 0, 0, 0xCC0020):
-            win32gui.DeleteObject(screen)
-            win32gui.DeleteObject(hdc_mem)
-            win32gui.ReleaseDC(self.hwnd, hdc_window)
-        if win32clipboard.OpenClipboard() != 0:
-            win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardData(2, screen)
-            win32clipboard.CloseClipboard()
-        win32gui.DeleteObject(screen)
-        win32gui.DeleteObject(hdc_mem)
-        win32gui.ReleaseDC(self.hwnd, hdc_window)
+    # def screen_shot(self):
+    #     if not self.is_open():
+    #         return
+    #     left, top, right, bottom = win32gui.GetWindowRect(self.hwnd)
+    #     width = right - left
+    #     height = bottom - top
+    #     hdc_window = win32gui.GetDC(self.hwnd)
+    #     if not hdc_window:
+    #         win32gui.ReleaseDC(self.hwnd, hdc_window)
+    #     hdc_mem = win32gui.CreateCompatibleDC(hdc_window)
+    #     if not hdc_mem:
+    #         win32gui.DeleteObject(hdc_mem)
+    #         win32gui.ReleaseDC(self.hwnd, hdc_window)
+    #     screen = win32gui.CreateCompatibleBitmap(hdc_window, width, height)
+    #     if not screen:
+    #         win32gui.DeleteObject(screen)
+    #         win32gui.DeleteObject(hdc_mem)
+    #         win32gui.ReleaseDC(self.hwnd, hdc_window)
+    #     win32gui.SelectObject(hdc_mem, screen)
+    #     if win32gui.BitBlt(hdc_mem, 0, 0, width, height, hdc_window, 0, 0, 0xCC0020):
+    #         win32gui.DeleteObject(screen)
+    #         win32gui.DeleteObject(hdc_mem)
+    #         win32gui.ReleaseDC(self.hwnd, hdc_window)
+    #     if win32clipboard.OpenClipboard() != 0:
+    #         win32clipboard.EmptyClipboard()
+    #         win32clipboard.SetClipboardData(2, screen)
+    #         win32clipboard.CloseClipboard()
+    #     win32gui.DeleteObject(screen)
+    #     win32gui.DeleteObject(hdc_mem)
+    #     win32gui.ReleaseDC(self.hwnd, hdc_window)
 
     def stop_spawning(self, status):
         self.hack(self.data.stop_spawning, status)
@@ -1026,128 +1025,6 @@ class PvzModifier:
         if not self.is_open():
             return
         self.hack(self.data.plants_growup, status)
-
-    def get_lineup(self):
-        if not self.is_open():
-            return
-        ui = self.game_ui()
-        lineup = Lineup()
-        lineup.scene = self.get_scene()
-        if ui != 2 and ui != 3:
-            return lineup
-        plant_addrs = self._get_plant_addresses()
-        plants_offset = self.data.lawn.board.plants
-        plant_row_offset = plants_offset.row
-        plant_col_offset = plants_offset.col
-        plant_type_offset = plants_offset.type
-        plant_asleep_offset = plants_offset.asleep
-        plant_imitator_offset = plants_offset.imitator
-        for addr in plant_addrs:
-            row = self.read_memory(addr + plant_row_offset, 4)
-            col = self.read_memory(addr + plant_col_offset, 4)
-            index = row * 9 + col
-            plant_type = self.read_memory(addr + plant_type_offset, 4)
-            imitator = self.read_memory(addr + plant_imitator_offset, 1) == 48
-            if plant_type == 16:
-                lineup.base[index] = 1
-                lineup.base_is_imitator[index] = imitator
-            elif plant_type == 33:
-                lineup.base[index] = 2
-                lineup.base_is_imitator[index] = imitator
-            elif plant_type == 30:
-                lineup.pumpkins[index] = 1
-                lineup.pumpkins_is_imitator[index] = imitator
-            elif plant_type == 35:
-                lineup.coffee_beans[index] = 1
-                lineup.coffee_beans_is_imitator[index] = imitator
-            else:
-                is_asleep = self.read_memory(addr + plant_asleep_offset, 1)
-                lineup.plants[index] = plant_type + 1
-                lineup.plants_is_imitator[index] = imitator
-                lineup.plants_is_asleep[index] = is_asleep
-
-        grid_item_addrs = self._get_grid_items([1, 3, 11])
-        grid_items_offset = self.data.lawn.board.grid_items
-        grid_items_row_offset = grid_items_offset.row
-        grid_items_col_offset = grid_items_offset.col
-        grid_items_type_offset = grid_items_offset.type
-        for addr in grid_item_addrs:
-            row = self.read_memory(addr + grid_items_row_offset, 4)
-            col = self.read_memory(addr + grid_items_col_offset, 4)
-            index = row * 9 + col
-            grid_item_type = self.read_memory(addr + grid_items_type_offset, 4)
-            if grid_item_type == 1:
-                lineup.base[index] = 3
-            elif grid_item_type == 3:
-                lineup.ladders[index] = 1
-            else:
-                lineup.rakes[index] = 1
-        lineup.compress()
-        return lineup
-
-    def set_lineup(self, lineup: Lineup):
-        if not self.is_open():
-            return
-        ui = self.game_ui()
-        if ui != 2 and ui != 3:
-            return
-        scene = self.get_scene()
-        if scene < 0 or scene > 5 or lineup.scene < 0 or lineup.scene > 5:
-            return
-        if scene != lineup.scene:
-            self.set_scene(lineup.scene)
-        else:
-            self.delete_all_plants()
-            self.delete_grid_items({1, 2, 3, 7, 11})
-        rakes = []
-        self.asm.asm_init()
-        for r in range(6):
-            for c in range(9):
-                index = r * 9 + c
-                if lineup.base[index] == 1:
-                    self._asm_put_plant(16, r, c, lineup.base_is_imitator[index])
-                elif lineup.base[index] == 2:
-                    self._asm_put_plant(33, r, c, lineup.base_is_imitator[index])
-                if lineup.pumpkins[index]:
-                    self._asm_put_plant(30, r, c, lineup.pumpkins_is_imitator[index])
-                if lineup.coffee_beans[index]:
-                    self._asm_put_plant(35, r, c, lineup.coffee_beans_is_imitator[index])
-                if lineup.plants[index]:
-                    plant_type = lineup.plants[index] - 1
-                    if plant_type < 0 or plant_type > 52\
-                            or plant_type == 16 or plant_type == 33\
-                            or plant_type == 30 or plant_type == 35:
-                        continue
-                    is_imitator = lineup.plants_is_imitator[index]
-                    self._asm_put_plant(plant_type, r, c, is_imitator)
-                    if lineup.scene == 0 or lineup.scene == 2 or lineup.scene == 4:
-                        if not lineup.plants_is_asleep[index] and MAY_ASLEEP[plant_type]:
-                            self.asm.asm_push_exx(Reg.EAX)
-                            self.asm.asm_mov_exx_exx(Reg.EDI, Reg.EAX)
-                            self.asm.asm_push_byte(0)
-                            self.asm.asm_call(self.data.call_set_plant_sleeping)
-                            self.asm.asm_pop_exx(Reg.EAX)
-                    if plant_type == 4 or plant_type == 9 or plant_type == 47:
-                        self.asm.asm_mov_dword_ptr_exx_add_offset(Reg.EAX, 0x54, 1)
-
-                if lineup.base[index] == 3:
-                    self._asm_put_grave(r, c)
-                if lineup.ladders[index]:
-                    self._asm_put_ladder(r, c)
-                if lineup.rakes[index]:
-                    rakes.append((r, c))
-        self.asm.asm_ret()
-        self.asm_code_execute()
-
-        reset_dec_rake_code = self.read_memory(0x41786a, 6)
-        reset_rake_col_code = self.read_memory(0x4177d7, 4)
-        self.write_memory(0x41786a, 0x9000000000bf, 6)
-        self.hack(self.data.rake_unlimited, True)
-        for row, col in rakes:
-            self._asm_put_rake(row, col)
-        self.write_memory(0x41786a, reset_dec_rake_code, 6)
-        self.write_memory(0x4177d7, reset_rake_col_code, 4)
-        self.hack(self.data.rake_unlimited, False)
 
     def zombie_not_explode(self, status):
         if not self.is_open():
@@ -1164,87 +1041,54 @@ class PvzModifier:
             return
         self.hack(self.data.lock_butter, status)
 
-    def _asm_change_bullet(self, from_bullet, to_bullet):
-        self.asm.asm_add_dword(0x24247c83)
-        self.asm.asm_add_byte(from_bullet)  # cmp [esp+24],f
-        self.asm.asm_add_word(0x0c75)
-        self.asm.asm_mov_dword_ptr_exx_add_offset(Reg.EBP, 0x5c, to_bullet)  # mov [ebp+5c],t
-
-    def change_bullet(self, from_bullet, to_bullet):
-        if not self.is_open():
-            return
-        items = copy.copy(self.changed_bullets.get('items', {}))
-        if from_bullet == to_bullet:
-            if from_bullet in items:
-                items.pop(from_bullet)
-                if not items:
-                    self.reset_bullets()
-                    return
-        else:
-            if to_bullet == items.get(from_bullet):
-                return
-            items[from_bullet] = to_bullet
-        inject_addr = self.changed_bullets.get('address') or self.asm.asm_alloc(self.phand, 512)
-        return_addr = 0x47bb6c
-        self.asm.asm_init()
-        for f, t in items.items():
-            self._asm_change_bullet(f, t)
-            self.asm.asm_near_jmp(return_addr)
-        self.asm.asm_add_dword(0x2424448b)  # mov eax,[esp+24]
-        self.asm.asm_add_list([0x89, 0x45, 0x5c])  # mov [ebp+5c],eax
-        self.asm.asm_near_jmp(return_addr)  # jmp return_addr
-        ret = self.asm.asm_code_inject(self.phand, inject_addr)
-        if not ret:
-            return
-        self.changed_bullets['items'] = items
-        if 'address' not in self.changed_bullets:
-            self.changed_bullets['address'] = inject_addr
-            target = inject_addr - 0x47bb6a
-            if target < 0:
-                target += 0x100000000
-            self.write_memory(0x47bb65, 0x906600000000e9 + target * 16 * 16, 7)
-
-    def reset_bullets(self):
-        if not self.is_open():
-            return
-        addr = self.changed_bullets.get('address')
-        if addr:
-            self.write_memory(0x47bb65, 0x5c45892424448b, 7)
-            self.asm.asm_free(self.phand, addr)
-            self.changed_bullets.clear()
-
-    def add_garden_plant(self, plant_type: int, direction: int, color: int):
-        if not self.is_open():
-            return
-        lawn_offset, user_data_offset, garden_plants_offset = self.data.recursively_get_attrs(['lawn', 'user_data', 'garden_plants'])
-        plants_addr = self.read_offset((lawn_offset, user_data_offset)) + garden_plants_offset
-        garden_offset = garden_plants_offset.garden
-        count = self.read_offset((lawn_offset, user_data_offset, user_data_offset.garden_plant_count))
-        plant_struct_size = 0x58
-        zen_count = 0
-        for i in range(count):
-            garden = self.read_memory(plants_addr + garden_offset + i * plant_struct_size)
-            if garden == 0:
-                zen_count += 1
-        if zen_count >= 32:
-            return 0
-        data = bytearray(b'\x00' * plant_struct_size)
-        data[0: 4] = int.to_bytes(plant_type, 4, 'little')
-        data[0x2c: 0x30] = int.to_bytes(3, 4, 'little')
-        data[0x10: 0x14] = int.to_bytes(direction, 4, 'little')
-        data[0x20: 0x24] = int.to_bytes(color, 4, 'little')
-        addr = self.asm.asm_alloc(self.phand, 512)
-        self.asm.asm_init()
-        self.asm.asm_mov_exx_dword_ptr(Reg.ECX, lawn_offset)
-        self.asm.asm_add_word(0x818b)
-        self.asm.asm_add_dword(0x940)
-        self.asm.asm_push_exx(Reg.EAX)
-        self.asm.asm_mov_exx(Reg.EDX, addr + 0x18)
-        self.asm.asm_call(self.data.call_add_garden_plant)
-        self.asm.asm_ret()
-        self.asm.asm_add_list(data)
-        self.asm_code_execute(addr)
-        return 1
+    # def _asm_change_bullet(self, from_bullet, to_bullet):
+    #     self.asm.asm_add_dword(0x24247c83)
+    #     self.asm.asm_add_byte(from_bullet)  # cmp [esp+24],f
+    #     self.asm.asm_add_word(0x0c75)
+    #     self.asm.asm_mov_dword_ptr_exx_add_offset(Reg.EBP, 0x5c, to_bullet)  # mov [ebp+5c],t
+    #
+    # def change_bullet(self, from_bullet, to_bullet):
+    #     if not self.is_open():
+    #         return
+    #     items = copy.copy(self.changed_bullets.get('items', {}))
+    #     if from_bullet == to_bullet:
+    #         if from_bullet in items:
+    #             items.pop(from_bullet)
+    #             if not items:
+    #                 self.reset_bullets()
+    #                 return
+    #     else:
+    #         if to_bullet == items.get(from_bullet):
+    #             return
+    #         items[from_bullet] = to_bullet
+    #     inject_addr = self.changed_bullets.get('address') or self.asm.asm_alloc(self.phand, 512)
+    #     return_addr = 0x47bb6c
+    #     self.asm.asm_init()
+    #     for f, t in items.items():
+    #         self._asm_change_bullet(f, t)
+    #         self.asm.asm_near_jmp(return_addr)
+    #     self.asm.asm_add_dword(0x2424448b)  # mov eax,[esp+24]
+    #     self.asm.asm_add_list([0x89, 0x45, 0x5c])  # mov [ebp+5c],eax
+    #     self.asm.asm_near_jmp(return_addr)  # jmp return_addr
+    #     ret = self.asm.asm_code_inject(self.phand, inject_addr)
+    #     if not ret:
+    #         return
+    #     self.changed_bullets['items'] = items
+    #     if 'address' not in self.changed_bullets:
+    #         self.changed_bullets['address'] = inject_addr
+    #         target = inject_addr - 0x47bb6a
+    #         if target < 0:
+    #             target += 0x100000000
+    #         self.write_memory(0x47bb65, 0x906600000000e9 + target * 16 * 16, 7)
+    #
+    # def reset_bullets(self):
+    #     if not self.is_open():
+    #         return
+    #     addr = self.changed_bullets.get('address')
+    #     if addr:
+    #         self.write_memory(0x47bb65, 0x5c45892424448b, 7)
+    #         self.asm.asm_free(self.phand, addr)
+    #         self.changed_bullets.clear()
 
     def free_planting(self, status):
         if not self.is_open():
@@ -1396,11 +1240,11 @@ if __name__ == '__main__':
     game = PvzModifier()
     game.wait_for_game()
 
-    time.sleep(0.5)
+    # time.sleep(0.5)
     # game.put_plant(1, 1, 1, 0)
     # game.put_vase(0, 0, 3, 1, 1, 1, 25)
     # game.vase_transparent(False)
-    game.break_vase_mouse(6, 3)
+    # game.break_vase_mouse(6, 3)
 
     # print(game.mouse_pos())
     print('end')

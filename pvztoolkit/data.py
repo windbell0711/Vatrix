@@ -2,7 +2,6 @@
 from collections import namedtuple
 
 class Offset(int):
-
     def __new__(cls, num, **kwargs):
         data = int.__new__(cls, num)
         for k, v in kwargs.items():
@@ -268,13 +267,18 @@ class Data:
                 slots=Offset(
                     0x144,
                     count=0x24,
+                    OffsetValue=0x15c,
+                    x=0xc,
+                    y=0x10,
                     cd_past=0x28,
                     cd_total=0x2c,
                     plant_type=0x38,
-                    plant_type_imitator=0x3c
+                    plant_type_imitator=0x3c,
+                    avaiable=0x4c
                 ),
                 zombies=Offset(
                     0x90,
+                    OffsetValue=0x15c,
                     row=0x1c,
                     type=0x24,
                     status=0x28,
@@ -285,6 +289,7 @@ class Data:
                 zombie_count=0xa0,
                 plants=Offset(
                     0xac,
+                    OffsetValue=0x14c,
                     row=0x1c,
                     type=0x24,
                     col=0x28,
@@ -298,6 +303,7 @@ class Data:
                 plant_next_pos=0xb8,
                 lawn_mowers=Offset(
                     0x100,
+                    OffsetValue=0x48,
                     row=0x14,
                     status=0x2c,
                     dead=0x30
@@ -306,6 +312,7 @@ class Data:
                 lawn_mower_count=0x110,
                 items=Offset(
                     0xe4,  # \\物品属性(+D8下一个)
+                    OffsetValue=0xd8,
                     x=0x24,  # 浮点
                     y=0x28,  # 浮点
                     idt=0xd4,
@@ -320,6 +327,8 @@ class Data:
                 item_count=0xf4,
                 grid_items=Offset(
                     0x11c,
+                    OffsetValue=0xec,
+                    idt=0xe8,
                     type=0x08,
                     vase_type=0xc,  # 3: 随机罐  4: 植物罐  5: 僵尸罐
                     col=0x10,

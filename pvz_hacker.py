@@ -1,8 +1,13 @@
 import struct
 from pvztoolkit.pvz import PvzModifier
+import pvztoolkit.data
 
 game = PvzModifier()
 game.wait_for_game()
+data_board = game.data.lawn.board
+
+def read_board(*args: int | pvztoolkit.data.Offset) -> int:
+    return game.read_offset((game.data.lawn, data_board, *args))
 
 
 class Object:
@@ -104,6 +109,49 @@ class Card(Object):
         return   # TODO
 
 
+class Sun:
+    def __init__(self, value: int):
+        self.value = value
+
+
+class Vase(Object):
+    def __init__(self,
+                 idt: int,
+                 name: str,
+                 # typ: int,
+                 row: int,
+                 col: int,
+                 vase_type: int,
+                 content_type: int,
+                 zombie_type: int,
+                 plant_type: int,
+                 sun_count: int
+                 ):
+        super().__init__(idt=idt, name=name,
+                         typ={0: -1,  # ept
+                              1: plant_type,
+                              2: 100 + zombie_type,
+                              3: 0 - sun_count}[content_type])
+        self.row = row
+        self.col = col
+        self.container = {3: 'q', 4: 'p', 5: 'z'}[vase_type]
+        self.content = {0: None,
+                        1: Plant,
+                        2: Zombie,
+                        3: Sun}[content_type]
+        self.content_str = {0: "e",
+                            1: "p",
+                            2: "z",
+                            3: "s"}[content_type]
+
+    def __str__(self):
+        return (f"Vase {self.idt}\t{self.name}\t{self.row + 1}行{self.col + 1}列\n"
+                f"Container: {self.container}\tContent Type: {self.content_str} {self.typ}")
+
+    def brk(self) -> bool:
+        return brk(x=self.col, y=self.row)   # TODO
+
+
 # class Scene:
 #     def __init__(self):
 #         self.win = memory.WindowMem(process_name="popcapgame1.exe")
@@ -162,7 +210,10 @@ class Card(Object):
 #         # TO-DO: update self.vases, self.bdc
 
 
-cards: list[Card] = []
+plants:  list[Plant]  = []
+zombies: list[Zombie] = []
+cards:   list[Card]   = []
+vases:   list[Vase]   = []
 
 
 def rescan_as_float(x: int) -> float:
@@ -171,32 +222,64 @@ def rescan_as_float(x: int) -> float:
 
 
 def update():
+    # _update_plants()
+    # _update_zombies()
     _update_cards()
+    _update_vases()
 
+def _update_plants():
+    global plants
+    raise NotImplementedError  # TODO
+
+def _update_zombies():
+    global zombies
+    raise NotImplementedError  # TODO
 
 def _update_cards():
     global cards
     # 更新卡片信息
     cards = []
-    cnt_item_current = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.item_count))
-    print(cnt_item_current)
-    cnt_item_max_ever = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.item_count_max))
-    addr_item = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.items))
-    for i in range(0, cnt_item_max_ever * 0xD8, 0xD8):
-        # if game.read_memory(addr_item + game.data.lawn.board.items.invisible + i, 1):
-        #         # or game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2) != b'k\xdf':
-        if game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2) == 0:
+    cnt_current = read_board(data_board.item_count)
+    cnt_max = read_board(data_board.item_count_max)
+    addr_base = read_board(data_board.items)
+    # addr_offset =
+    for i in range(0, cnt_max * 0xD8, 0xD8):
+        # if game.read_memory(addr_base + data_board.items.invisible + i, 1):
+        #         # or game.read_memory(addr_base + data_board.items.exist + i, 2) != b'k\xdf':
+        if game.read_memory(addr_base + data_board.items.exist + i, 2) == 0:
             continue  # 不存在
-        # print(f"隐形：{game.read_memory(addr_item + game.data.lawn.board.items.invisible + i, 1)}")
-        # print(f"存在：{game.read_memory(addr_item + game.data.lawn.board.items.exist + i, 2)}")
-        if game.read_memory(addr_item + 0x58 + i, 4) in (9, 16):  # 卡牌
-            cards.append(Card(idt=game.read_memory(addr_item + 0xD4 + i, 4),
-                              name='null',
-                              typ=game.read_memory(addr_item + 0x68 + i, 4),
-                              x=int(rescan_as_float(game.read_memory(addr_item + 0x24 + i, 4))) + 25,
-                              y=int(rescan_as_float(game.read_memory(addr_item + 0x28 + i, 4))) + 35,
-                              lost_time=game.read_memory(addr_item + 0x54 + i, 4)))
+        # print(f"隐形：{game.read_memory(addr_base + data_board.items.invisible + i, 1)}")
+        # print(f"存在：{game.read_memory(addr_base + data_board.items.exist + i, 2)}")
+        if game.read_memory(addr_base + 0x58 + i, 4) in (9, 16):  # 卡牌
+            cards.append(Card(idt=       game.read_memory(addr_base + 0xD4 + i, 4),
+                              name=      'null',
+                              typ=       game.read_memory(addr_base + 0x68 + i, 4),
+                              x=         int(rescan_as_float(game.read_memory(addr_base + 0x24 + i, 4))) + 25,
+                              y=         int(rescan_as_float(game.read_memory(addr_base + 0x28 + i, 4))) + 35,
+                              lost_time= game.read_memory(addr_base + 0x54 + i, 4)))
 
+def _update_vases():
+    global vases
+    # 更新花瓶信息
+    vases = []
+    cnt_current = read_board(data_board.grid_item_count)
+    cnt_max = read_board(data_board.grid_item_count_max)
+    addr_base = read_board(data_board.grid_items)
+    for i in range(0, cnt_max * 0xEC, 0xEC):
+        addr = addr_base + i
+        if game.read_memory(addr + data_board.grid_items.dead, 1):
+            continue  # 已破坏的花瓶
+        if game.read_memory(addr + data_board.grid_items.type, 4) != 7:  # 7表示花瓶
+            continue
+        vases.append(Vase(idt=          game.read_memory(addr + data_board.grid_items.idt, 4),
+                          name=         'null',
+                          row=          game.read_memory(addr + data_board.grid_items.row, 4),
+                          col=          game.read_memory(addr + data_board.grid_items.col, 4),
+                          vase_type=    game.read_memory(addr + data_board.grid_items.vase_type, 4),
+                          content_type= game.read_memory(addr + data_board.grid_items.vase_content_type, 4),
+                          zombie_type=  game.read_memory(addr + data_board.grid_items.zombie_in_vase, 4),
+                          plant_type=   game.read_memory(addr + data_board.grid_items.plant_in_vase, 4),
+                          sun_count=    game.read_memory(addr + data_board.grid_items.sun_shine_in_vase, 4)))
 
 def brk(x: int, y: int) -> None:
     """
@@ -212,4 +295,6 @@ def brk(x: int, y: int) -> None:
 
 
 if __name__ == '__main__':
-    game.left_click(262, 138)
+    print("from pvz_hacker.py")
+    # game.left_click(262, 138)
+    # print(read_board(data_board.plants, data_board.plants.type))
