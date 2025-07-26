@@ -124,6 +124,7 @@ class Level:
                 vase_pools = self.vase_pools.copy()
                 for _ in vase_pools.keys():
                     random.shuffle(vase_pools[_])
+                # print(self.vase_design)
                 for row in range(6):
                     for col in range(9):
                         # 放置罐子
@@ -163,6 +164,7 @@ class Level:
 
 def import_data() -> bool:  # 将.csv文件中的信息转化成对象Level存入列表levels_pool
     global levels_pool
+    levels_pool = []
     with open(file="../adventure_info.csv" if os.path.exists("../adventure_info.csv") else "adventure_info.csv",
               mode='r', encoding='utf-8', newline='') as f:
         info = csv.DictReader(f)  # 将.csv文件以dict形式导入

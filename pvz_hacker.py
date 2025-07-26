@@ -11,17 +11,12 @@ data_board = game.data.lawn.board
 def read_board(*args: int | pvztoolkit.data.Offset) -> int:
     return game.read_offset((game.data.lawn, data_board, *args))
 
-def setting_up(background_running: bool = None,
-               speed_rate: float = None) -> None:
-    if isinstance(background_running, bool):
-        game.background_running(background_running)
-    if isinstance(speed_rate, float | int) and 0.01 <= speed_rate <= 10.0:
-        game.set_speed_rate(speed_rate)
-    else:  print("Invalid speed rate. 0.05 <= speed_rate <= 10.0")
-
+def rescan_as_float(x: int) -> float:
+    """四字节整数重新识别为单精度浮点数"""
+    return struct.unpack('f', struct.pack('i', x))[0]
 
 def delay(seconds: float) -> None:
-    """按游戏速度校正的延迟时间
+    """按游戏速度校正的延迟
     :param seconds: 游戏速度为1.0时对应的等待秒数"""
     print(f"Waiting {seconds * game.get_frame_duration() / 10} seconds...")
     time.sleep(seconds * game.get_frame_duration() / 10)
@@ -43,8 +38,7 @@ class Plant(Object):
                  col: int,  # 位置(0-8)
                  hp: list[int, int],  # 剩余血量,血值上限([156,300])
                  cd: list[int, int],  # 子弹发射倒计时,子弹发射时间间隔
-                 asleep: bool  # 是否睡着(True/False)
-                 ):
+                 asleep: bool):  # 是否睡着(True/False)
         """
         植物对象。
         :param idt: 在同一时刻唯一，在整局游戏中不一定唯一，不一定连续。谨慎使用。
@@ -76,25 +70,28 @@ class Zombie(Object):
                  typ: int,
                  row: int,
                  dis: float,
-                 hp: list[int, int],
-                 hypnotic: bool,
+                 hp: int,
+                 hp_max: int,
                  slow: float,
                  butter: float,
-                 frozen: float
-                 ):
+                 frozen: float):
         super().__init__(idt=idt, name=name, typ=typ)
         self.row = row
         self.dis = dis  # accurate position
         self.hp = hp
-        self.hypnotic = hypnotic
+        self.hp_max = hp_max
         self.slow = slow
         self.butter = butter
         self.frozen = frozen
 
     def __str__(self):
-        return (f"Zombie {self.idt}" + "\t!Hypnotic\n" if self.hypnotic else "\n" +
-                                                                             f"{self.typ} {self.name}\t{self.row + 1}行 距家{self.dis + 1}\n"
-                                                                             f"Hp: {self.hp[0]}/{self.hp[1]}\tSlow: {self.slow}\tButter: {self.butter}\tFrozen: {self.frozen}")
+        return (f"Zombie {self.idt}\n"
+                f"{self.typ} {self.name}\t{self.row + 1}行 距家{self.dis + 1}\n"
+                f"Hp: {self.hp}/{self.hp_max}\tSlow: {self.slow}\tButter: {self.butter}\tFrozen: {self.frozen}")
+
+class HypnoticZombie(Zombie):
+    def __init__(self, z: Zombie):
+        self.__dict__.update(z.__dict__)
 
 
 class Card(Object):
@@ -104,8 +101,7 @@ class Card(Object):
                  typ: int,
                  x: int,
                  y: int,
-                 lost_time: int
-                 ):
+                 lost_time: int):
         super().__init__(idt=idt, name=name, typ=typ)
         self.x = x
         self.y = y
@@ -142,8 +138,7 @@ class Vase(Object):
                  content_type: int,
                  zombie_type: int,
                  plant_type: int,
-                 sun_count: int
-                 ):
+                 sun_count: int):
         super().__init__(idt=idt, name=name,
                          typ={0: -1,  # ept
                               1: plant_type,
@@ -165,7 +160,7 @@ class Vase(Object):
         return (f"Vase {self.idt}\t{self.name}\t{self.row + 1}行{self.col + 1}列\n"
                 f"Container: {self.container}\tContent Type: {self.content_str} {self.typ}")
 
-    def brk(self, sleep: float = 0.225) -> bool:
+    def brk(self, sleep: float = 0.25) -> bool:
         return brk(x=self.col, y=self.row, after_delay=sleep)  # TODO
 
 
@@ -227,20 +222,15 @@ class Vase(Object):
 #         # TO-DO: update self.vases, self.bdc
 
 
-plants:  list[Plant]  = []
-zombies: list[Zombie] = []
-cards:   list[Card]   = []
-vases:   list[Vase]   = []
-
-
-def rescan_as_float(x: int) -> float:
-    """四字节整数重新识别为单精度浮点数"""
-    return struct.unpack('f', struct.pack('i', x))[0]
-
+plants:   list[Plant]  = []
+zombies:  list[Zombie] = []
+hypnotic: list[HypnoticZombie] = []
+cards:    list[Card]   = []
+vases:    list[Vase]   = []
 
 def update():
     # _update_plants()
-    # _update_zombies()
+    _update_zombies()
     _update_cards()
     _update_vases()
 
@@ -248,9 +238,37 @@ def _update_plants():
     global plants
     raise NotImplementedError  # TODO
 
-def _update_zombies():
+def _update_zombies():  # TODO
     global zombies
-    raise NotImplementedError  # TODO
+    # 更新僵尸信息
+    zombies = []
+    cnt_current = read_board(data_board.zombie_count)
+    cnt_max =     read_board(data_board.zombie_count_max)
+    addr_base =   read_board(data_board.zombies)
+    struct_size = data_board.zombies.StructSize
+    for i in range(0, cnt_max * struct_size, struct_size):
+        if game.read_memory(addr_base + data_board.zombies.dead + i, 1):
+            continue  # 似了
+        z = Zombie(idt=game.read_memory(addr_base + data_board.zombies.idt + i, 4),
+                   name="null",
+                   typ=game.read_memory(addr_base + data_board.zombies.type + i, 4),
+                   row=game.read_memory(addr_base + data_board.zombies.row + i, 4),
+                   dis=rescan_as_float(game.read_memory(addr_base + data_board.zombies.x + i, 4)),
+                   hp=(game.read_memory(addr_base + data_board.zombies.hp_self + i, 4)
+                       + game.read_memory(addr_base + data_board.zombies.hp_accessory_1 + i, 4)
+                       + game.read_memory(addr_base + data_board.zombies.hp_accessory_2 + i, 4)),
+                   hp_max=(game.read_memory(addr_base + data_board.zombies.hp_self_max + i, 4)
+                           + game.read_memory(addr_base + data_board.zombies.hp_accessory_1_max + i, 4)
+                           + game.read_memory(addr_base + data_board.zombies.hp_accessory_2_max + i, 4)),
+                   slow=  game.read_memory(addr_base + data_board.zombies.slow + i, 4),
+                   butter=game.read_memory(addr_base + data_board.zombies.butter + i, 4),
+                   frozen=game.read_memory(addr_base + data_board.zombies.frozen + i, 4))
+        match game.read_memory(addr_base + data_board.zombies.hypnotic + i, 1):
+            case 0:  # 未被魅惑
+                zombies.append(z)
+            case 1:  # 魅惑中
+                hypnotic.append(HypnoticZombie(z))
+
 
 def _update_cards():
     global cards
@@ -298,7 +316,7 @@ def _update_vases():
                           plant_type=   game.read_memory(addr + data_board.grid_items.plant_in_vase, 4),
                           sun_count=    game.read_memory(addr + data_board.grid_items.sun_shine_in_vase, 4)))
 
-def brk(x: int, y: int, after_delay: float = 0.225) -> None:
+def brk(x: int, y: int, after_delay: float = 0.25) -> None:
     """
     To break a vase existing.
     :param x: which to break ([0-5, 0-8])
@@ -313,6 +331,36 @@ def brk(x: int, y: int, after_delay: float = 0.225) -> None:
         delay(after_delay)
     return
 
+
+def setting_up(background_running: bool = None,
+               speed_rate: float = None) -> None:
+    if isinstance(background_running, bool):
+        game.background_running(background_running)
+    if isinstance(speed_rate, float | int) and 0.01 <= speed_rate <= 10.0:
+        game.set_speed_rate(speed_rate)
+    else:
+        print("Invalid speed rate. 0.05 <= speed_rate <= 10.0")
+
+def check_winning() -> bool:  # 僵尸全死完
+    zom_cnt_current = read_board(data_board.zombie_count)
+    zom_cnt_max = read_board(data_board.zombie_count_max)
+    zom_addr_base = read_board(data_board.zombies)
+    zom_struct_size = data_board.zombies.StructSize
+    for i in range(0, zom_cnt_max * zom_struct_size, zom_struct_size):
+        if game.read_memory(zom_addr_base + data_board.zombies.dead + i, 1) == 0 \
+                and game.read_memory(zom_addr_base + data_board.zombies.hypnotic + i, 1) == 0:
+            return False
+    vase_cnt_current = read_board(data_board.grid_item_count)
+    vase_cnt_max =     read_board(data_board.grid_item_count_max)
+    vase_addr_base =   read_board(data_board.grid_items)
+    vase_struct_size = data_board.grid_items.StructSize
+    for i in range(0, vase_cnt_max * vase_struct_size, vase_struct_size):
+        addr = vase_addr_base + i
+        if game.read_memory(addr + data_board.grid_items.dead, 1) == 0 \
+                and game.read_memory(addr + data_board.grid_items.type, 4) == 7:  # 7表示花瓶
+            return False
+    print("-----WIN-----")
+    return True
 
 if __name__ == '__main__':
     print("from pvz_hacker.py")
