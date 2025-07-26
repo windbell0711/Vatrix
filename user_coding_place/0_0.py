@@ -1,9 +1,10 @@
 import pvz_hacker as vb
 import adventure
-import time
 
 adventure.import_data()
 adventure.levels_pool[20].show(vb.game)
+
+vb.setting_up(background_running=True)
 
 print("coding start")
 ps: list[tuple[int, int]] = [
@@ -22,7 +23,6 @@ ps: list[tuple[int, int]] = [
 ]
 
 for p in ps:
-    time.sleep(0.3)
-    vb.brk(x=p[1]-1, y=p[0])
+    vb.brk(x=p[1] - 1, y=p[0])
 
 print("coding end")

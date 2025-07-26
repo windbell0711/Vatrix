@@ -56,6 +56,8 @@ class PvzModifier:
             time.sleep(0.1)
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
         self.phand = self.OpenProcess(0x000f0000 | 0x00100000 | 0xfff, False, pid)
+        # 允许后台运行
+        # self.background_running(True)
         return 1
 
     def read_memory(self, address, length=4) -> int:
@@ -561,7 +563,7 @@ class PvzModifier:
         zombie_dead = zombies_offset.dead
         board = self.read_offset([lawn_offset, board_offset])
         zombies_addr = self.read_memory(board + zombies_offset, 4)
-        zombie_struct_size = 0x168
+        zombie_struct_size = self.data.lawn.board.zombies.StructSize
         zombie_count_max = self.read_memory(board + zombie_count_max_offset, 4)
         for i in range(zombie_count_max):
             addr = zombies_addr + i * zombie_struct_size
@@ -1245,6 +1247,6 @@ if __name__ == '__main__':
     # game.put_vase(0, 0, 3, 1, 1, 1, 25)
     # game.vase_transparent(False)
     # game.break_vase_mouse(6, 3)
-
-    # print(game.mouse_pos())
+    time.sleep(2)
+    print(game.mouse_pos())
     print('end')

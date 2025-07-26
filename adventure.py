@@ -6,6 +6,7 @@
 """
 import os
 import random
+import time
 
 # from memory import WindowMem
 from pvztoolkit.pvz import PvzModifier
@@ -49,63 +50,76 @@ class Level:
             self.vase_rule_code = data["vase_rule_code"]
             self.vase_rule = data["vase_rule"]
             self.vase_pools = None  # 生成self.vase_pools
-            if self.vase_rule_code == "1":
-                p = []
-                for item in self.vase_rule.split("+"):
-                    if item[3] != "*":
-                        print(f"!Cannot read {self.code[0]}-{self.code[1]}: {item}")
-                        continue
-                    for _ in range(int(item[4:])):
-                        p.append([item[:3], "q"])
-                self.vase_pools = {"1": p}
-            elif self.vase_rule_code == "2":
-                ps = {}
-                for j in self.vase_rule.split(";"):
-                    if j[1] != "@" or j[3] != ":":
-                        print(f"!Cannot read {self.code[0]}-{self.code[1]}: {j}")
-                        continue
+            match self.vase_rule_code:
+                case "1":
                     p = []
-                    for item in j[4:].split("+"):
+                    for item in self.vase_rule.split("+"):
                         if item[3] != "*":
                             print(f"!Cannot read {self.code[0]}-{self.code[1]}: {item}")
                             continue
                         for _ in range(int(item[4:])):
-                            p.append([item[:3], j[2]])
-                    ps[j[0]] = p
-                self.vase_pools = ps
-            elif self.vase_rule_code == "3":
-                ps = {}
-                for j in self.vase_rule.split(";"):
-                    if j[1] != ":":
-                        print(f"!Cannot read {self.code[0]}-{self.code[1]}: {j}")
-                        continue
-                    p = []
-                    for item in j[2:].split("+"):
-                        if item[3] != "*" or item[-2] != "@":
-                            print(f"!Cannot read {self.code[0]}-{self.code[1]}: {item}")
+                            p.append([item[:3], "q"])
+                    self.vase_pools = {"1": p}
+                case "2":
+                    ps = {}
+                    for j in self.vase_rule.split(";"):
+                        if j[1] != "@" or j[3] != ":":
+                            print(f"!Cannot read {self.code[0]}-{self.code[1]}: {j}")
                             continue
-                        for _ in range(int(item[4:-2])):
-                            p.append([item[:3], item[-1]])
-                    ps[j[0]] = p
-                self.vase_pools = ps
+                        p = []
+                        for item in j[4:].split("+"):
+                            if item[3] != "*":
+                                print(f"!Cannot read {self.code[0]}-{self.code[1]}: {item}")
+                                continue
+                            for _ in range(int(item[4:])):
+                                p.append([item[:3], j[2]])
+                        ps[j[0]] = p
+                    self.vase_pools = ps
+                case "3":
+                    ps = {}
+                    for j in self.vase_rule.split(";"):
+                        if j[1] != ":":
+                            print(f"!Cannot read {self.code[0]}-{self.code[1]}: {j}")
+                            continue
+                        p = []
+                        for item in j[2:].split("+"):
+                            if item[3] != "*" or item[-2] != "@":
+                                print(f"!Cannot read {self.code[0]}-{self.code[1]}: {item}")
+                                continue
+                            for _ in range(int(item[4:-2])):
+                                p.append([item[:3], item[-1]])
+                        ps[j[0]] = p
+                    self.vase_pools = ps
             # 卡槽信息
             self.slot_rule = data["slot_rule"]
             # 备注
             self.beizhu = data["beizhu"]
         except IndexError or KeyError or ValueError as e:
             print("\n\n!File adventure_info.csv not available, please check.\n"
-                  "Data which contributes to error: " + str(data))
+                  "Data leading to an error: " + str(data))
             raise e  # 导入的文件数据格式错误
 
-    def show(self, game: PvzModifier):  # TODO
+    def show(self, game: PvzModifier):
         print(f"Initiating level {self.code[0]}-{self.code[1]}...")
-        # print(self.vase_pools)
         # 更改场景类型
         game.set_scene(self.scene_id)
+        # 创造再隐藏钱袋，以实现永不过关
+        game.put_zombie(row=0, col=0, zombie_type=0)
+        game.kill_all_zombies()
+        item_addr_base = game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.items))
+        item_struct_size = game.data.lawn.board.items.StructSize
+        time.sleep(0.05)
+        for i in range(0, game.read_offset((game.data.lawn, game.data.lawn.board, game.data.lawn.board.item_count_max)) * item_struct_size, item_struct_size):
+            if game.read_memory(item_addr_base + game.data.lawn.board.items.exist + i, 2) == 0:
+                continue  # 不存在
+            if game.read_memory(item_addr_base + game.data.lawn.board.items.item_type + i, 4) == 18:  # 通关钱袋子
+                # print(game.read_memory(item_addr_base + game.data.lawn.board.items.missing + i))
+                game.write_memory(address=item_addr_base + game.data.lawn.board.items.missing + i,
+                                  data=1, length=4)
+                break
+        # 开始布置场景
         if not self.special:  # 非特殊关
-            # 场景植物放置
-            game.sun_shine(25)
-            # game.sun_shine(0)
+            game.sun_shine(25)  # TODO: 设置阳光数
             try:
                 vase_pools = self.vase_pools.copy()
                 for _ in vase_pools.keys():
@@ -133,16 +147,18 @@ class Level:
                                     print(f"!Warning: Code of {name} Not Found. Row: {row}; Col: {col}.")
             except IndexError:
                 pass
-        elif self.code == ['0', '4']:
-            pass
-        elif self.code == ['0', '9']:
-            pass
-        elif self.code == ['1', '4']:
-            pass
-        elif self.code == ['1', '9']:
-            pass
         else:
-            raise KeyError("!Level Code Not Found or Not Set To Special Category.")
+            match self.code:  # 玩玩时髦的新用法match
+                case ['0', '4']:
+                    pass
+                case ['0', '9']:
+                    pass
+                case ['1', '4']:
+                    pass
+                case ['1', '9']:
+                    pass
+                case _:
+                    raise KeyError("!Level Code Not Found or Not Set To Special Category.")
 
 
 def import_data() -> bool:  # 将.csv文件中的信息转化成对象Level存入列表levels_pool

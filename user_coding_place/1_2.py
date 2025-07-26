@@ -1,16 +1,17 @@
 import pvz_hacker as vb
 import adventure
-import time
 
 adventure.import_data()
 adventure.levels_pool[1].show(vb.game)
+
+vb.setting_up(background_running=True,
+              speed_rate=5)
 
 print("coding start")
 
 for i in (6, 7):
     for j in (1, 2, 3):
         vb.brk(x=i, y=j)
-        time.sleep(0.25)
 
 vb.update()
 for k in (0, 1, 2):

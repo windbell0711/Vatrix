@@ -1,4 +1,6 @@
 import struct
+import time
+
 from pvztoolkit.pvz import PvzModifier
 import pvztoolkit.data
 
@@ -8,6 +10,21 @@ data_board = game.data.lawn.board
 
 def read_board(*args: int | pvztoolkit.data.Offset) -> int:
     return game.read_offset((game.data.lawn, data_board, *args))
+
+def setting_up(background_running: bool = None,
+               speed_rate: float = None) -> None:
+    if isinstance(background_running, bool):
+        game.background_running(background_running)
+    if isinstance(speed_rate, float | int) and 0.01 <= speed_rate <= 10.0:
+        game.set_speed_rate(speed_rate)
+    else:  print("Invalid speed rate. 0.05 <= speed_rate <= 10.0")
+
+
+def delay(seconds: float) -> None:
+    """按游戏速度校正的延迟时间
+    :param seconds: 游戏速度为1.0时对应的等待秒数"""
+    print(f"Waiting {seconds * game.get_frame_duration() / 10} seconds...")
+    time.sleep(seconds * game.get_frame_duration() / 10)
 
 
 class Object:
@@ -148,8 +165,8 @@ class Vase(Object):
         return (f"Vase {self.idt}\t{self.name}\t{self.row + 1}行{self.col + 1}列\n"
                 f"Container: {self.container}\tContent Type: {self.content_str} {self.typ}")
 
-    def brk(self) -> bool:
-        return brk(x=self.col, y=self.row)   # TODO
+    def brk(self, sleep: float = 0.225) -> bool:
+        return brk(x=self.col, y=self.row, after_delay=sleep)  # TODO
 
 
 # class Scene:
@@ -240,12 +257,11 @@ def _update_cards():
     # 更新卡片信息
     cards = []
     cnt_current = read_board(data_board.item_count)
-    cnt_max = read_board(data_board.item_count_max)
-    addr_base = read_board(data_board.items)
-    # addr_offset =
-    for i in range(0, cnt_max * 0xD8, 0xD8):
-        # if game.read_memory(addr_base + data_board.items.invisible + i, 1):
-        #         # or game.read_memory(addr_base + data_board.items.exist + i, 2) != b'k\xdf':
+    cnt_max =     read_board(data_board.item_count_max)
+    addr_base =   read_board(data_board.items)
+    struct_size = data_board.items.StructSize
+    for i in range(0, cnt_max * struct_size, struct_size):
+        # if game.read_memory(addr_base + data_board.items.invisible + i, 1) or game.read_memory(addr_base + data_board.items.exist + i, 2) != b'k\xdf':
         if game.read_memory(addr_base + data_board.items.exist + i, 2) == 0:
             continue  # 不存在
         # print(f"隐形：{game.read_memory(addr_base + data_board.items.invisible + i, 1)}")
@@ -263,9 +279,10 @@ def _update_vases():
     # 更新花瓶信息
     vases = []
     cnt_current = read_board(data_board.grid_item_count)
-    cnt_max = read_board(data_board.grid_item_count_max)
-    addr_base = read_board(data_board.grid_items)
-    for i in range(0, cnt_max * 0xEC, 0xEC):
+    cnt_max =     read_board(data_board.grid_item_count_max)
+    addr_base =   read_board(data_board.grid_items)
+    struct_size = data_board.grid_items.StructSize
+    for i in range(0, cnt_max * struct_size, struct_size):
         addr = addr_base + i
         if game.read_memory(addr + data_board.grid_items.dead, 1):
             continue  # 已破坏的花瓶
@@ -281,17 +298,20 @@ def _update_vases():
                           plant_type=   game.read_memory(addr + data_board.grid_items.plant_in_vase, 4),
                           sun_count=    game.read_memory(addr + data_board.grid_items.sun_shine_in_vase, 4)))
 
-def brk(x: int, y: int) -> None:
+def brk(x: int, y: int, after_delay: float = 0.225) -> None:
     """
     To break a vase existing.
     :param x: which to break ([0-5, 0-8])
     :param y: which to break ([0-5, 0-8])
-    :param delay: (deleted) break the vase after how many seconds
+    :param after_delay: break the vase and wait how many seconds
     :return: (deleted) Object/None/False/int(sun)
     """
     if not game.click_avai():
         return
     game.left_click(*game.xy_to_pos(x, y))
+    if after_delay > 0.001:
+        delay(after_delay)
+    return
 
 
 if __name__ == '__main__':

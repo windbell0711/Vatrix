@@ -267,7 +267,7 @@ class Data:
                 slots=Offset(
                     0x144,
                     count=0x24,
-                    OffsetValue=0x15c,
+                    StructSize=0x15c,
                     x=0xc,
                     y=0x10,
                     cd_past=0x28,
@@ -278,7 +278,7 @@ class Data:
                 ),
                 zombies=Offset(
                     0x90,
-                    OffsetValue=0x15c,
+                    StructSize=0x15c,
                     row=0x1c,
                     type=0x24,
                     status=0x28,
@@ -289,7 +289,7 @@ class Data:
                 zombie_count=0xa0,
                 plants=Offset(
                     0xac,
-                    OffsetValue=0x14c,
+                    StructSize=0x14c,
                     row=0x1c,
                     type=0x24,
                     col=0x28,
@@ -303,7 +303,7 @@ class Data:
                 plant_next_pos=0xb8,
                 lawn_mowers=Offset(
                     0x100,
-                    OffsetValue=0x48,
+                    StructSize=0x48,
                     row=0x14,
                     status=0x2c,
                     dead=0x30
@@ -312,14 +312,15 @@ class Data:
                 lawn_mower_count=0x110,
                 items=Offset(
                     0xe4,  # \\物品属性(+D8下一个)
-                    OffsetValue=0xd8,
+                    StructSize=0xd8,
                     x=0x24,  # 浮点
                     y=0x28,  # 浮点
                     idt=0xd4,
                     lost_time=0x54,
                     item_type=0x58,
                     plant_type=0x68,
-                    invisible=0x18,  # ？
+                    invisible=0x18,  # ？visible
+                    missing=0x38,
                     exist=0xd2  # [2字节]物品是否存在
                 ),
                 item_count_max=0xe8,
@@ -327,7 +328,7 @@ class Data:
                 item_count=0xf4,
                 grid_items=Offset(
                     0x11c,
-                    OffsetValue=0xec,
+                    StructSize=0xec,
                     idt=0xe8,
                     type=0x08,
                     vase_type=0xc,  # 3: 随机罐  4: 植物罐  5: 僵尸罐
