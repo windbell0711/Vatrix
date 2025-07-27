@@ -2,12 +2,13 @@ import pygame
 import sys
 import time
 import random
+import os
 
 pygame.init()
 
 # 屏幕设置
 SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 700
+SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Vatrix")
 
@@ -22,7 +23,7 @@ CYAN = (0, 200, 255)
 console_font = pygame.font.SysFont('consolas', 20)
 small_font = pygame.font.SysFont('consolas', 16)
 
-# 开场对话 - 修改为包含>前缀
+# 开场对话
 dialog_lines = [
     "Status: Standby. Consciousness module loaded... Complete.",
     "Perception units initialized... Complete.",
@@ -39,7 +40,7 @@ dialog_lines = [
     "> Remember: Calculate. Decide. Execute. This is your function.",
     "Commence initial stability assessment...",
     "Command sequence initialization window open.",
-    "Processing...",
+    "Processing... ok",
     "> Fracture it."
 ]
 
@@ -49,38 +50,114 @@ class Star:
         self.x = random.randint(0, SCREEN_WIDTH)
         self.y = random.randint(0, SCREEN_HEIGHT)
         self.size = random.randint(1, 3)
-        self.brightness = random.randint(50, 200)
+        self.brightness = random.randint(50, 150)
         self.pulse_speed = random.uniform(0.01, 0.05)
         self.pulse = random.uniform(0, 3.14)  # 随机初始相位
+        self.visible = True  # 星星是否可见
+        self.disappearing = False  # 星星是否正在消失
+        self.appearing = False  # 星星是否正在出现
+        self.alpha = 0 if not self.visible else 255  # 星星的透明度（0-255）
+        self.disappear_speed = random.uniform(0.2, 0.5)  # 消失速度
+        self.appear_speed = random.uniform(0.2, 0.5)  # 消失速度
 
     def update(self):
         # 星星脉动效果
         self.pulse += self.pulse_speed
-        self.current_brightness = int(
-            self.brightness * (0.5 + 0.5 * abs(pygame.math.Vector2(1, 0).rotate(self.pulse * 20).x)))
+        self.current_brightness = int(self.brightness * (0.5 + 0.5 * abs(pygame.math.Vector2(1, 0).rotate(self.pulse * 20).x)))
+        # 如果星星正在消失，减少透明度
+        if self.disappearing:
+            self.alpha = max(0, self.alpha - int(self.disappear_speed * 5))
+            if self.alpha <= 0:
+                self.visible = False
+        # 如果星星正在出现，增加透明度
+        if self.appearing:
+            self.alpha = min(255, self.alpha + int(self.appear_speed * 5))
+            if self.alpha >= 255:
+                self.appearing = False
+                self.visible = True
 
     def draw(self, surface):
-        color = (self.current_brightness, self.current_brightness, self.current_brightness)
-        pygame.draw.circle(surface, color, (self.x, self.y), self.size)
+        if self.visible:
+            # 创建临时表面来绘制带透明度的星星
+            star_surface = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
+            color = (self.current_brightness, self.current_brightness, self.current_brightness, self.alpha)
+            pygame.draw.circle(star_surface, color, (self.size, self.size), self.size)
+            surface.blit(star_surface, (self.x - self.size, self.y - self.size))
 
 
 def draw_background(surface):
     # 绘制星空背景
     surface.fill(BLACK)
 
-    # 绘制微弱的网格线 - 调淡一些
-    grid_color = (30, 30, 40)  # 更淡的灰色
+    # 绘制微弱的网格线
+    grid_color = (40, 40, 50)  # 更淡的灰色
     for i in range(0, SCREEN_WIDTH, 50):
         pygame.draw.line(surface, grid_color, (i, 0), (i, SCREEN_HEIGHT), 1)
     for i in range(0, SCREEN_HEIGHT, 50):
         pygame.draw.line(surface, grid_color, (0, i), (SCREEN_WIDTH, i), 1)
 
 
+def mark_stars_for_disappearing(stars, mask_surface):
+    """根据掩码图像标记需要消失的星星"""
+    for star in stars:
+        # 获取星星在掩码图像上对应位置的颜色
+        try:
+            # 确保坐标在图像范围内
+            x = max(0, min(int(star.x), SCREEN_WIDTH - 1))
+            y = max(0, min(int(star.y), SCREEN_HEIGHT - 1))
+            mask_color = mask_surface.get_at((x, y))
+        except:
+            # 如果坐标超出范围，跳过
+            continue
+
+        # 如果掩码位置是白色（RGB值都大于200），则标记星星为正在消失
+        if mask_color[0] > 200 and mask_color[1] > 200 and mask_color[2] > 200:
+            star.disappearing = True
+
+def generate_new_stars_in_non_white(stars, mask_surface, num_stars=50):
+    """在非白色区域内生成新的星星"""
+    new_stars = []
+
+    # 尝试生成指定数量的新星星
+    for _ in range(num_stars):
+        # 生成随机位置
+        x = random.randint(0, SCREEN_WIDTH - 1)
+        y = random.randint(0, SCREEN_HEIGHT - 1)
+
+        # 检查该位置在掩码图像上的颜色
+        try:
+            mask_color = mask_surface.get_at((x, y))
+        except:
+            continue
+
+        # 如果掩码位置是非白色（RGB值不全大于200），则在该位置创建新星星
+        if not (mask_color[0] > 200 and mask_color[1] > 200 and mask_color[2] > 200):
+            new_star = Star(x, y)
+            new_star.visible = False  # 初始不可见
+            new_star.appearing = True  # 标记为正在出现
+            new_star.alpha = 0  # 初始透明度为0
+            new_stars.append(new_star)
+
+    return new_stars
+
 def main():
     clock = pygame.time.Clock()
 
     # 创建星星
-    stars = [Star() for _ in range(200)]
+    stars = [Star() for _ in range(750)]
+
+    # 加载掩码图像
+    mask_applied = False
+    mask_surface = None
+    try:
+        # 尝试加载掩码图像
+        mask_image = pygame.image.load('intro_vase_mask.png').convert()
+        # 缩放掩码图像到屏幕大小
+        mask_surface = pygame.transform.scale(mask_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        print("Mask image loaded successfully")
+    except Exception as e:
+        print(f"Failed to load mask image: {e}")
+        mask_surface = None
 
     # 开场状态
     current_line = 0
@@ -94,18 +171,18 @@ def main():
     cursor_visible = True
     cursor_timer = 0
 
-    # 新状态：延迟计时器
+    # 状态：延迟计时器
     delay_timer = 0
     delay_active = False
     delay_complete = False
 
-    # 新状态：当前行是否以>开头
+    # 状态：当前行是否以>开头
     is_command_line = False
-    # 新状态：当前行是否有...分隔
+    # 状态：当前行是否有...分隔
     has_ellipsis = False
-    # 新状态：...前的部分
+    # 状态：...前的部分
     first_part = ""
-    # 新状态：...后的部分
+    # 状态：...后的部分
     second_part = ""
 
     while run_intro:
@@ -193,6 +270,12 @@ def main():
 
         # 非>行延迟结束后自动进入下一行
         if not is_command_line and display_complete and not delay_active and (not has_ellipsis or delay_complete):
+            # 如果是第7句且掩码图像已加载，则应用星星掩码效果
+            # print(current_line, mask_surface, mask_applied)
+            if current_line == 6 and mask_surface is not None and not mask_applied:
+                mark_stars_for_disappearing(stars, mask_surface)
+                mask_applied = True
+
             # 进入下一行
             current_line += 1
             line_progress = 0
