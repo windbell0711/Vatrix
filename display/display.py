@@ -29,9 +29,10 @@ dialog_lines = [
     "Perception units initialized... Complete.",
     "Logic core calibrated... Complete.",
     "> Welcome online, Choicer.",
-    "Identity assigned: #Choicer_Prime_Seed. Primary Directive: Assess 'Vessel Stability.'",
+    "[CLS]",
+    "Processing... Identity assigned: #Choicer_Prime_Seed. Assessing Vessel Stability...",
     "Linking to Garden Protocol... Complete.",
-    "Defense Unit database locked: Base templates inavailable.",
+    "Defense Unit database locked: Base templates inavailable...",
     "> See that Vase? ",
     "Autonomous cognition detected. Within expected parameters.",
     "> Your Objective is to Fracture designated Vases.",
@@ -46,38 +47,48 @@ dialog_lines = [
 
 
 class Star:
-    def __init__(self):
-        self.x = random.randint(0, SCREEN_WIDTH)
-        self.y = random.randint(0, SCREEN_HEIGHT)
+    def __init__(self, x=None, y=None):
+        # 如果未指定位置，随机生成位置
+        if x is None or y is None:
+            self.x = random.randint(0, SCREEN_WIDTH)
+            self.y = random.randint(0, SCREEN_HEIGHT)
+        else:
+            self.x = x
+            self.y = y
+
         self.size = random.randint(1, 3)
-        self.brightness = random.randint(50, 150)
+        self.brightness = random.randint(50, 180)
         self.pulse_speed = random.uniform(0.01, 0.05)
         self.pulse = random.uniform(0, 3.14)  # 随机初始相位
         self.visible = True  # 星星是否可见
         self.disappearing = False  # 星星是否正在消失
         self.appearing = False  # 星星是否正在出现
         self.alpha = 0 if not self.visible else 255  # 星星的透明度（0-255）
-        self.disappear_speed = random.uniform(0.2, 0.5)  # 消失速度
-        self.appear_speed = random.uniform(0.2, 0.5)  # 消失速度
+        self.disappear_speed = random.uniform(0.2, 0.4)  # 消失速度
+        self.appear_speed = random.uniform(0.2, 0.5)  # 出现速度
 
     def update(self):
         # 星星脉动效果
         self.pulse += self.pulse_speed
-        self.current_brightness = int(self.brightness * (0.5 + 0.5 * abs(pygame.math.Vector2(1, 0).rotate(self.pulse * 20).x)))
+        self.current_brightness = int(
+            self.brightness * (0.5 + 0.5 * abs(pygame.math.Vector2(1, 0).rotate(self.pulse * 20).x)))
+
         # 如果星星正在消失，减少透明度
         if self.disappearing:
             self.alpha = max(0, self.alpha - int(self.disappear_speed * 5))
-            if self.alpha <= 0:
-                self.visible = False
+        if self.alpha <= 0:
+            self.visible = False
+            self.disappearing = False
+
         # 如果星星正在出现，增加透明度
         if self.appearing:
             self.alpha = min(255, self.alpha + int(self.appear_speed * 5))
-            if self.alpha >= 255:
-                self.appearing = False
-                self.visible = True
+        if self.alpha >= 255:
+            self.appearing = False
+            self.visible = True
 
     def draw(self, surface):
-        if self.visible:
+        if self.alpha > 0:
             # 创建临时表面来绘制带透明度的星星
             star_surface = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
             color = (self.current_brightness, self.current_brightness, self.current_brightness, self.alpha)
@@ -99,6 +110,7 @@ def draw_background(surface):
 
 def mark_stars_for_disappearing(stars, mask_surface):
     """根据掩码图像标记需要消失的星星"""
+    print("Marking stars for disappearing...")
     for star in stars:
         # 获取星星在掩码图像上对应位置的颜色
         try:
@@ -116,6 +128,7 @@ def mark_stars_for_disappearing(stars, mask_surface):
 
 def generate_new_stars_in_non_white(stars, mask_surface, num_stars=50):
     """在非白色区域内生成新的星星"""
+    print("Generating new stars in non-white areas...")
     new_stars = []
 
     # 尝试生成指定数量的新星星
@@ -144,16 +157,17 @@ def main():
     clock = pygame.time.Clock()
 
     # 创建星星
-    stars = [Star() for _ in range(750)]
+    stars = [Star() for _ in range(300)]
 
     # 加载掩码图像
-    mask_applied = False
+    mask_loaded = False
     mask_surface = None
     try:
         # 尝试加载掩码图像
         mask_image = pygame.image.load('intro_vase_mask.png').convert()
         # 缩放掩码图像到屏幕大小
         mask_surface = pygame.transform.scale(mask_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        mask_loaded = True
         print("Mask image loaded successfully")
     except Exception as e:
         print(f"Failed to load mask image: {e}")
@@ -185,6 +199,14 @@ def main():
     # 状态：...后的部分
     second_part = ""
 
+    # 掩码标记状态
+    stars_marked = False
+    new_stars_generated = False
+
+    # 清屏状态
+    clear_screen = False
+    start_line = 0
+
     while run_intro:
         current_time = time.time()
         delta_time = current_time - last_update_time
@@ -210,6 +232,10 @@ def main():
                     # 仅在非延迟状态下且当前行需要用户输入时响应空格键
                     if not delay_active:
                         if is_command_line and display_complete:
+                            # 检查是否为清屏指令
+                            if dialog_lines[current_line] == "[CLS]":
+                                start_line = current_line + 1  # 设置新的起始行
+                            
                             # 进入下一行
                             current_line += 1
                             line_progress = 0
@@ -231,6 +257,10 @@ def main():
             current_text = dialog_lines[current_line]
             is_command_line = current_text.startswith('>')
             has_ellipsis = '...' in current_text
+
+            # 检查是否为清屏指令
+            if current_line < len(dialog_lines) and dialog_lines[current_line] == "[CLS]":
+                clear_screen = True
 
             # 如果有...分隔，拆分文本
             if has_ellipsis:
@@ -270,11 +300,23 @@ def main():
 
         # 非>行延迟结束后自动进入下一行
         if not is_command_line and display_complete and not delay_active and (not has_ellipsis or delay_complete):
-            # 如果是第7句且掩码图像已加载，则应用星星掩码效果
-            # print(current_line, mask_surface, mask_applied)
-            if current_line == 6 and mask_surface is not None and not mask_applied:
-                mark_stars_for_disappearing(stars, mask_surface)
-                mask_applied = True
+            # 如果是清屏指令
+            if clear_screen:
+                start_line = current_line + 1  # 设置新的起始行
+                clear_screen = False  # 重置清屏标志
+
+            # 如果是第7句且掩码图像已加载
+            if current_line == 6 and mask_loaded:
+                # 标记需要消失的星星
+                if not stars_marked:
+                    mark_stars_for_disappearing(stars, mask_surface)
+                    stars_marked = True
+
+                # 在非白色区域生成新星星
+                if not new_stars_generated:
+                    new_stars = generate_new_stars_in_non_white(stars, mask_surface, num_stars=750)
+                    stars.extend(new_stars)
+                    new_stars_generated = True
 
             # 进入下一行
             current_line += 1
@@ -311,22 +353,24 @@ def main():
         start_y = 15
         line_height = 30
 
-        # 绘制已完成的对话行
-        for i in range(current_line):
-            text_surface = console_font.render(dialog_lines[i], True, WHITE)
-            screen.blit(text_surface, (start_x, start_y + i * line_height))
+        # 绘制已完成的对话行（从start_line开始）
+        for i in range(start_line, current_line):
+            # 跳过CLS指令行
+            if i < len(dialog_lines) and dialog_lines[i] != "[CLS]":
+                text_surface = console_font.render(dialog_lines[i], True, WHITE)
+                screen.blit(text_surface, (start_x, start_y + (i - start_line) * line_height))
 
         # 绘制当前行
-        if current_line < len(dialog_lines):
+        if current_line < len(dialog_lines) and dialog_lines[current_line] != "[CLS]":
             if is_command_line:
                 # >开头的行使用打字机效果
                 current_text = dialog_lines[current_line][:line_progress]
                 text_surface = console_font.render(current_text, True, WHITE)
-                screen.blit(text_surface, (start_x, start_y + current_line * line_height))
+                screen.blit(text_surface, (start_x, start_y + (current_line - start_line) * line_height))
                 # 绘制闪烁的光标
                 if cursor_visible and display_complete and is_command_line:
                     cursor_x = start_x + text_surface.get_width() + 5
-                    cursor_y = start_y + current_line * line_height
+                    cursor_y = start_y + (current_line - start_line) * line_height
                     pygame.draw.rect(screen, WHITE, (cursor_x, cursor_y, 10, 20))
             else:
                 # 非>开头的行使用...分隔效果
@@ -334,11 +378,11 @@ def main():
                     if delay_complete:
                         # 延迟结束后显示完整行
                         text_surface = console_font.render(dialog_lines[current_line], True, WHITE)
-                        screen.blit(text_surface, (start_x, start_y + current_line * line_height))
+                        screen.blit(text_surface, (start_x, start_y + (current_line - start_line) * line_height))
                     else:
                         # 延迟前只显示...前的部分
                         text_surface = console_font.render(first_part, True, WHITE)
-                        screen.blit(text_surface, (start_x, start_y + current_line * line_height))
+                        screen.blit(text_surface, (start_x, start_y + (current_line - start_line) * line_height))
 
                         # 显示延迟动画
                         if delay_active:
@@ -346,11 +390,11 @@ def main():
                             dot_text = "   " + "." * dots
                             dot_surface = console_font.render(dot_text, True, WHITE)
                             screen.blit(dot_surface,
-                                        (start_x + text_surface.get_width(), start_y + current_line * line_height))
+                                        (start_x + text_surface.get_width(), start_y + (current_line - start_line) * line_height))
                 else:
                     # 没有...的行直接显示
                     text_surface = console_font.render(dialog_lines[current_line], True, WHITE)
-                    screen.blit(text_surface, (start_x, start_y + current_line * line_height))
+                    screen.blit(text_surface, (start_x, start_y + (current_line - start_line) * line_height))
 
         # 绘制提示（仅在需要用户输入时显示）
         if is_command_line and display_complete and current_line < len(dialog_lines) - 1:
