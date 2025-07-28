@@ -259,6 +259,7 @@ class PvzModifier:
         if isinstance(number, int):
             lawn_offset, board_offset, sun_offset = self.data.recursively_get_attrs(['lawn', 'board', 'sun'])
             self.write_offset((lawn_offset, board_offset, sun_offset), number, 4)
+        else:  raise TypeError('number must be int')
 
     def money(self, number):
         if not self.is_open():
@@ -268,6 +269,7 @@ class PvzModifier:
         if isinstance(number, int):
             lawn_offset, user_data_offset, money_offset = self.data.recursively_get_attrs(['lawn', 'user_data', 'money'])
             self.write_offset((lawn_offset, user_data_offset, money_offset), number // 10, 4)
+        else:  raise TypeError('number must be int')
 
     def adventure(self, number):
         if not self.is_open():
@@ -1244,6 +1246,17 @@ class PvzModifier:
         # return 64 * x + 60, 80 * y + 76
         return (int(80.63 * x + 75.592),
                 int(97.00 * y + 110.67))
+
+    @staticmethod
+    def shovel_pos(slot_count: int) -> (int, int):
+        match slot_count:
+            case x if x in range(1, 7):  x, y = 490, 40
+            case 7:  x, y = 551, 40
+            case 8:  x, y = 564, 40
+            case 9:  x, y = 601, 40
+            case 10: x, y = 645, 40
+            case _:  raise ValueError(f"slot_count {slot_count} out of range")
+        return x, y
 
     def click_avai(self) -> bool:
         if not self.is_open():

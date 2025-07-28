@@ -331,6 +331,19 @@ def brk(x: int, y: int, after_delay: float = 0.25) -> None:
         delay(after_delay)
     return
 
+def plt(card_id: int, x: int, y: int) -> None:
+    if not game.click_avai():
+        return
+    game.left_click(x=10+read_board(data_board.slots, data_board.slots.x + data_board.slots.CardOffset + card_id * data_board.slots.StructSize),
+                    y=10+read_board(data_board.slots, data_board.slots.y + data_board.slots.CardOffset + card_id * data_board.slots.StructSize))
+    game.left_click(*game.xy_to_pos(x, y))
+
+def rmv(x: int, y: int) -> None:
+    if not game.click_avai():
+        return
+    game.left_click(*game.shovel_pos(slot_count=read_board(data_board.slots, data_board.slots.count)))
+    game.left_click(*game.xy_to_pos(x, y))
+
 
 def setting_up(background_running: bool = None,
                speed_rate: float = None) -> None:
@@ -362,7 +375,13 @@ def check_winning() -> bool:  # 僵尸全死完
     print("-----WIN-----")
     return True
 
+
 if __name__ == '__main__':
     print("from pvz_hacker.py")
+    # for i in range(2, 11):
+    #     game.set_slot_count(i)
+    #     time.sleep(3)
+    #     print(game.mouse_pos())
     # game.left_click(262, 138)
     # print(read_board(data_board.plants, data_board.plants.type))
+    rmv(4, 2)
