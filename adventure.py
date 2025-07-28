@@ -7,6 +7,7 @@
 import os
 import random
 import time
+from contextlib import suppress
 
 # from memory import WindowMem
 from pvztoolkit.pvz import PvzModifier
@@ -91,7 +92,10 @@ class Level:
                         ps[j[0]] = p
                     self.vase_pools = ps
             # 卡槽信息
-            self.slot_rule = data["slot_rule"]
+            self.need_slot = (data["slot_rule"] is not None) and (data["slot_rule"] != "")
+            if self.need_slot:
+                self.sun: int =         int(data["slot_rule"][:data["slot_rule"].find('$')])
+                self.slot_rule: list[str] = data["slot_rule"][ data["slot_rule"].find('$')+1:].split('+')
             # 备注
             self.beizhu = data["beizhu"]
         except IndexError or KeyError or ValueError as e:
@@ -101,6 +105,7 @@ class Level:
 
     def show(self, game: PvzModifier):
         print(f"Initiating level {self.code[0]}-{self.code[1]}...")
+        game.background_running(True)
         # 更改场景类型
         game.set_scene(self.scene_id)
         # 创造再隐藏钱袋，以实现永不过关
@@ -118,9 +123,13 @@ class Level:
                                   data=1, length=4)
                 break
         # 开始布置场景
-        if not self.special:  # 非特殊关
-            game.sun_shine(25)  # TODO: 设置阳光数
-            try:
+        if not self.special:
+            if self.need_slot:
+                game.sun_shine(self.sun)
+                game.set_slot_count(len(self.slot_rule))
+                for i in range(len(self.slot_rule)):
+                    game.set_slot_plant(plant_type=alias2code[self.slot_rule[i]], slot_id=i, imitator=False)
+            with suppress(IndexError):  # 刚学会的写法诶嘿
                 vase_pools = self.vase_pools.copy()
                 for _ in vase_pools.keys():
                     random.shuffle(vase_pools[_])
@@ -146,10 +155,8 @@ class Level:
                                     pass
                                 else:
                                     print(f"!Warning: Code of {name} Not Found. Row: {row}; Col: {col}.")
-            except IndexError:
-                pass
         else:
-            match self.code:  # 玩玩时髦的新用法match
+            match self.code:
                 case ['0', '4']:
                     pass
                 case ['0', '9']:
@@ -181,4 +188,4 @@ if __name__ == '__main__':
     # levels_pool[0].show(WindowMem(process_name="popcapgame1.exe"))
     g = PvzModifier()
     g.wait_for_game()
-    levels_pool[1].show(g)
+    levels_pool[0].show(g)

@@ -38,6 +38,7 @@ class Data:
                 cursor=Offset(0x150, cursor_grab=0x30),
                 slots=Offset(
                     0x15c,
+                    StructSize=0x50,
                     count=0x24,
                     cd_past=0x4c,
                     cd_total=0x50,
@@ -267,7 +268,8 @@ class Data:
                 slots=Offset(
                     0x144,
                     count=0x24,
-                    StructSize=0x15c,
+                    StructSize=0x50,
+                    CardOffset=0x24,
                     x=0xc,
                     y=0x10,
                     cd_past=0x28,

@@ -9,6 +9,8 @@ import ctypes
 import threading
 import copy
 
+from Demos.mmapfile_demo import offset
+
 from pvztoolkit.data import Data, Hack
 from pvztoolkit.asm_inject import AsmInjector, Reg
 
@@ -43,6 +45,7 @@ class PvzModifier:
 
         self.phand = None
         self.data = Data.pvz_1_0_0_1051_en
+        # self.data = Data.pvz_goty_1_1_0_1056_zh_2012_06
         self.hwnd = 0
         self.lock = threading.Lock()
         self.asm = AsmInjector(self.lock)
@@ -1119,27 +1122,47 @@ class PvzModifier:
     def set_slot_plant(self, plant_type, slot_id, imitator):
         if not self.is_open():
             return
-        ui = self.game_ui()
-        if ui != 3:
+        if self.game_ui() != 3:
             return
-        slot_struct_size = 0x50
+        slot_struct_size = self.data.lawn.board.slots.StructSize
         lawn_offset, board_offset, slots_offset = self.data.recursively_get_attrs(['lawn', 'board', 'slots'])
         slots_addr = self.read_offset((lawn_offset, board_offset, slots_offset))
-        if imitator or plant_type == 0x30:
-            plant_type_imitator = plant_type
-            plant_type = 0x30
+        # if imitator or plant_type == 0x30:
+        #     plant_type_imitator = plant_type
+        #     plant_type = 0x30
+        # else:
+        #     plant_type_imitator = 0xffffffff
+        # self.asm.asm_init()
+        # if slot_id == -1:
+        #     for slot_id in range(10):
+        #         slot_addr = slots_addr + slot_id * slot_struct_size + 0x28
+        #         self._asm_set_slot_plant(plant_type, slot_addr, plant_type_imitator)
+        # else:
+        #     slot_addr = slots_addr + slot_id * slot_struct_size + 0x28
+        #     self._asm_set_slot_plant(plant_type, slot_addr, plant_type_imitator)
+        # self.asm.asm_ret()
+        # self.asm_code_execute()
+        if not 0 <= slot_id <= 10:
+            raise ValueError("Slot ID Out Of Range.")
+        plant_type_addr    = slots_addr + slot_id * slot_struct_size + self.data.lawn.board.slots.CardOffset + self.data.lawn.board.slots.plant_type
+        plant_type_im_addr = slots_addr + slot_id * slot_struct_size + self.data.lawn.board.slots.CardOffset + self.data.lawn.board.slots.plant_type_imitator
+        cd_past_addr       = slots_addr + slot_id * slot_struct_size + self.data.lawn.board.slots.CardOffset + self.data.lawn.board.slots.cd_past
+        cd_total_addr      = slots_addr + slot_id * slot_struct_size + self.data.lawn.board.slots.CardOffset + self.data.lawn.board.slots.cd_total
+        if not imitator:
+            self.write_memory(address=plant_type_addr, data=plant_type, length=4)
         else:
-            plant_type_imitator = 0xffffffff
-        self.asm.asm_init()
-        if slot_id == -1:
-            for slot_id in range(10):
-                slot_addr = slots_addr + slot_id * slot_struct_size + 0x28
-                self._asm_set_slot_plant(plant_type, slot_addr, plant_type_imitator)
-        else:
-            slot_addr = slots_addr + slot_id * slot_struct_size + 0x28
-            self._asm_set_slot_plant(plant_type, slot_addr, plant_type_imitator)
-        self.asm.asm_ret()
-        self.asm_code_execute()
+            self.write_memory(address=plant_type_addr, data=48, length=4)
+            self.write_memory(address=plant_type_im_addr, data=plant_type, length=4)
+        self.write_memory(address=cd_past_addr, data=self.read_memory(cd_total_addr), length=4)
+
+    def set_slot_count(self, num=10):
+        if not self.is_open():
+            return
+        if self.game_ui() != 3:
+            return
+        self.write_offset(offsets=(self.data.lawn, self.data.lawn.board, self.data.lawn.board.slots,
+                                   self.data.lawn.board.slots.count),
+                          data=num, length=4)
 
     def _asm_put_vase(self, row, col, vase_type, vase_content_type, plant_type, zombie_type, sun_shine_count):
         lawn_offset, board_offset, grid_items_offset = self.data.recursively_get_attrs(['lawn', 'board', 'grid_items'])
@@ -1218,9 +1241,6 @@ class PvzModifier:
 
     @staticmethod
     def xy_to_pos(x: int, y: int) -> (int, int):
-        """
-        >>> PvzModifier.xy_to_pos(x=0, y=1)  # 第一行第二列的鼠标坐标
-        """
         # return 64 * x + 60, 80 * y + 76
         return (int(80.63 * x + 75.592),
                 int(97.00 * y + 110.67))
@@ -1247,6 +1267,6 @@ if __name__ == '__main__':
     # game.put_vase(0, 0, 3, 1, 1, 1, 25)
     # game.vase_transparent(False)
     # game.break_vase_mouse(6, 3)
-    time.sleep(2)
-    print(game.mouse_pos())
+    game.sun_shine(1000)
+    game.set_slot_count(3)
     print('end')
