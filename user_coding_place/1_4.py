@@ -21,13 +21,13 @@ def solve():
 
 
 if __name__ == '__main__':
-    # solve()
-    vb.setting_up(background_running=True,
-                  speed_rate=5)
-    for loop in range(20):
-        solve()
-        vb.delay(10)
-        while not vb.check_winning():
-            vb.delay(2)
-    vb.setting_up(background_running=True,
-                  speed_rate=1)
+    solve()
+    # vb.setting_up(background_running=True,
+    #               speed_rate=5)
+    # for loop in range(20):
+    #     solve()
+    #     vb.delay(10)
+    #     while not vb.check_winning():
+    #         vb.delay(2)
+    # vb.setting_up(background_running=True,
+    #               speed_rate=1)

@@ -188,4 +188,4 @@ if __name__ == '__main__':
     # levels_pool[0].show(WindowMem(process_name="popcapgame1.exe"))
     g = PvzModifier()
     g.wait_for_game()
-    levels_pool[0].show(g)
+    levels_pool[7].show(g)

@@ -1,5 +1,7 @@
 import struct
 import time
+import logging
+from contextlib import contextmanager
 
 from pvztoolkit.pvz import PvzModifier
 import pvztoolkit.data
@@ -18,7 +20,8 @@ def rescan_as_float(x: int) -> float:
 def delay(seconds: float) -> None:
     """按游戏速度校正的延迟
     :param seconds: 游戏速度为1.0时对应的等待秒数"""
-    print(f"Waiting {seconds * game.get_frame_duration() / 10} seconds...")
+    if seconds > 1:  # 太短就不输出了
+        print(f"Waiting {seconds * game.get_frame_duration() / 10} seconds...")
     time.sleep(seconds * game.get_frame_duration() / 10)
 
 
@@ -375,6 +378,37 @@ def check_winning() -> bool:  # 僵尸全死完
     print("-----WIN-----")
     return True
 
+# @contextmanager
+# def running(loop=20, speed_rate=5, after_delay=5):
+#     # 正式计时运行
+#     logging.info("开始测试")
+#     setting_up(background_running=True,
+#                speed_rate=speed_rate)
+#     timings = []
+#     for _ in range(loop):
+#         logging.info(f"Loop {_} 开始运行")
+#         start_time = time.time()
+#         yield  # 运行代码
+#         delay(after_delay)
+#         while not check_winning():
+#             delay(0.5)
+#         elapsed = time.time() - start_time
+#         logging.info(f"Loop {_} 用时: {elapsed * speed_rate:.1f}秒")
+#         timings.append(elapsed * speed_rate)
+#     setting_up(background_running=True,
+#                speed_rate=1)
+#     logging.info("测试结束")
+#     # 计算结果并输出
+#     if timings:
+#         avg_time = sum(timings) / len(timings)
+#         max_time = max(timings)
+#         min_time = min(timings)
+#         logging.info(f"平均用时: {avg_time:.1f}秒")
+#         logging.info(f"最长用时: {max_time:.1f}秒")
+#         logging.info(f"最短用时: {min_time:.1f}秒")
+#     else:
+#         logging.warning("未记录到有效计时数据")
+
 
 if __name__ == '__main__':
     print("from pvz_hacker.py")
@@ -384,4 +418,4 @@ if __name__ == '__main__':
     #     print(game.mouse_pos())
     # game.left_click(262, 138)
     # print(read_board(data_board.plants, data_board.plants.type))
-    rmv(4, 2)
+    # rmv(4, 2)
