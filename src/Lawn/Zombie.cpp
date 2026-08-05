@@ -9839,9 +9839,17 @@ void Zombie::BossSpawnContact()
 {
     ZombieType aZombieType = SpawnLogic::PickBossSummonType(mBoard, mZombieAge, mTargetRow, mBossSpawnPoints);
     // vx: deduct the summoned zombie's cost, never below zero
-    mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(aZombieType);
-    if (mBossSpawnPoints >= 0) {
+    if (mBossSpawnPoints >= SpawnLogic::GetBossZombieCost(aZombieType)
+        && !(aZombieType == ZombieType::ZOMBIE_GARGANTUAR && mTargetRow == 0))
+    {
+        mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(aZombieType);
         Zombie* aZombie = mBoard->AddZombieInRow(aZombieType, mTargetRow, 0);
+        aZombie->mPosX = 600.0f;
+    }
+    else
+    {
+        Sexy::PrintF("mBossSpawnPoints exceeded or GARGANTUAR in row 0\n");
+        Zombie* aZombie = mBoard->AddZombieInRow(ZombieType::ZOMBIE_NORMAL, mTargetRow, 0);
         aZombie->mPosX = 600.0f;
     }
 }
@@ -10224,7 +10232,7 @@ void Zombie::UpdateBoss()
     {
         // vx: debug
         if (mZombieAge % 50 == 0)
-            Sexy::PrintF("Summon: %d\tHead: %d\tBungee: %d\tStomp: %d\n", mSummonCounter, mBossHeadCounter, mBossBungeeCounter, mBossStompCounter);
+            Sexy::PrintF("Su: %d\tHead: %d  \tBungee: %d\tStomp: %d\n", mSummonCounter, mBossHeadCounter, mBossBungeeCounter, mBossStompCounter);
 
         if (mSummonCounter > 0)
         {

@@ -260,12 +260,7 @@ ZombieType PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRo
 		
 		ret = ZombieType::ZOMBIE_GARGANTUAR;
 
-		// vx: stage-fixed type must fit the budget; NORMAL is free and always affordable
-		if (GetBossZombieCost(ret) <= theSpawnPoints && 
-			!(ret == ZombieType::ZOMBIE_GARGANTUAR && theTargetRow == 0))
-			return ret;  // 合法情况
-		else
-			return ZombieType::ZOMBIE_NORMAL;  // 不合法情况
+		return ret;
 	}
 }
 }
