@@ -528,7 +528,7 @@ void TitleScreen::ButtonDepress(int theId)
 	switch (theId)
 	{
 	case TitleScreen::TitleScreen_Start:
-		mApp->LoadingCompleted();
+		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
 		break;
 
 	case TitleScreen::TitleScreen_Register:
@@ -543,7 +543,7 @@ void TitleScreen::MouseDown(int x, int y, int theClickCount)
 	if (mLoadingThreadComplete)
 	{
 		mApp->PlaySample(Sexy::SOUND_BUTTONCLICK);
-		mApp->LoadingCompleted();
+		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
 	}
 }
 
@@ -552,7 +552,7 @@ void TitleScreen::KeyDown(KeyCode theKey)
 	if (mLoadingThreadComplete)
 	{
 		mApp->PlaySample(Sexy::SOUND_BUTTONCLICK);
-		mApp->LoadingCompleted();
+		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
 	}
 
 	if (mApp->mCheatKeys && mApp->mPlayerInfo)

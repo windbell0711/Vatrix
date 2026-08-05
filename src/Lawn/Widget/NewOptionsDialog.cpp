@@ -97,6 +97,11 @@ NewOptionsDialog::NewOptionsDialog(LawnApp* theApp, bool theFromGameSelector) :
     {
         mRestartButton->SetVisible(false);
     }
+    if (mApp->mBoard && mApp->mBoard->mIsBossOnLaunch)
+    {
+        mRestartButton->SetVisible(false);
+        mBackToMainButton->SetVisible(false);
+    }
     if (mApp->mGameScene == GameScenes::SCENE_LEVEL_INTRO && !mApp->mBoard->mCutScene->IsSurvivalRepick())
     {
         mRestartButton->SetVisible(false);

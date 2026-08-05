@@ -120,6 +120,7 @@ Board::Board(LawnApp* theApp)
 	mShakeAmountY = 0;
 	mPaused = false;
 	mLevelAwardSpawned = false;
+	mIsBossOnLaunch = mApp->mStartBossOnLaunch && mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS;
 	mFlagRaiseCounter = 0;
 	mIceTrapCounter = 0;
 	mLevelComplete = false;
@@ -6829,7 +6830,14 @@ void Board::DrawLevel(Graphics* g)
 	}
 	else
 	{
-		aLevelStr = mApp->GetCurrentChallengeDef().mChallengeName;
+		if (mIsBossOnLaunch)
+		{
+			aLevelStr = PvzpStringTranslate("[LEVEL]") + " 0-0";
+		}
+		else
+		{
+			aLevelStr = mApp->GetCurrentChallengeDef().mChallengeName;
+		}
 		if (mApp->IsSurvivalMode() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_LAST_STAND)
 		{
 			int aFlags = GetSurvivalFlagsCompleted();

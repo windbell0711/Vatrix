@@ -181,6 +181,7 @@ LawnApp::LawnApp()
 	mProfileMgr = new ProfileMgr();
 	mRegisterResourcesLoaded = false;
 	mCheatKeys = false;
+	mStartBossOnLaunch = true;
 	mCrazyDaveReanimID = ReanimationID::REANIMATIONID_NULL;
 	mCrazyDaveState = CrazyDaveState::CRAZY_DAVE_OFF;
 	mCrazyDaveBlinkCounter = 0;
@@ -543,6 +544,7 @@ void LawnApp::NewGame()
 // GOTY @Patoke: 0x452B80
 void LawnApp::ShowGameSelector()
 {
+	mStartBossOnLaunch = false;
 	KillBoard();
 	//UpdateRegisterInfo();
 	if (mGameSelector)
@@ -620,6 +622,7 @@ void LawnApp::KillCreditScreen()
 // GOTY @Patoke: 0x452EC0
 void LawnApp::ShowChallengeScreen(ChallengePage thePage)
 {
+	mStartBossOnLaunch = false;
 	mGameScene = GameScenes::SCENE_CHALLENGE;
 	mChallengeScreen = new ChallengeScreen(this, thePage);
 	mChallengeScreen->Resize(0, 0, mWidth, mHeight);
@@ -1854,6 +1857,26 @@ void LawnApp::FastLoad(GameMode theGameMode)
 
 void LawnApp::LoadingThreadCompleted()
 {
+}
+
+void LawnApp::StartBossFromTitle()
+{
+	if (mTitleScreen)
+	{
+		mWidgetManager->RemoveWidget(mTitleScreen);
+		SafeDeleteWidget(mTitleScreen);
+		mTitleScreen = nullptr;
+	}
+
+	mResourceManager->DeleteImage("IMAGE_TITLESCREEN");
+
+	if (mPlayerInfo == nullptr)
+	{
+		mPlayerInfo = mProfileMgr->AddProfile("Player 1");
+		mProfileMgr->Save();
+	}
+
+	PreNewGame(GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS, false);
 }
 
 // GOTY @Patoke: 0x456150

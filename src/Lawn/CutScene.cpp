@@ -924,7 +924,14 @@ void CutScene::StartLevelIntro()
 		}
 		else
 		{
-			aHouseMessage = mApp->GetCurrentChallengeDef().mChallengeName;
+			if (mBoard->mIsBossOnLaunch)
+			{
+				aHouseMessage = PvzpStringTranslate("[LEVEL]") + " 0-0";
+			}
+			else
+			{
+				aHouseMessage = mApp->GetCurrentChallengeDef().mChallengeName;
+			}
 		}
 	}
 

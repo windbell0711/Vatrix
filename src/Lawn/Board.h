@@ -196,6 +196,7 @@ public:
 	AdviceType						mHelpIndex;
 	bool							mFinalBossKilled;
 	bool							mShowShovel;
+	bool							mIsBossOnLaunch;
 	int32_t							mCoinBankFadeCount;
 	DebugTextMode					mDebugTextMode;
 	bool							mLevelComplete;
