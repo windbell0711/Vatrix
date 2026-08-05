@@ -1,0 +1,19 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "e8709ee8703328fe121eab33cda73a406a7626b7",
+    "repository": "https://github.com/microsoft/vcpkg"
+  },
+  "registries": [
+    {
+      "kind": "artifact",
+      "location": "https://github.com/microsoft/vcpkg-ce-catalog/archive/refs/heads/main.zip",
+      "name": "microsoft"
+    },
+    {
+      "kind": "artifact",
+      "location": "https://artifacts.tools.arm.com/vcpkg-registry",
+      "name": "arm"
+    }
+  ]
+}

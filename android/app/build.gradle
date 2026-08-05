@@ -1,0 +1,117 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Avoid duplicate Kotlin stdlib classes (Kotlin 1.8+).
+configurations.all {
+    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+}
+
+// -PusePrebuiltLibs=true packages prebuilt jniLibs (CI); otherwise build via CMake.
+def prebuilt = project.hasProperty('usePrebuiltLibs') && project.usePrebuiltLibs.toBoolean()
+
+// Version from git, mirroring archlinux/PKGBUILD's pkgver(); fall back to 0.1/1 without git or tags.
+def gitVersionName = {
+    try {
+        // providers.exec: plain exec is rejected at configuration time by Gradle 9's configuration cache.
+        def text = providers.exec {
+            commandLine 'git', 'describe', '--tags', '--abbrev=12'
+        }.standardOutput.asText.get().trim()
+        return text.replaceFirst(/^v/, '').replace('-', '.')
+    } catch (Exception ignored) {
+        return '0.1'
+    }
+}()
+
+def gitVersionCode = {
+    try {
+        def text = providers.exec {
+            commandLine 'git', 'rev-list', '--count', 'HEAD'
+        }.standardOutput.asText.get().trim()
+        return text.toInteger()
+    } catch (Exception ignored) {
+        return 1
+    }
+}()
+
+android {
+    namespace 'io.github.wszqkzqk.pvzportable'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "io.github.wszqkzqk.pvzportable"
+        minSdk 24
+        targetSdk 36
+        versionCode gitVersionCode
+        versionName gitVersionName
+
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+
+        if (!prebuilt) {
+            externalNativeBuild {
+                cmake {
+                    def args = ["-DCMAKE_BUILD_TYPE=Release"]
+                    if (project.hasProperty('cmakeArgs')) {
+                        args.addAll(project.cmakeArgs.split(','))
+                    }
+                    arguments(*args)
+                }
+            }
+        }
+    }
+
+    signingConfigs {
+        release {
+            // Keystore is injected via env vars by CI; absent (e.g. local builds) falls back to debug signing.
+            def storeFilePath = System.getenv('PVZP_KEYSTORE_FILE')
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword System.getenv('PVZP_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('PVZP_KEY_ALIAS')
+                keyPassword System.getenv('PVZP_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('PVZP_KEYSTORE_FILE') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    if (!prebuilt) {
+        externalNativeBuild {
+            cmake {
+                path "../../CMakeLists.txt"
+                version "3.22.1+"
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = [
+                'src/main/java',
+                "${project.rootDir}/../sdl2-src/android-project/app/src/main/java"
+            ]
+        }
+    }
+
+    buildFeatures {
+        prefab true
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity:1.10.1'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+}
