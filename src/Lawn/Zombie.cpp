@@ -23,6 +23,7 @@
 
 #include "Plant.h"
 #include "Board.h"
+#include "SpawnLogic.h"
 #include "../ConstEnums.h"
 #include "Zombie.h"
 #include "Cutscene.h"
@@ -112,20 +113,6 @@ constinit const ZombieDefinition gZombieDefs[NUM_ZOMBIE_TYPES] = {
     { .mZombieType = ZOMBIE_REDEYE_GARGANTUAR, .mReanimationType = REANIM_GARGANTUAR, .mZombieValue = 10, .mStartingLevel = 48, .mFirstAllowedWave = 15, .mPickWeight = 6000, .mZombieName = "REDEYED_GARGANTUAR" },
 };
 
-static ZombieType gBossZombieList[] = {
-    ZombieType::ZOMBIE_TRAFFIC_CONE,
-    ZombieType::ZOMBIE_PAIL,
-    ZombieType::ZOMBIE_FOOTBALL,
-    ZombieType::ZOMBIE_POLEVAULTER,
-    ZombieType::ZOMBIE_JACK_IN_THE_BOX,
-    ZombieType::ZOMBIE_LADDER,
-    ZombieType::ZOMBIE_ZAMBONI,
-    ZombieType::ZOMBIE_CATAPULT,
-    ZombieType::ZOMBIE_POGO,
-    ZombieType::ZOMBIE_NEWSPAPER,
-    ZombieType::ZOMBIE_DOOR,
-    ZombieType::ZOMBIE_GARGANTUAR
-};
 
 const ZombieDefinition& GetZombieDefinition(ZombieType theZombieType)
 {
@@ -9774,12 +9761,9 @@ void Zombie::BossRVAttack()
 {
     RemoveColdEffects();
     mZombiePhase = ZombiePhase::PHASE_BOSS_DROP_RV;
-#ifdef DO_FIX_BUGS
-    mTargetRow = RandRangeInt(0, mBoard->StageHas6Rows() ? 4 : 3);  // 泳池僵王兼容
-#else
-    mTargetRow = RandRangeInt(0, 3);
-#endif
-    mTargetCol = RandRangeInt(0, 2);
+    SpawnLogic::BossTargetDecision aTarget = SpawnLogic::PickBossRVTarget(mBoard);
+    mTargetRow = aTarget.mRow;
+    mTargetCol = aTarget.mCol;
 
     PlayZombieReanim("anim_RV_1", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 16.0f);
     mApp->PlayFoley(FoleyType::FOLEY_HYDRAULIC_SHORT);
@@ -9851,31 +9835,7 @@ void Zombie::BossSpawnAttack()
 
 void Zombie::BossSpawnContact()
 {
-    ZombieType aZombieType;
-    if (mZombieAge < 3500)
-    {
-        aZombieType = ZombieType::ZOMBIE_NORMAL;
-    }
-    else if (mZombieAge < 8000)
-    {
-        aZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
-    }
-    else if (mZombieAge < 12500)
-    {
-        aZombieType = ZombieType::ZOMBIE_PAIL;
-    }
-    else
-    {
-        int aZombieTypeCount = LENGTH(gBossZombieList);
-        if (mTargetRow == 0)
-        {
-            PVZP_ASSERT(gBossZombieList[aZombieTypeCount - 1] == ZombieType::ZOMBIE_GARGANTUAR);
-            aZombieTypeCount--;
-        }
-
-        aZombieType = PvzpPickFromArray(gBossZombieList, aZombieTypeCount);
-    }
-
+    ZombieType aZombieType = SpawnLogic::PickBossSummonType(mBoard, mZombieAge, mTargetRow);
     Zombie* aZombie = mBoard->AddZombieInRow(aZombieType, mTargetRow, 0);
     aZombie->mPosX = 600.0f;
 }
@@ -9900,7 +9860,7 @@ void Zombie::BossStompAttack()
     if (aRowsCount == 0)
         return;
 
-    mTargetRow = PvzpPickFromArray(aRowArray, aRowsCount);
+    mTargetRow = SpawnLogic::PickBossStompRow(mBoard, aRowArray, aRowsCount);
 
     const char* aTrackName;
     switch (mTargetRow)
@@ -9950,7 +9910,7 @@ void Zombie::BossBungeeAttack()
     RemoveColdEffects();
     mZombiePhase = ZombiePhase::PHASE_BOSS_BUNGEES_ENTER;
     mBossBungeeCounter = RandRangeInt(4000, 5000);
-    mTargetCol = RandRangeInt(0, 2);
+    mTargetCol = SpawnLogic::PickBossBungeeCol(mBoard);
 
     PlayZombieReanim("anim_bungee_1_enter", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 12.0f);
     mApp->PlayFoley(FoleyType::FOLEY_HYDRAULIC_SHORT);
@@ -10024,12 +9984,9 @@ void Zombie::BossHeadSpit()
     }
 
     mZombiePhase = ZombiePhase::PHASE_BOSS_HEAD_SPIT;
-#ifdef DO_FIX_BUGS
-    mFireballRow = RandRangeInt(0, mBoard->StageHas6Rows() ? 5 : 4);  // 泳池僵王兼容
-#else
-    mFireballRow = RandRangeInt(0, 4);
-#endif
-    mIsFireBall = RandRangeInt(0, 1) == 0;
+    SpawnLogic::BossFireballDecision aFireball = SpawnLogic::PickBossFireball(mBoard);
+    mFireballRow = aFireball.mRow;
+    mIsFireBall = aFireball.mIsFireBall;
     
     const char* aTrackName;
     switch (mFireballRow)
@@ -10580,9 +10537,9 @@ void Zombie::PreloadZombieResources(ZombieType theZombieType)
         ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_BOSS_FIREBALL, true);
         ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_BOSS_ICEBALL, true);
 
-        for (size_t i = 0; i < LENGTH(gBossZombieList); i++)
+        for (size_t i = 0; i < LENGTH(SpawnLogic::gBossZombieList); i++)
         {
-            const ZombieDefinition& aDef = GetZombieDefinition(gBossZombieList[i]);
+            const ZombieDefinition& aDef = GetZombieDefinition(SpawnLogic::gBossZombieList[i]);
             ReanimatorEnsureDefinitionLoaded(aDef.mReanimationType, true);
         }
     }

@@ -24,6 +24,7 @@
 #include <SDL.h>
 #include "ZenGarden.h"
 #include "BoardInclude.h"
+#include "SpawnLogic.h"
 #include "LawnCommon.h"
 #include "System/Music.h"
 #include "System/SaveGame.h"
@@ -122,6 +123,8 @@ Board::Board(LawnApp* theApp)
 	mLevelAwardSpawned = false;
 	// vx: capture launch-to-boss for this level (Vatrix mod)
 	mIsBossOnLaunch = mApp->mStartBossOnLaunch && mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS;
+	// vx: custom spawn-logic flag: boss picks lanes by board state (set false to restore random spawns)
+	mModifySpawnLogic = true;
 	mFlagRaiseCounter = 0;
 	mIceTrapCounter = 0;
 	mLevelComplete = false;
@@ -2504,95 +2507,7 @@ ZombieType Board::PickGraveRisingZombieType()
 
 ZombieType Board::PickZombieType(int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker)
 {
-	int aPickCount = 0;
-	PvzpWeightedArray aZombieWeightArray[ZombieType::NUM_ZOMBIE_TYPES];
-	for (int aZombieType = ZombieType::ZOMBIE_NORMAL; aZombieType < ZombieType::NUM_ZOMBIE_TYPES; aZombieType++)
-	{
-		if (!mZombieAllowed[aZombieType])
-			continue;
-
-		const ZombieDefinition& aZombieDef = GetZombieDefinition((ZombieType)aZombieType);
-
-		// ================================================================================================
-		// ▲ 将不符合出怪限制或超出剩余点数的僵尸类型排除
-		// ================================================================================================
-		GameMode aGameMode = mApp->mGameMode;
-		// 蹦极僵尸在无尽模式中仅在旗帜波出现
-		if (aZombieType == ZombieType::ZOMBIE_BUNGEE && mApp->IsSurvivalEndless(aGameMode))
-		{
-			if (!IsFlagWave(theWaveIndex))
-			{
-				continue;
-			}
-		}
-		// 僵尸最早出现的波数的限制（出怪限制）
-		else if (aGameMode != GameMode::GAMEMODE_CHALLENGE_POGO_PARTY && aGameMode != GameMode::GAMEMODE_CHALLENGE_BOBSLED_BONANZA && aGameMode != GameMode::GAMEMODE_CHALLENGE_AIR_RAID)
-		{
-			int aFirstAllowedWave = aZombieDef.mFirstAllowedWave;
-			// 无尽模式中，僵尸最早可出现的波数逐渐前移
-			if (mApp->IsSurvivalEndless(aGameMode))
-			{
-				int aFlags = GetSurvivalFlagsCompleted();
-				int aAllowedWave = aFirstAllowedWave - PvzpAnimateCurve(18, 50, aFlags, 0, 15, PvzpCurves::CURVE_LINEAR);
-				aFirstAllowedWave = std::max(aAllowedWave, 1);
-			}
-			if (theWaveIndex + 1 < aFirstAllowedWave || theZombiePoints < aZombieDef.mZombieValue)
-			{
-				continue;
-			}
-		}
-
-		// ================================================================================================
-		// ▲ 生存模式中，根据当前旗帜数等重新计算僵尸的权重
-		// ================================================================================================
-		int aPickWeight = aZombieDef.mPickWeight;
-		if (mApp->IsSurvivalMode())
-		{
-			int aFlags = GetSurvivalFlagsCompleted();
-			// 伽刚特尔和雪橇车僵尸的每波出怪上限
-			if (aZombieType == ZombieType::ZOMBIE_GARGANTUAR || aZombieType == ZombieType::ZOMBIE_ZAMBONI)
-			{
-				if (theZombiePicker->mZombieTypeCount[aZombieType] >= PvzpAnimateCurve(10, 50, aFlags, 2, 50, PvzpCurves::CURVE_LINEAR))
-				{
-					continue;
-				}
-			}
-			// 红眼的旗帜波出怪上限和非旗帜波出怪总和上限
-			else if (aZombieType == ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
-			{
-				if (IsFlagWave(theWaveIndex))
-				{
-					if (theZombiePicker->mZombieTypeCount[aZombieType] >= PvzpAnimateCurve(14, 100, aFlags, 1, 50, PvzpCurves::CURVE_LINEAR))
-					{
-						continue;
-					}
-				}
-				else
-				{
-					if (theZombiePicker->mAllWavesZombieTypeCount[aZombieType] >= PvzpAnimateCurve(10, 110, aFlags, 1, 50, PvzpCurves::CURVE_LINEAR))
-					{
-						continue;
-					}
-					aPickWeight = 1000;
-				}
-			}
-			// 普通僵尸和路障僵尸的权重衰减
-			else if (aZombieType == ZombieType::ZOMBIE_NORMAL)
-			{
-				aPickWeight = PvzpAnimateCurve(10, 50, aFlags, aPickWeight, aPickWeight / 10, PvzpCurves::CURVE_LINEAR);
-			}
-			else if (aZombieType == ZombieType::ZOMBIE_TRAFFIC_CONE)
-			{
-				aPickWeight = PvzpAnimateCurve(10, 50, aFlags, aPickWeight, aPickWeight / 4, PvzpCurves::CURVE_LINEAR);
-			}
-		}
-		aZombieWeightArray[aPickCount].mItem = aZombieType;
-		aZombieWeightArray[aPickCount].mWeight = aPickWeight;
-		aPickCount++;
-	}
-
-	// 加权随机地取得一种可能的僵尸类型并返回
-	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
+	return SpawnLogic::PickWaveZombieType(this, theZombiePoints, theWaveIndex, theZombiePicker);
 }
 
 bool Board::IsZombieTypePoolOnly(ZombieType theZombieType)
@@ -2661,6 +2576,12 @@ bool Board::RowCanHaveZombieType(int theRow, ZombieType theZombieType)
 
 int Board::PickRowForNewZombie(ZombieType theZombieType)
 {
+	// vx: custom spawn-logic: boss picks the lane with fewest plants instead of random rows
+	if (mModifySpawnLogic)
+	{
+		return SpawnLogic::PickCustomSpawnRow(this, theZombieType);
+	}
+
 	// ====================================================================================================
 	// ▲ 当存在正在寻找目标僵尸的钉耙，且僵尸可以出现在钉耙所在行时，优先出现在钉耙所在行
 	// ====================================================================================================
