@@ -210,6 +210,7 @@ void Zombie::ZombieInitialize(int theRow, ZombieType theType, bool theVariant, Z
     mBossFireBallReanimID = ReanimationID::REANIMATIONID_NULL;
     mSpecialHeadReanimID = ReanimationID::REANIMATIONID_NULL;
     mTargetRow = -1;
+    mSummonType = ZombieType::ZOMBIE_INVALID;
     mFireballRow = -1;
     mIsFireBall = false;
     mMoweredReanimID = ReanimationID::REANIMATIONID_NULL;
@@ -9815,7 +9816,9 @@ void Zombie::BossSpawnAttack()
         mSummonCounter = RandRangeInt(150, 250);
     }
 
-    mTargetRow = mBoard->PickRowForNewZombie(ZombieType::ZOMBIE_NORMAL);
+    SpawnLogic::BossSummonDecision aSummon = SpawnLogic::PickBossSummon(mBoard, mZombieAge, mBossSpawnPoints);
+    mSummonType = aSummon.mZombieType;
+    mTargetRow = aSummon.mRow;
 
     const char* aTrackName;
     switch (mTargetRow)
@@ -9837,21 +9840,15 @@ void Zombie::BossSpawnAttack()
 
 void Zombie::BossSpawnContact()
 {
-    ZombieType aZombieType = SpawnLogic::PickBossSummonType(mBoard, mZombieAge, mTargetRow, mBossSpawnPoints);
+    // vx: type and row were decided together in BossSpawnAttack via PickBossSummon
+    if (mSummonType == ZombieType::ZOMBIE_INVALID)
+    {
+        return;
+    }
     // vx: deduct the summoned zombie's cost, never below zero
-    if (mBossSpawnPoints >= SpawnLogic::GetBossZombieCost(aZombieType)
-        && !(aZombieType == ZombieType::ZOMBIE_GARGANTUAR && mTargetRow == 0))
-    {
-        mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(aZombieType);
-        Zombie* aZombie = mBoard->AddZombieInRow(aZombieType, mTargetRow, 0);
-        aZombie->mPosX = 600.0f;
-    }
-    else
-    {
-        Sexy::PrintF("mBossSpawnPoints exceeded or GARGANTUAR in row 0\n");
-        Zombie* aZombie = mBoard->AddZombieInRow(ZombieType::ZOMBIE_NORMAL, mTargetRow, 0);
-        aZombie->mPosX = 600.0f;
-    }
+    mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(mSummonType);
+    Zombie* aZombie = mBoard->AddZombieInRow(mSummonType, mTargetRow, 0);
+    aZombie->mPosX = 600.0f;
 }
 
 void Zombie::BossStompAttack()

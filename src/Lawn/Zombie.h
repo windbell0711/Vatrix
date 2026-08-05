@@ -150,6 +150,7 @@ public:
     int32_t                         mBossMode;
     int32_t                         mBossSpawnPoints;
     int32_t                         mTargetRow;
+    ZombieType                      mSummonType;
     int32_t                         mBossBungeeCounter;
     int32_t                         mBossStompCounter;
     int32_t                         mBossHeadCounter;

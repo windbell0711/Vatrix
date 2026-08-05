@@ -221,46 +221,39 @@ int PickBossBungeeCol(Board* theBoard)
 	return RandRangeInt(0, 2);
 }
 
-ZombieType PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRow, int theSpawnPoints)
+// vx: decide summon type and row together, type-first so the row always fits the type
+BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
-	Sexy::PrintF("theSpawnPoints: %d\n", theSpawnPoints);
-	// vanilla: fixed stage zombies for the first three waves, regardless of budget
+	BossSummonDecision aSummon;
+
+	ZombieType aType;
 	if (theZombieAge < 3500)
 	{
-		return ZombieType::ZOMBIE_NORMAL;
+		aType = ZombieType::ZOMBIE_NORMAL;
 	}
 	else if (theZombieAge < 8000)
 	{
-		return ZombieType::ZOMBIE_TRAFFIC_CONE;
+		aType = ZombieType::ZOMBIE_TRAFFIC_CONE;
 	}
 	else if (theZombieAge < 12500)
 	{
-		return ZombieType::ZOMBIE_PAIL;
+		aType = ZombieType::ZOMBIE_PAIL;
 	}
 	else
 	{
-		ZombieType ret;
-
-		// vx: budget-limited pool pick: only affordable zombies, random among them
-		// ZombieType aAffordableList[BOSS_ZOMBIE_LIST_COUNT];
-		// int aAffordableCount = 0;
-		// for (int i = 0; i < BOSS_ZOMBIE_LIST_COUNT; i++)
-		// {
-		// 	ZombieType aType = gBossZombieList[i];
-		// 	if (theTargetRow == 0 && aType == ZombieType::ZOMBIE_GARGANTUAR)
-		// 	{
-		// 		continue;  // vanilla: no Gargantuar on row 1
-		// 	}
-		// 	if (gBossZombieCost[i] <= theSpawnPoints)
-		// 	{
-		// 		aAffordableList[aAffordableCount++] = aType;
-		// 	}
-		// }
-		// ret = aAffordableCount > 0 ? PvzpPickFromArray(aAffordableList, aAffordableCount) : ZombieType::ZOMBIE_NORMAL;
-		
-		ret = ZombieType::ZOMBIE_GARGANTUAR;
-
-		return ret;
+		aType = ZombieType::ZOMBIE_GARGANTUAR;
 	}
+
+	// vx: budget check: fall back to the free NORMAL zombie when unaffordable
+	if (GetBossZombieCost(aType) > theSpawnPoints)
+	{
+		Sexy::PrintF("PickBossSummon: %d points < cost %d, downgrade to NORMAL\n", theSpawnPoints, GetBossZombieCost(aType));
+		aType = ZombieType::ZOMBIE_NORMAL;
+	}
+
+	aSummon.mZombieType = aType;
+	aSummon.mRow = theBoard->PickRowForNewZombie(aType);
+	return aSummon;
 }
+
 }
