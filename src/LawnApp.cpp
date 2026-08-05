@@ -181,6 +181,7 @@ LawnApp::LawnApp()
 	mProfileMgr = new ProfileMgr();
 	mRegisterResourcesLoaded = false;
 	mCheatKeys = false;
+	// vx: every launch starts in boss mode (Vatrix mod)
 	mStartBossOnLaunch = true;
 	mCrazyDaveReanimID = ReanimationID::REANIMATIONID_NULL;
 	mCrazyDaveState = CrazyDaveState::CRAZY_DAVE_OFF;
@@ -544,6 +545,7 @@ void LawnApp::NewGame()
 // GOTY @Patoke: 0x452B80
 void LawnApp::ShowGameSelector()
 {
+	// vx: boss-launch applies only to the first game (Vatrix mod)
 	mStartBossOnLaunch = false;
 	KillBoard();
 	//UpdateRegisterInfo();
@@ -622,6 +624,7 @@ void LawnApp::KillCreditScreen()
 // GOTY @Patoke: 0x452EC0
 void LawnApp::ShowChallengeScreen(ChallengePage thePage)
 {
+	// vx: boss-launch applies only to the first game (Vatrix mod)
 	mStartBossOnLaunch = false;
 	mGameScene = GameScenes::SCENE_CHALLENGE;
 	mChallengeScreen = new ChallengeScreen(this, thePage);
@@ -1859,6 +1862,7 @@ void LawnApp::LoadingThreadCompleted()
 {
 }
 
+// vx: Vatrix mod: skip main menu, open GAMEMODE_CHALLENGE_FINAL_BOSS
 void LawnApp::StartBossFromTitle()
 {
 	if (mTitleScreen)

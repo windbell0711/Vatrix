@@ -97,6 +97,7 @@ NewOptionsDialog::NewOptionsDialog(LawnApp* theApp, bool theFromGameSelector) :
     {
         mRestartButton->SetVisible(false);
     }
+    // vx: boss level: no restart / no main menu (Vatrix mod)
     if (mApp->mBoard && mApp->mBoard->mIsBossOnLaunch)
     {
         mRestartButton->SetVisible(false);

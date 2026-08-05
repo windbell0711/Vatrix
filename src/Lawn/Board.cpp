@@ -120,6 +120,7 @@ Board::Board(LawnApp* theApp)
 	mShakeAmountY = 0;
 	mPaused = false;
 	mLevelAwardSpawned = false;
+	// vx: capture launch-to-boss for this level (Vatrix mod)
 	mIsBossOnLaunch = mApp->mStartBossOnLaunch && mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS;
 	mFlagRaiseCounter = 0;
 	mIceTrapCounter = 0;
@@ -6830,6 +6831,7 @@ void Board::DrawLevel(Graphics* g)
 	}
 	else
 	{
+		// vx: show "Level 0-0" for the launch-to-boss game (Vatrix mod)
 		if (mIsBossOnLaunch)
 		{
 			aLevelStr = PvzpStringTranslate("[LEVEL]") + " 0-0";
