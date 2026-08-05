@@ -205,6 +205,8 @@ void Zombie::ZombieInitialize(int theRow, ZombieType theType, bool theVariant, Z
     mBodyReanimID = ReanimationID::REANIMATIONID_NULL;
     mTargetPlantID = PlantID::PLANTID_NULL;
     mBossMode = 0;
+    // vx: spawn-point budget for boss summons (Vatrix mod)
+    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_PER_ACTION;
     mBossFireBallReanimID = ReanimationID::REANIMATIONID_NULL;
     mSpecialHeadReanimID = ReanimationID::REANIMATIONID_NULL;
     mTargetRow = -1;
@@ -9835,9 +9837,13 @@ void Zombie::BossSpawnAttack()
 
 void Zombie::BossSpawnContact()
 {
-    ZombieType aZombieType = SpawnLogic::PickBossSummonType(mBoard, mZombieAge, mTargetRow);
-    Zombie* aZombie = mBoard->AddZombieInRow(aZombieType, mTargetRow, 0);
-    aZombie->mPosX = 600.0f;
+    ZombieType aZombieType = SpawnLogic::PickBossSummonType(mBoard, mZombieAge, mTargetRow, mBossSpawnPoints);
+    // vx: deduct the summoned zombie's cost, never below zero
+    mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(aZombieType);
+    if (mBossSpawnPoints >= 0) {
+        Zombie* aZombie = mBoard->AddZombieInRow(aZombieType, mTargetRow, 0);
+        aZombie->mPosX = 600.0f;
+    }
 }
 
 void Zombie::BossStompAttack()
@@ -9969,6 +9975,9 @@ void Zombie::BossHeadAttack()
 {
     mZombiePhase = ZombiePhase::PHASE_BOSS_HEAD_ENTER;
     mBossHeadCounter = RandRangeInt(4000, 5000);
+    
+    // vx: bowing the head to summon resets spawn points to 30 
+    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_PER_ACTION;
 
     PlayZombieReanim("anim_head_enter", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 12.0f);
     mApp->PlayFoley(FoleyType::FOLEY_HYDRAULIC_SHORT);
@@ -10213,6 +10222,10 @@ void Zombie::UpdateBoss()
     UpdateBossFireball();
     if (mIceTrapCounter == 0)
     {
+        // vx: debug
+        if (mZombieAge % 50 == 0)
+            Sexy::PrintF("Summon: %d\tHead: %d\tBungee: %d\tStomp: %d\n", mSummonCounter, mBossHeadCounter, mBossBungeeCounter, mBossStompCounter);
+
         if (mSummonCounter > 0)
         {
             mSummonCounter--;

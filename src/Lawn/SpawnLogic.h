@@ -23,8 +23,11 @@ namespace SpawnLogic
 		int							mCol;
 	};
 
-	constexpr int BOSS_ZOMBIE_LIST_COUNT = 12;
+	// vx: pool includes a free NORMAL zombie as the budget-floor pick (Vatrix mod)
+	constexpr int BOSS_ZOMBIE_LIST_COUNT = 13;
 	extern const ZombieType			gBossZombieList[BOSS_ZOMBIE_LIST_COUNT];
+	extern const int				gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT];
+	constexpr int					BOSS_SUMMON_POINTS_PER_ACTION = 30;
 
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
 	int								PickCustomSpawnRow(Board* theBoard, ZombieType theZombieType);
@@ -32,7 +35,8 @@ namespace SpawnLogic
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);
 	int								PickBossBungeeCol(Board* theBoard);
-	ZombieType						PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRow);
+	ZombieType						PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRow, int theSpawnPoints);
+	int								GetBossZombieCost(ZombieType theZombieType);
 }
 
 #endif // __SPAWNLOGIC_H__

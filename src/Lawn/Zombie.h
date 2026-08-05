@@ -148,6 +148,7 @@ public:
     float                           mOriginalAnimRate;
     PlantID                         mTargetPlantID;
     int32_t                         mBossMode;
+    int32_t                         mBossSpawnPoints;
     int32_t                         mTargetRow;
     int32_t                         mBossBungeeCounter;
     int32_t                         mBossStompCounter;

@@ -11,20 +11,53 @@
 // vx: boss summon pool moved here from Zombie.cpp (Vatrix mod)
 namespace SpawnLogic
 {
+// 原版僵王战出怪不记点数，为纯随机，但那样也太没意思了，于是加上点数机制
+// 为保证平衡，我修改了部分僵尸的点数
 const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
-	ZombieType::ZOMBIE_TRAFFIC_CONE,
-	ZombieType::ZOMBIE_PAIL,
-	ZombieType::ZOMBIE_FOOTBALL,
-	ZombieType::ZOMBIE_POLEVAULTER,
-	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
-	ZombieType::ZOMBIE_LADDER,
-	ZombieType::ZOMBIE_ZAMBONI,
-	ZombieType::ZOMBIE_CATAPULT,
-	ZombieType::ZOMBIE_POGO,
-	ZombieType::ZOMBIE_NEWSPAPER,
-	ZombieType::ZOMBIE_DOOR,
-	ZombieType::ZOMBIE_GARGANTUAR
+	ZombieType::ZOMBIE_NORMAL,          // zom: 1 -> 0  增加了普僵，作为点数耗尽时的选择
+	ZombieType::ZOMBIE_TRAFFIC_CONE,    // con: 2 -> 2
+	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
+	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 7
+	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 2
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 4 +
+	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 5 +
+	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 8 +
+	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
+	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 6 +
+	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
+	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 2 -
+	ZombieType::ZOMBIE_GARGANTUAR       // ggt: 10 -> 12 +
 };
+
+// vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
+const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
+	0,  // NORMAL (free, budget-floor pick)
+	2,  // TRAFFIC_CONE
+	4,  // PAIL
+	7,  // FOOTBALL
+	2,  // POLEVAULTER
+	4,  // JACK_IN_THE_BOX
+	5,  // LADDER
+	8,  // ZAMBONI
+	6,  // CATAPULT
+	6,  // POGO
+	2,  // NEWSPAPER
+	2,  // DOOR
+	12, // GARGANTUAR
+};
+
+// vx: zombie cost per pool entry
+int GetBossZombieCost(ZombieType theZombieType)
+{
+	for (int i = 0; i < BOSS_ZOMBIE_LIST_COUNT; i++)
+	{
+		if (gBossZombieList[i] == theZombieType)
+		{
+			return gBossZombieCost[i];
+		}
+	}
+	return 0;
+}
 
 // vx: vanilla wave-composition picker moved from Board::PickZombieType
 ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker)
@@ -188,8 +221,10 @@ int PickBossBungeeCol(Board* theBoard)
 	return RandRangeInt(0, 2);
 }
 
-ZombieType PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRow)
+ZombieType PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRow, int theSpawnPoints)
 {
+	Sexy::PrintF("theSpawnPoints: %d\n", theSpawnPoints);
+	// vanilla: fixed stage zombies for the first three waves, regardless of budget
 	if (theZombieAge < 3500)
 	{
 		return ZombieType::ZOMBIE_NORMAL;
@@ -204,13 +239,33 @@ ZombieType PickBossSummonType(Board* theBoard, int theZombieAge, int theTargetRo
 	}
 	else
 	{
-		int aZombieTypeCount = LENGTH(gBossZombieList);
-		if (theTargetRow == 0)
-		{
-			PVZP_ASSERT(gBossZombieList[aZombieTypeCount - 1] == ZombieType::ZOMBIE_GARGANTUAR);
-			aZombieTypeCount--;
-		}
-		return PvzpPickFromArray(gBossZombieList, aZombieTypeCount);
+		ZombieType ret;
+
+		// vx: budget-limited pool pick: only affordable zombies, random among them
+		// ZombieType aAffordableList[BOSS_ZOMBIE_LIST_COUNT];
+		// int aAffordableCount = 0;
+		// for (int i = 0; i < BOSS_ZOMBIE_LIST_COUNT; i++)
+		// {
+		// 	ZombieType aType = gBossZombieList[i];
+		// 	if (theTargetRow == 0 && aType == ZombieType::ZOMBIE_GARGANTUAR)
+		// 	{
+		// 		continue;  // vanilla: no Gargantuar on row 1
+		// 	}
+		// 	if (gBossZombieCost[i] <= theSpawnPoints)
+		// 	{
+		// 		aAffordableList[aAffordableCount++] = aType;
+		// 	}
+		// }
+		// ret = aAffordableCount > 0 ? PvzpPickFromArray(aAffordableList, aAffordableCount) : ZombieType::ZOMBIE_NORMAL;
+		
+		ret = ZombieType::ZOMBIE_GARGANTUAR;
+
+		// vx: stage-fixed type must fit the budget; NORMAL is free and always affordable
+		if (GetBossZombieCost(ret) <= theSpawnPoints && 
+			!(ret == ZombieType::ZOMBIE_GARGANTUAR && theTargetRow == 0))
+			return ret;  // 合法情况
+		else
+			return ZombieType::ZOMBIE_NORMAL;  // 不合法情况
 	}
 }
 }
