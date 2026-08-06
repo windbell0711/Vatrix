@@ -123,8 +123,6 @@ Board::Board(LawnApp* theApp)
 	mLevelAwardSpawned = false;
 	// vx: capture launch-to-boss for this level (Vatrix mod)
 	mIsBossOnLaunch = mApp->mStartBossOnLaunch && mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS;
-	// vx: custom spawn-logic flag: boss picks lanes by board state (set false to restore random spawns)
-	mModifySpawnLogic = true;
 	mFlagRaiseCounter = 0;
 	mIceTrapCounter = 0;
 	mLevelComplete = false;
@@ -2576,12 +2574,6 @@ bool Board::RowCanHaveZombieType(int theRow, ZombieType theZombieType)
 
 int Board::PickRowForNewZombie(ZombieType theZombieType)
 {
-	// vx: custom spawn-logic: boss picks the lane with fewest plants instead of random rows
-	if (mModifySpawnLogic)
-	{
-		return SpawnLogic::PickCustomSpawnRow(this, theZombieType);
-	}
-
 	// ====================================================================================================
 	// ▲ 当存在正在寻找目标僵尸的钉耙，且僵尸可以出现在钉耙所在行时，优先出现在钉耙所在行
 	// ====================================================================================================

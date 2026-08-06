@@ -198,8 +198,6 @@ public:
 	bool							mShowShovel;
 	// vx: per-level marker for the launch-to-boss game (Vatrix mod)
 	bool							mIsBossOnLaunch;
-	// vx: custom spawn-logic flag: zombie lanes are chosen by board state (Vatrix mod)
-	bool							mModifySpawnLogic;
 	int32_t							mCoinBankFadeCount;
 	DebugTextMode					mDebugTextMode;
 	bool							mLevelComplete;

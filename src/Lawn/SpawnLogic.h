@@ -36,7 +36,7 @@ namespace SpawnLogic
 	constexpr int					BOSS_SUMMON_POINTS_PER_ACTION = 30;
 
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
-	int								PickCustomSpawnRow(Board* theBoard, ZombieType theZombieType);
+	int								PickRowWithFewestPlants(Board* theBoard, ZombieType theZombieType);
 	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);

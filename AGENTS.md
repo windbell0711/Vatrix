@@ -16,6 +16,13 @@ ninja -C build
 - Useful CMake options: `PVZ_DEBUG` (debug keys/display), `CONSOLE` (Windows console).
 - No unit tests; verify by running the game manually through the main flow.
 
+## Development
+When user requests you to "commit" or "提交", please follow the following steps:
+1. Check `git diff` to summarize the changes.
+2. Write a commit message to describe the changes. You can use English for proper nouns, but keep the rest **in Chinese**. The commit prefix (like `feat.`, `fix.`, `refactor.`, etc.) is crucial.
+3. Check if any changes are not proper or may lead to bugs, and notify the user.
+4. DO NOT run git command yourself. The user will do it.
+
 ## Layout
 - `src/LawnApp.cpp/.h`: app flow, title screen, game modes, menu/level transitions, `StartBossFromTitle()`
 - `src/Lawn/`: game logic: `Board`, `CutScene`, `Challenge`, `Widget/` (`TitleScreen`, `NewOptionsDialog`, `ChallengeScreen`, ...), `System/` (`ProfileMgr`, `SaveGame`, `Music`)
@@ -31,7 +38,7 @@ ninja -C build
 - `NewOptionsDialog`: hides the "Restart Level" and "Main Menu" buttons while `mIsBossOnLaunch` (both ESC and the in-game menu button open this dialog).
 
 ## Conventions
-- Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code.
+- Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code, except for codes in file `src/Lawn/SpawnLogic.cpp`.
 - Tabs for indentation; keep the upstream `// GOTY @Patoke: 0x...` comment style.
 - Source files are UTF-8 without BOM. On Windows, PowerShell's `Get-Content` may mis-decode UTF-8 Chinese comments (GBK console); prefer `rg`/Python/git for reading.
 - After code changes, run `ninja -C build` to confirm compilation.

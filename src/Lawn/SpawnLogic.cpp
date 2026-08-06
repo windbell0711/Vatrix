@@ -15,34 +15,34 @@ namespace SpawnLogic
 // 为保证平衡，我修改了部分僵尸的点数
 const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_NORMAL,          // zom: 1 -> 0  增加了普僵，作为点数耗尽时的选择
+	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 1 -
 	ZombieType::ZOMBIE_TRAFFIC_CONE,    // con: 2 -> 2
-	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
-	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 7
-	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 2
-	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 4 +
-	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 5 +
-	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 8 +
-	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
-	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 6 +
 	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
-	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 2 -
+	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 3
+	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 5 +
+	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 5 +
+	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 6 +
+	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
+	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 7
+	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 7
 	ZombieType::ZOMBIE_GARGANTUAR       // ggt: 10 -> 12 +
 };
 
 // vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
 const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	0,  // NORMAL (free, budget-floor pick)
+	1,  // DOOR
 	2,  // TRAFFIC_CONE
-	4,  // PAIL
-	7,  // FOOTBALL
-	2,  // POLEVAULTER
-	4,  // JACK_IN_THE_BOX
-	5,  // LADDER
-	8,  // ZAMBONI
-	6,  // CATAPULT
-	6,  // POGO
 	2,  // NEWSPAPER
-	2,  // DOOR
+	3,  // POLEVAULTER
+	4,  // PAIL
+	5,  // JACK_IN_THE_BOX
+	5,  // LADDER
+	6,  // POGO
+	6,  // CATAPULT
+	7,  // ZAMBONI
+	7,  // FOOTBALL
 	12, // GARGANTUAR
 };
 
@@ -146,8 +146,41 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
 }
 
-// vx: custom spawn-logic: pick the lane with the fewest alive plants
-int PickCustomSpawnRow(Board* theBoard, ZombieType theZombieType)
+BossFireballDecision PickBossFireball(Board* theBoard)
+{
+	BossFireballDecision aDecision;
+#ifdef DO_FIX_BUGS
+	aDecision.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 5 : 4);  // pool-stage boss row range
+#else
+	aDecision.mRow = RandRangeInt(0, 4);
+#endif
+	aDecision.mIsFireBall = RandRangeInt(0, 1) == 0;
+	return aDecision;
+}
+
+BossTargetDecision PickBossRVTarget(Board* theBoard)
+{
+	BossTargetDecision aTarget;
+#ifdef DO_FIX_BUGS
+	aTarget.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 4 : 3);  // pool-stage boss row range
+#else
+	aTarget.mRow = RandRangeInt(0, 3);
+#endif
+	aTarget.mCol = RandRangeInt(0, 2);
+	return aTarget;
+}
+
+int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount)
+{
+	return (int)PvzpPickFromArray(theRowArray, theRowCount);
+}
+
+int PickBossBungeeCol(Board* theBoard)
+{
+	return RandRangeInt(0, 2);
+}
+
+int PickRowWithFewestPlants(Board* theBoard, ZombieType theZombieType)
 {
 	int aBestRow = -1;
 	int aBestCount = 0;
@@ -184,41 +217,7 @@ int PickCustomSpawnRow(Board* theBoard, ZombieType theZombieType)
 			}
 		}
 	}
-	return aBestRow < 0 ? 0 : aBestRow;
-}
-
-BossFireballDecision PickBossFireball(Board* theBoard)
-{
-	BossFireballDecision aDecision;
-#ifdef DO_FIX_BUGS
-	aDecision.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 5 : 4);  // pool-stage boss row range
-#else
-	aDecision.mRow = RandRangeInt(0, 4);
-#endif
-	aDecision.mIsFireBall = RandRangeInt(0, 1) == 0;
-	return aDecision;
-}
-
-BossTargetDecision PickBossRVTarget(Board* theBoard)
-{
-	BossTargetDecision aTarget;
-#ifdef DO_FIX_BUGS
-	aTarget.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 4 : 3);  // pool-stage boss row range
-#else
-	aTarget.mRow = RandRangeInt(0, 3);
-#endif
-	aTarget.mCol = RandRangeInt(0, 2);
-	return aTarget;
-}
-
-int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount)
-{
-	return (int)PvzpPickFromArray(theRowArray, theRowCount);
-}
-
-int PickBossBungeeCol(Board* theBoard)
-{
-	return RandRangeInt(0, 2);
+	return aBestRow;
 }
 
 // vx: decide summon type and row together, type-first so the row always fits the type
@@ -226,33 +225,36 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 {
 	BossSummonDecision aSummon;
 
-	ZombieType aType;
 	if (theZombieAge < 3500)
 	{
-		aType = ZombieType::ZOMBIE_NORMAL;
+		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
 	}
 	else if (theZombieAge < 8000)
 	{
-		aType = ZombieType::ZOMBIE_TRAFFIC_CONE;
+		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
 	}
 	else if (theZombieAge < 12500)
 	{
-		aType = ZombieType::ZOMBIE_PAIL;
+		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
 	}
 	else
 	{
-		aType = ZombieType::ZOMBIE_GARGANTUAR;
+		aSummon.mZombieType = ZombieType::ZOMBIE_GARGANTUAR;
 	}
 
-	// vx: budget check: fall back to the free NORMAL zombie when unaffordable
-	if (GetBossZombieCost(aType) > theSpawnPoints)
+	aSummon.mRow = PickRowWithFewestPlants(theBoard, aSummon.mZombieType);
+
+	// 校验合法性
+	if (GetBossZombieCost(aSummon.mZombieType) > theSpawnPoints)
 	{
-		Sexy::PrintF("PickBossSummon: %d points < cost %d, downgrade to NORMAL\n", theSpawnPoints, GetBossZombieCost(aType));
-		aType = ZombieType::ZOMBIE_NORMAL;
+		Sexy::PrintF("PickBossSummon: points %d < cost %d, downgrade to NORMAL\n", theSpawnPoints, GetBossZombieCost(aSummon.mZombieType));
+		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
 	}
-
-	aSummon.mZombieType = aType;
-	aSummon.mRow = theBoard->PickRowForNewZombie(aType);
+	if (aSummon.mRow < 0)
+	{
+		Sexy::PrintF("PickBossSummon: row %d invalid found, use default logic\n", aSummon.mRow);
+		aSummon.mRow = theBoard->PickRowForNewZombie(aSummon.mZombieType);  // 原版逻辑
+	}
 	return aSummon;
 }
 
