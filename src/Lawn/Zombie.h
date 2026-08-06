@@ -189,7 +189,7 @@ public:
     void                            PickRandomSpeed();
     void                            UpdateZombiePolevaulter();
     void                            UpdateZombieDolphinRider();
-    void                            PickBungeeZombieTarget(int theColumn);
+    void                            PickBungeeZombieTarget(int theColumn, bool theUseBossScoring = false);
     int                             CountBungeesTargetingSunFlowers();
     Plant*                          FindPlantTarget(ZombieAttackType theAttackType);
     void                            CheckSquish(ZombieAttackType theAttackType);

@@ -35,6 +35,7 @@ namespace SpawnLogic
 		int							mPultCount;
 		int							mMelonCount;
 		int							mZombieCount;
+		int							mGargantuarCount;
 	};
 
 	// vx: pool includes a free NORMAL zombie as the budget-floor pick (Vatrix mod)
@@ -45,6 +46,7 @@ namespace SpawnLogic
 
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
 	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowPlantStates(Board* theBoard);
+	int								ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats);
 	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);

@@ -59,7 +59,47 @@ int GetBossZombieCost(ZombieType theZombieType)
 	return 0;
 }
 
-// vx: vanilla wave-composition picker moved from Board::PickZombieType
+
+template<typename TC, typename TF>
+int PickRow(Board* theBoard, TC compare, TF filter)
+{
+	auto aRowState = GetRowPlantStates(theBoard);
+
+	int aBestRow = -1;
+	int aTieCount = 0;
+	int aRowCount = theBoard->StageHas6Rows() ? MAX_GRID_SIZE_Y : MAX_GRID_SIZE_Y - 1;
+	for (int aRow = 0; aRow < aRowCount; aRow++)
+	{
+		if (!filter(aRow, aRowState[aRow])) continue;
+
+		if (aBestRow < 0)
+		{
+			aBestRow = aRow;
+			aTieCount = 1;
+			continue;
+		}
+
+		short aCompareRes = compare(aRowState[aRow], aRowState[aBestRow]);
+		if (aCompareRes == 1)
+		{
+			aBestRow = aRow;
+			aTieCount = 1;
+		}
+		else if (aCompareRes == 0)
+		{
+			// vx: random tie-break among equally empty lanes
+			aTieCount++;
+			if (Rand(aTieCount) == 0) aBestRow = aRow;
+		}
+	}
+	return aBestRow;
+}
+
+short sign(int value) {
+	return (value > 0) - (value < 0);
+}
+
+// vanilla: wave-composition picker moved from Board::PickZombieType
 ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker)
 {
 	int aPickCount = 0;
@@ -146,38 +186,176 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
 }
 
+// vx: place fireball in the row with the most plants
 BossFireballDecision PickBossFireball(Board* theBoard)
 {
 	BossFireballDecision aDecision;
-#ifdef DO_FIX_BUGS
-	aDecision.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 5 : 4);  // pool-stage boss row range
-#else
-	aDecision.mRow = RandRangeInt(0, 4);
-#endif
-	aDecision.mIsFireBall = RandRangeInt(0, 1) == 0;
+	aDecision.mRow = PickRow(
+		theBoard,
+		[](const RowState& a, const RowState& b) {
+			return sign(a.mPlantCount - b.mPlantCount);
+		},
+		[](int aRow, const RowState& aRowState) { return aRowState.mZombieCount <= 1; }
+	);
+	aDecision.mIsFireBall = (RandRangeInt(0, 19) == 0);
 	return aDecision;
 }
 
-BossTargetDecision PickBossRVTarget(Board* theBoard)
-{
-	BossTargetDecision aTarget;
-#ifdef DO_FIX_BUGS
-	aTarget.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 4 : 3);  // pool-stage boss row range
-#else
-	aTarget.mRow = RandRangeInt(0, 3);
-#endif
-	aTarget.mCol = RandRangeInt(0, 2);
-	return aTarget;
-}
-
+// vanilla: stomp-row picker
 int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount)
 {
 	return (int)PvzpPickFromArray(theRowArray, theRowCount);
 }
 
+// vx: smash the 3x2 block (target cell = top-left) that kills the most melon-pults, tie-broken by the most kernel-pults
+BossTargetDecision PickBossRVTarget(Board* theBoard)
+{
+	int aBestRow = -1;
+	int aBestCol = -1;
+	int aBestMelons = 0;
+	int aBestKernels = 0;
+	int aTieCount = 0;
+
+	for (int aRow = 0; aRow <= 3; aRow++)
+	{
+		for (int aCol = 0; aCol <= 2; aCol++)
+		{
+			int aMelons = 0;
+			int aKernels = 0;
+			for (Plant* aPlant : theBoard->mPlants)
+			{
+				if (aPlant->mDead || aPlant->mSquished)
+				{
+					continue;
+				}
+				if (aPlant->mRow < aRow || aPlant->mRow > aRow + 1 ||
+					aPlant->mPlantCol < aCol || aPlant->mPlantCol > aCol + 2)
+				{
+					continue;
+				}
+
+				SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER
+					? aPlant->mImitaterType : aPlant->mSeedType;
+				if (aSeedType == SeedType::SEED_MELONPULT)
+				{
+					aMelons++;
+				}
+				else if (aSeedType == SeedType::SEED_KERNELPULT)
+				{
+					aKernels++;
+				}
+			}
+
+			bool aIsBetter = aBestRow < 0 ||
+				aMelons > aBestMelons || (aMelons == aBestMelons && aKernels > aBestKernels);
+			if (aIsBetter)
+			{
+				aBestRow = aRow;
+				aBestCol = aCol;
+				aBestMelons = aMelons;
+				aBestKernels = aKernels;
+				aTieCount = 1;
+			}
+			else if (aMelons == aBestMelons && aKernels == aBestKernels)
+			{
+				// vx: random tie-break among equally good targets
+				aTieCount++;
+				if (Rand(aTieCount) == 0)
+				{
+					aBestRow = aRow;
+					aBestCol = aCol;
+				}
+			}
+		}
+	}
+
+	return BossTargetDecision{aBestRow, aBestCol};
+}
+
+// vx: score how much the boss wants to steal a plant with a bungee
+int ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats)
+{
+	int aScore = 0;
+	int aRow = thePlant->mRow;
+	SeedType aSeedType = thePlant->mSeedType == SeedType::SEED_IMITATER ? thePlant->mImitaterType : thePlant->mSeedType;
+	bool aIsPult = aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT ||
+		aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON;
+
+	if (theRowStats[aRow].mZombieCount >= 2)  // vx: row has 2+ effective zombies
+	{
+		aScore += 2;
+	}
+	if (aIsPult && theRowStats[aRow].mPultCount <= 3)  // vx: row has <=3 pults
+	{
+		aScore += 3;
+	}
+	if (aIsPult && thePlant->mPlantCol == 4)  // vx: last column of the 5-col boss board
+	{
+		aScore += 2;
+	}
+	if (aIsPult && thePlant->mPlantCol == 3)  // vx: second-to-last column
+	{
+		aScore += 1;
+	}
+	if (aSeedType == SeedType::SEED_MELONPULT)
+	{
+		aScore += 3;
+	}
+	if (aSeedType == SeedType::SEED_KERNELPULT)
+	{
+		aScore += theRowStats[aRow].mGargantuarCount > 0 ? 3 : 1;
+	}
+	return aScore;
+}
+
 int PickBossBungeeCol(Board* theBoard)
 {
-	return RandRangeInt(0, 2);
+	// vx: pick the 3-column block whose 3 best steals (one per bungee
+	// column) score the highest; first enumerated wins on ties
+	auto aRowStats = GetRowPlantStates(theBoard);
+
+	int aBestCol = -1;
+	int aBestScore = 0;
+	for (int aCol = 0; aCol <= 2; aCol++)
+	{
+		int aBlockScore = 0;
+		int aColBests[3] = { 0, 0, 0 };
+		for (int i = 0; i < 3; i++)
+		{
+			int aColBest = 0;
+			for (Plant* aPlant : theBoard->mPlants)
+			{
+				if (aPlant->mDead || aPlant->mSquished)
+				{
+					continue;
+				}
+				if (aPlant->mPlantCol != aCol + i)
+				{
+					continue;
+				}
+				int aScore = ScoreBungeeSteal(aPlant, aRowStats);
+				if (aScore > aColBest)
+				{
+					aColBest = aScore;
+				}
+			}
+			aColBests[i] = aColBest;
+			aBlockScore += aColBest;
+		}
+
+		// vx: debug print
+		Sexy::PrintF("BungeeCol: block %d cols %d/%d/%d total %d\n", aCol, aColBests[0], aColBests[1], aColBests[2], aBlockScore);
+
+		if (aBestCol < 0 || aBlockScore > aBestScore)
+		{
+			aBestCol = aCol;
+			aBestScore = aBlockScore;
+		}
+	}
+	// vx: debug print
+	Sexy::PrintF("BungeeCol: pick block %d\n", aBestCol);
+
+	return aBestCol;
 }
 
 // vx: collect per-row plant/zombie stats for the row picker
@@ -187,7 +365,7 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 
 	for (Plant* aPlant : theBoard->mPlants)
 	{
-		if (aPlant->mDead)
+		if (aPlant->mDead || aPlant->mSquished)
 		{
 			continue;
 		}
@@ -217,6 +395,11 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 		{
 			continue;
 		}
+		// vx: bungees are airborne, not field zombies; exclude from row counts
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_BUNGEE)
+		{
+			continue;
+		}
 		// vx: ignore zombies below 40% health, except Gargantuars
 		if (aZombie->mZombieType != ZombieType::ZOMBIE_GARGANTUAR && aZombie->mZombieType != ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
 		{
@@ -228,48 +411,13 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 			}
 		}
 		aRowState[aZombie->mRow].mZombieCount++;
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_GARGANTUAR || aZombie->mZombieType == ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
+		{
+			aRowState[aZombie->mRow].mGargantuarCount++;
+		}
 	}
 	
 	return aRowState;
-}
-
-template<typename TC, typename TF>
-int PickRow(Board* theBoard, TC compare, TF filter)
-{
-	auto aRowState = GetRowPlantStates(theBoard);
-
-	int aBestRow = -1;
-	int aTieCount = 0;
-	int aRowCount = theBoard->StageHas6Rows() ? MAX_GRID_SIZE_Y : MAX_GRID_SIZE_Y - 1;
-	for (int aRow = 0; aRow < aRowCount; aRow++)
-	{
-		if (!filter(aRow)) continue;
-
-		if (aBestRow < 0)
-		{
-			aBestRow = aRow;
-			aTieCount = 1;
-			continue;
-		}
-
-		short aCompareRes = compare(aRowState[aRow], aRowState[aBestRow]);
-		if (aCompareRes == 1)
-		{
-			aBestRow = aRow;
-			aTieCount = 1;
-		}
-		else if (aCompareRes == 0)
-		{
-			// vx: random tie-break among equally empty lanes
-			aTieCount++;
-			if (Rand(aTieCount) == 0) aBestRow = aRow;
-		}
-	}
-	return aBestRow;
-}
-
-short sign(int value) {
-	return (value > 0) - (value < 0);
 }
 
 // vx: decide summon type and row together
@@ -286,7 +434,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mPultCount - a.mPultCount);
 			},
-			[](int aRow) { return true; }
+			[](int aRow, const RowState& aRowState) { return true; }
 		);
 	}
 	else if (theZombieAge < 8000)
@@ -298,7 +446,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mZombieCount - a.mZombieCount);
 			},
-			[](int aRow) { return aRow == 1 || aRow == 3; }
+			[](int aRow, const RowState& aRowState) { return aRow == 1 || aRow == 3; }
 		);
 	}
 	else if (theZombieAge < 12500)
@@ -310,7 +458,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mZombieCount - a.mZombieCount);
 			},
-			[](int aRow) { return aRow == 0 || aRow == 2 || aRow == 4; }
+			[](int aRow, const RowState& aRowState) { return aRow == 0 || aRow == 2 || aRow == 4; }
 			// [theBoard, aSummon](int aRow) {
 			// 	return theBoard->RowCanHaveZombieType(aRow, aSummon.mZombieType); 
 			// }
@@ -318,7 +466,17 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 	}
 	else
 	{
-		aSummon.mZombieType = ZombieType::ZOMBIE_GARGANTUAR;
+		// 随机出僵尸，放在僵尸不多于两个的，且投手最少的地方
+		aSummon.mZombieType = gBossZombieList[RandRangeInt(1, BOSS_ZOMBIE_LIST_COUNT - 1)];
+		aSummon.mRow = PickRow(
+			theBoard, 
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mPultCount - a.mPultCount);
+			},
+			[theBoard, aSummon](int aRow, const RowState& aRowState) {
+				return aRowState.mZombieCount <= 2 && theBoard->RowCanHaveZombieType(aRow, aSummon.mZombieType);
+			}
+		);
 	}
 
 	// 校验合法性
