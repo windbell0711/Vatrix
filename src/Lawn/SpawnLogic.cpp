@@ -60,6 +60,108 @@ int GetBossZombieCost(ZombieType theZombieType)
 }
 
 
+short sign(int value) {
+	return (value > 0) - (value < 0);
+}
+
+// vx: collect per-row plant/zombie stats for the row picker
+std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
+{
+	std::array<RowState, MAX_GRID_SIZE_Y> aRowState{};
+
+	for (Plant* aPlant : theBoard->mPlants)
+	{
+		if (aPlant->mDead || aPlant->mSquished)
+		{
+			continue;
+		}
+
+		// vx: Imitater seeds count as their mimicked seed type
+		SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER ? aPlant->mImitaterType : aPlant->mSeedType;
+		RowState& aStats = aRowState[aPlant->mRow];
+		aStats.mPlantCount++;
+		if (aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT || aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON)
+		{
+			aStats.mPultCount++;
+		}
+		if (aSeedType == SeedType::SEED_MELONPULT)
+		{
+			aStats.mMelonCount++;
+		}
+	}
+
+	for (Zombie* aZombie : theBoard->mZombies)
+	{
+		if (aZombie->mDead || aZombie->mMindControlled)
+		{
+			continue;
+		}
+		// vx: skip the boss itself
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
+		{
+			continue;
+		}
+		// vx: bungees are airborne, not field zombies; exclude from row counts
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_BUNGEE)
+		{
+			continue;
+		}
+		// vx: ignore zombies below 40% health, except Gargantuars
+		if (aZombie->mZombieType != ZombieType::ZOMBIE_GARGANTUAR && aZombie->mZombieType != ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
+		{
+			int aHealth = aZombie->mBodyHealth + aZombie->mFlyingHealth;
+			int aMaxHealth = aZombie->mBodyMaxHealth + aZombie->mFlyingMaxHealth;
+			if (aHealth * 5 < aMaxHealth * 2)  // vx: below 40% health
+			{
+				continue;
+			}
+		}
+		aRowState[aZombie->mRow].mZombieCount++;
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_GARGANTUAR || aZombie->mZombieType == ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
+		{
+			aRowState[aZombie->mRow].mGargantuarCount++;
+		}
+	}
+	
+	return aRowState;
+}
+
+// vx: score how much the boss wants to steal a plant with a bungee
+int ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats)
+{
+	int aScore = 0;
+	int aRow = thePlant->mRow;
+	SeedType aSeedType = thePlant->mSeedType == SeedType::SEED_IMITATER ? thePlant->mImitaterType : thePlant->mSeedType;
+	bool aIsPult = aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT ||
+		aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON;
+
+	if (theRowStats[aRow].mZombieCount >= 2)  // vx: row has 2+ effective zombies
+	{
+		aScore += 2;
+	}
+	if (aIsPult && theRowStats[aRow].mPultCount <= 3)  // vx: row has <=3 pults
+	{
+		aScore += 3;
+	}
+	if (aIsPult && thePlant->mPlantCol == 4)  // vx: last column of the 5-col boss board
+	{
+		aScore += 2;
+	}
+	if (aIsPult && thePlant->mPlantCol == 3)  // vx: second-to-last column
+	{
+		aScore += 1;
+	}
+	if (aSeedType == SeedType::SEED_MELONPULT)
+	{
+		aScore += 3;
+	}
+	if (aSeedType == SeedType::SEED_KERNELPULT)
+	{
+		aScore += theRowStats[aRow].mGargantuarCount > 0 ? 3 : 1;
+	}
+	return aScore;
+}
+
 template<typename TC, typename TF>
 int PickRow(Board* theBoard, TC compare, TF filter)
 {
@@ -93,10 +195,6 @@ int PickRow(Board* theBoard, TC compare, TF filter)
 		}
 	}
 	return aBestRow;
-}
-
-short sign(int value) {
-	return (value > 0) - (value < 0);
 }
 
 // vanilla: wave-composition picker moved from Board::PickZombieType
@@ -272,42 +370,6 @@ BossTargetDecision PickBossRVTarget(Board* theBoard)
 	return BossTargetDecision{aBestRow, aBestCol};
 }
 
-// vx: score how much the boss wants to steal a plant with a bungee
-int ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats)
-{
-	int aScore = 0;
-	int aRow = thePlant->mRow;
-	SeedType aSeedType = thePlant->mSeedType == SeedType::SEED_IMITATER ? thePlant->mImitaterType : thePlant->mSeedType;
-	bool aIsPult = aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT ||
-		aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON;
-
-	if (theRowStats[aRow].mZombieCount >= 2)  // vx: row has 2+ effective zombies
-	{
-		aScore += 2;
-	}
-	if (aIsPult && theRowStats[aRow].mPultCount <= 3)  // vx: row has <=3 pults
-	{
-		aScore += 3;
-	}
-	if (aIsPult && thePlant->mPlantCol == 4)  // vx: last column of the 5-col boss board
-	{
-		aScore += 2;
-	}
-	if (aIsPult && thePlant->mPlantCol == 3)  // vx: second-to-last column
-	{
-		aScore += 1;
-	}
-	if (aSeedType == SeedType::SEED_MELONPULT)
-	{
-		aScore += 3;
-	}
-	if (aSeedType == SeedType::SEED_KERNELPULT)
-	{
-		aScore += theRowStats[aRow].mGargantuarCount > 0 ? 3 : 1;
-	}
-	return aScore;
-}
-
 int PickBossBungeeCol(Board* theBoard)
 {
 	// vx: pick the 3-column block whose 3 best steals (one per bungee
@@ -358,67 +420,63 @@ int PickBossBungeeCol(Board* theBoard)
 	return aBestCol;
 }
 
-// vx: collect per-row plant/zombie stats for the row picker
-std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
+// vx: boss bungee cell picker, moved here from Zombie::PickBungeeZombieTarget
+BossTargetDecision PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget)
 {
-	std::array<RowState, MAX_GRID_SIZE_Y> aRowState{};
-
-	for (Plant* aPlant : theBoard->mPlants)
+	// vx: boss bungees take the highest-scoring steal, first enumerated on ties
+	auto aRowStats = GetRowPlantStates(theBoard);
+	BossTargetDecision aTarget{ -1, -1 };
+	int aBestScore = -1;
+	for (int x = 0; x < MAX_GRID_SIZE_X; x++)
 	{
-		if (aPlant->mDead || aPlant->mSquished)
+		if (theColumn != -1 && theColumn != x)
 		{
 			continue;
 		}
-
-		// vx: Imitater seeds count as their mimicked seed type
-		SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER ? aPlant->mImitaterType : aPlant->mSeedType;
-		RowState& aStats = aRowState[aPlant->mRow];
-		aStats.mPlantCount++;
-		if (aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT || aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON)
+		for (int y = 0; y < MAX_GRID_SIZE_Y; y++)
 		{
-			aStats.mPultCount++;
-		}
-		if (aSeedType == SeedType::SEED_MELONPULT)
-		{
-			aStats.mMelonCount++;
-		}
-	}
-
-	for (Zombie* aZombie : theBoard->mZombies)
-	{
-		if (aZombie->mDead || aZombie->mMindControlled)
-		{
-			continue;
-		}
-		// vx: skip the boss itself
-		if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
-		{
-			continue;
-		}
-		// vx: bungees are airborne, not field zombies; exclude from row counts
-		if (aZombie->mZombieType == ZombieType::ZOMBIE_BUNGEE)
-		{
-			continue;
-		}
-		// vx: ignore zombies below 40% health, except Gargantuars
-		if (aZombie->mZombieType != ZombieType::ZOMBIE_GARGANTUAR && aZombie->mZombieType != ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
-		{
-			int aHealth = aZombie->mBodyHealth + aZombie->mFlyingHealth;
-			int aMaxHealth = aZombie->mBodyMaxHealth + aZombie->mFlyingMaxHealth;
-			if (aHealth * 5 < aMaxHealth * 2)  // vx: below 40% health
+			if (theBoard->GetGraveStoneAt(x, y) || theBoard->mGridSquareType[x][y] == GridSquareType::GRIDSQUARE_DIRT)
 			{
 				continue;
 			}
-		}
-		aRowState[aZombie->mRow].mZombieCount++;
-		if (aZombie->mZombieType == ZombieType::ZOMBIE_GARGANTUAR || aZombie->mZombieType == ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
-		{
-			aRowState[aZombie->mRow].mGargantuarCount++;
+
+			int aScore = 0;
+			Plant* aPlant = theBoard->GetTopPlantAt(x, y, PlantPriority::TOPPLANT_BUNGEE_ORDER);
+			if (aPlant)
+			{
+				if (aPlant->mSquished)
+				{
+					continue;
+				}
+				if (!aAllowSunFlowerTarget && aPlant->MakesSun())
+				{
+					continue;
+				}
+				if (aPlant->mSeedType == SeedType::SEED_GRAVEBUSTER || aPlant->mSeedType == SeedType::SEED_COBCANNON)
+				{
+					continue;
+				}
+				aScore = ScoreBungeeSteal(aPlant, aRowStats);
+				// vx: debug print
+				Sexy::PrintF("Bungee col %d cell(%d,%d) %s row%d z%d p%d g%d score%d\n",
+					theColumn, x, y, Plant::GetNameString(aPlant->mSeedType, aPlant->mImitaterType).c_str(),
+					aPlant->mRow, aRowStats[aPlant->mRow].mZombieCount, aRowStats[aPlant->mRow].mPultCount,
+					aRowStats[aPlant->mRow].mGargantuarCount, aScore);
+			}
+
+			if (!theBoard->BungeeIsTargetingCell(x, y) && (aTarget.mRow < 0 || aScore > aBestScore))
+			{
+				aTarget.mRow = y;
+				aTarget.mCol = x;
+				aBestScore = aScore;
+			}
 		}
 	}
-	
-	return aRowState;
+	// vx: debug print
+	Sexy::PrintF("Bungee col %d -> target(%d,%d) score %d\n", theColumn, aTarget.mCol, aTarget.mRow, aBestScore);
+	return aTarget;
 }
+
 
 // vx: decide summon type and row together
 BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)

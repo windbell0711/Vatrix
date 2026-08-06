@@ -1082,66 +1082,15 @@ void Zombie::PickBungeeZombieTarget(int theColumn, bool theUseBossScoring)
 
     if (theUseBossScoring)
     {
-        // vx: boss bungees take the highest-scoring steal, first enumerated on ties
-        auto aRowStats = SpawnLogic::GetRowPlantStates(mBoard);
-        int aBestX = -1;
-        int aBestY = -1;
-        int aBestScore = -1;
-        for (int x = 0; x < MAX_GRID_SIZE_X; x++)
-        {
-            if (theColumn != -1 && theColumn != x)
-            {
-                continue;
-            }
-            for (int y = 0; y < MAX_GRID_SIZE_Y; y++)
-            {
-                if (mBoard->GetGraveStoneAt(x, y) || mBoard->mGridSquareType[x][y] == GridSquareType::GRIDSQUARE_DIRT)
-                {
-                    continue;
-                }
-
-                int aScore = 0;
-                Plant* aPlant = mBoard->GetTopPlantAt(x, y, PlantPriority::TOPPLANT_BUNGEE_ORDER);
-                if (aPlant)
-                {
-                    if (aPlant->mSquished)
-                    {
-                        continue;
-                    }
-                    if (!aAllowSunFlowerTarget && aPlant->MakesSun())
-                    {
-                        continue;
-                    }
-                    if (aPlant->mSeedType == SeedType::SEED_GRAVEBUSTER || aPlant->mSeedType == SeedType::SEED_COBCANNON)
-                    {
-                        continue;
-                    }
-                    aScore = SpawnLogic::ScoreBungeeSteal(aPlant, aRowStats);
-                    // vx: debug print
-                    Sexy::PrintF("Bungee col %d cell(%d,%d) %s row%d z%d p%d g%d score%d\n",
-                        theColumn, x, y, Plant::GetNameString(aPlant->mSeedType, aPlant->mImitaterType).c_str(),
-                        aPlant->mRow, aRowStats[aPlant->mRow].mZombieCount, aRowStats[aPlant->mRow].mPultCount,
-                        aRowStats[aPlant->mRow].mGargantuarCount, aScore);
-                }
-
-                if (!mBoard->BungeeIsTargetingCell(x, y) && (aBestX < 0 || aScore > aBestScore))
-                {
-                    aBestX = x;
-                    aBestY = y;
-                    aBestScore = aScore;
-                }
-            }
-        }
-
-        if (aBestX < 0)
+        // vx: boss bungee target decided by SpawnLogic
+        SpawnLogic::BossTargetDecision aTarget = SpawnLogic::PickBossBungeeTarget(mBoard, theColumn, aAllowSunFlowerTarget);
+        if (aTarget.mRow < 0)
         {
             DieNoLoot();
             return;
         }
-        // vx: debug print
-        Sexy::PrintF("Bungee col %d -> target(%d,%d) score %d\n", theColumn, aBestX, aBestY, aBestScore);
-        mTargetCol = aBestX;
-        SetRow(aBestY);
+        mTargetCol = aTarget.mCol;
+        SetRow(aTarget.mRow);
         mPosX = mBoard->GridToPixelX(mTargetCol, mRow);
         mPosY = GetPosYBasedOnRow(mRow);
         return;
@@ -10365,7 +10314,7 @@ void Zombie::UpdateBoss()
         {
             if (Rand(mApp->IsAdventureMode() ? 4 : 2) == 0)  // 1/2 概率砸车（冒险模式为 1/4 概率），否则释放蹦极僵尸
             {
-                mBossBungeeCounter = RandRangeInt(1000, 1500);  // vx: debug
+                mBossBungeeCounter = RandRangeInt(4000, 5000);
                 BossRVAttack();
             }
             else

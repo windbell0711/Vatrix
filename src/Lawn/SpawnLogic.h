@@ -44,15 +44,16 @@ namespace SpawnLogic
 	extern const int				gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT];
 	constexpr int					BOSS_SUMMON_POINTS_PER_ACTION = 30;
 
-	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
+	int								GetBossZombieCost(ZombieType theZombieType);
 	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowPlantStates(Board* theBoard);
 	int								ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats);
+	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
 	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);
 	int								PickBossBungeeCol(Board* theBoard);
+	BossTargetDecision				PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget);
 	BossSummonDecision				PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints);
-	int								GetBossZombieCost(ZombieType theZombieType);
 }
 
 #endif // __SPAWNLOGIC_H__
