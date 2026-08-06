@@ -6,6 +6,7 @@
 
 #include "../LawnApp.h"
 #include "Challenge.h"
+#include "SeedPacket.h"
 #include "../PvzpLib/PvzpCommon.h"
 
 // vx: boss summon pool moved here from Zombie.cpp (Vatrix mod)
@@ -284,18 +285,43 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
 }
 
-// vx: place fireball in the row with the most plants
+// vx: fireball targets the row with the most plants + melons, minus 5 per effective zombie
 BossFireballDecision PickBossFireball(Board* theBoard)
 {
 	BossFireballDecision aDecision;
 	aDecision.mRow = PickRow(
 		theBoard,
 		[](const RowState& a, const RowState& b) {
-			return sign(a.mPlantCount - b.mPlantCount);
+			return sign((a.mPlantCount + a.mMelonCount - a.mZombieCount * 5) -
+				(b.mPlantCount + b.mMelonCount - b.mZombieCount * 5));
 		},
-		[](int aRow, const RowState& aRowState) { return aRowState.mZombieCount <= 1; }
+		[](int aRow, const RowState& aRowState) { return true; }
 	);
-	aDecision.mIsFireBall = (RandRangeInt(0, 19) == 0);
+
+	// vx: ball type depends on ice-shrooms on the conveyor belt
+	int aIceShroomCount = 0;
+	if (theBoard->mSeedBank)
+	{
+		for (int i = 0; i < theBoard->mSeedBank->mNumPackets; i++)
+		{
+			if (theBoard->mSeedBank->mSeedPackets[i].mPacketType == SeedType::SEED_ICESHROOM)
+			{
+				aIceShroomCount++;
+			}
+		}
+	}
+	if (aIceShroomCount == 0)
+	{
+		aDecision.mIsFireBall = true;
+	}
+	else if (aIceShroomCount == 1)
+	{
+		aDecision.mIsFireBall = (RandRangeInt(0, 1) == 0);
+	}
+	else
+	{
+		aDecision.mIsFireBall = false;
+	}
 	return aDecision;
 }
 
@@ -305,21 +331,24 @@ int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCou
 	return (int)PvzpPickFromArray(theRowArray, theRowCount);
 }
 
-// vx: smash the 3x2 block (target cell = top-left) that kills the most melon-pults, tie-broken by the most kernel-pults
+// vx: smash the 3x2 block (target cell = top-left) scoring: plants smashed
+// (flower pots included) + 2x melons + last-column melons + 2x effective
+// zombies in the two rows
 BossTargetDecision PickBossRVTarget(Board* theBoard)
 {
+	auto aRowStats = GetRowPlantStates(theBoard);
+
 	int aBestRow = -1;
 	int aBestCol = -1;
-	int aBestMelons = 0;
-	int aBestKernels = 0;
+	int aBestScore = 0;
 	int aTieCount = 0;
-
 	for (int aRow = 0; aRow <= 3; aRow++)
 	{
 		for (int aCol = 0; aCol <= 2; aCol++)
 		{
-			int aMelons = 0;
-			int aKernels = 0;
+			int aPlantCount = 0;
+			int aMelonCount = 0;
+			int aLastColMelons = 0;
 			for (Plant* aPlant : theBoard->mPlants)
 			{
 				if (aPlant->mDead || aPlant->mSquished)
@@ -332,29 +361,30 @@ BossTargetDecision PickBossRVTarget(Board* theBoard)
 					continue;
 				}
 
+				aPlantCount++;
 				SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER
 					? aPlant->mImitaterType : aPlant->mSeedType;
 				if (aSeedType == SeedType::SEED_MELONPULT)
 				{
-					aMelons++;
-				}
-				else if (aSeedType == SeedType::SEED_KERNELPULT)
-				{
-					aKernels++;
+					aMelonCount++;
+					if (aPlant->mPlantCol == 4)  // vx: last column of the 5-col boss board
+					{
+						aLastColMelons++;
+					}
 				}
 			}
+			int aScore = aPlantCount + aMelonCount * 2 + aLastColMelons +
+				(aRowStats[aRow].mZombieCount + aRowStats[aRow + 1].mZombieCount) * 2;
 
-			bool aIsBetter = aBestRow < 0 ||
-				aMelons > aBestMelons || (aMelons == aBestMelons && aKernels > aBestKernels);
+			bool aIsBetter = aBestRow < 0 || aScore > aBestScore;
 			if (aIsBetter)
 			{
 				aBestRow = aRow;
 				aBestCol = aCol;
-				aBestMelons = aMelons;
-				aBestKernels = aKernels;
+				aBestScore = aScore;
 				aTieCount = 1;
 			}
-			else if (aMelons == aBestMelons && aKernels == aBestKernels)
+			else if (aScore == aBestScore)
 			{
 				// vx: random tie-break among equally good targets
 				aTieCount++;
