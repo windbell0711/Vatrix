@@ -180,69 +180,146 @@ int PickBossBungeeCol(Board* theBoard)
 	return RandRangeInt(0, 2);
 }
 
-int PickRowWithFewestPlants(Board* theBoard, ZombieType theZombieType)
+// vx: collect per-row plant/zombie stats for the row picker
+std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 {
-	int aBestRow = -1;
-	int aBestCount = 0;
-	int aTieCount = 0;
-	for (int aRow = 0; aRow < MAX_GRID_SIZE_Y; aRow++)
+	std::array<RowState, MAX_GRID_SIZE_Y> aRowState{};
+
+	for (Plant* aPlant : theBoard->mPlants)
 	{
-		if (!theBoard->RowCanHaveZombieType(aRow, theZombieType))
+		if (aPlant->mDead)
 		{
 			continue;
 		}
 
-		int aCount = 0;
-		for (Plant* aPlant : theBoard->mPlants)
+		// vx: Imitater seeds count as their mimicked seed type
+		SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER ? aPlant->mImitaterType : aPlant->mSeedType;
+		RowState& aStats = aRowState[aPlant->mRow];
+		aStats.mPlantCount++;
+		if (aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT || aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON)
 		{
-			if (!aPlant->mDead && aPlant->mRow == aRow)
+			aStats.mPultCount++;
+		}
+		if (aSeedType == SeedType::SEED_MELONPULT)
+		{
+			aStats.mMelonCount++;
+		}
+	}
+
+	for (Zombie* aZombie : theBoard->mZombies)
+	{
+		if (aZombie->mDead || aZombie->mMindControlled)
+		{
+			continue;
+		}
+		// vx: skip the boss itself
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
+		{
+			continue;
+		}
+		// vx: ignore zombies below 40% health, except Gargantuars
+		if (aZombie->mZombieType != ZombieType::ZOMBIE_GARGANTUAR && aZombie->mZombieType != ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
+		{
+			int aHealth = aZombie->mBodyHealth + aZombie->mFlyingHealth;
+			int aMaxHealth = aZombie->mBodyMaxHealth + aZombie->mFlyingMaxHealth;
+			if (aHealth * 5 < aMaxHealth * 2)  // vx: below 40% health
 			{
-				aCount++;
+				continue;
 			}
 		}
+		aRowState[aZombie->mRow].mZombieCount++;
+	}
+	
+	return aRowState;
+}
 
-		if (aBestRow < 0 || aCount < aBestCount)
+template<typename TC, typename TF>
+int PickRow(Board* theBoard, TC compare, TF filter)
+{
+	auto aRowState = GetRowPlantStates(theBoard);
+
+	int aBestRow = -1;
+	int aTieCount = 0;
+	int aRowCount = theBoard->StageHas6Rows() ? MAX_GRID_SIZE_Y : MAX_GRID_SIZE_Y - 1;
+	for (int aRow = 0; aRow < aRowCount; aRow++)
+	{
+		if (!filter(aRow)) continue;
+
+		if (aBestRow < 0)
 		{
 			aBestRow = aRow;
-			aBestCount = aCount;
+			aTieCount = 1;
+			continue;
+		}
+
+		short aCompareRes = compare(aRowState[aRow], aRowState[aBestRow]);
+		if (aCompareRes == 1)
+		{
+			aBestRow = aRow;
 			aTieCount = 1;
 		}
-		else if (aCount == aBestCount)
+		else if (aCompareRes == 0)
 		{
 			// vx: random tie-break among equally empty lanes
 			aTieCount++;
-			if (Rand(aTieCount) == 0)
-			{
-				aBestRow = aRow;
-			}
+			if (Rand(aTieCount) == 0) aBestRow = aRow;
 		}
 	}
 	return aBestRow;
 }
 
-// vx: decide summon type and row together, type-first so the row always fits the type
+short sign(int value) {
+	return (value > 0) - (value < 0);
+}
+
+// vx: decide summon type and row together
 BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
-	BossSummonDecision aSummon;
+	BossSummonDecision aSummon{ZombieType::ZOMBIE_NORMAL, -1};
 
 	if (theZombieAge < 3500)
 	{
+		// 普僵放投手最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
+		aSummon.mRow = PickRow(
+			theBoard,
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mPultCount - a.mPultCount);
+			},
+			[](int aRow) { return true; }
+		);
 	}
 	else if (theZombieAge < 8000)
 	{
+		// 路障放二四路已有僵尸最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
+		aSummon.mRow = PickRow(
+			theBoard, 
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mZombieCount - a.mZombieCount);
+			},
+			[](int aRow) { return aRow == 1 || aRow == 3; }
+		);
 	}
 	else if (theZombieAge < 12500)
 	{
+		// 铁桶放一三五路已有僵尸最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
+		aSummon.mRow = PickRow(
+			theBoard, 
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mZombieCount - a.mZombieCount);
+			},
+			[](int aRow) { return aRow == 0 || aRow == 2 || aRow == 4; }
+			// [theBoard, aSummon](int aRow) {
+			// 	return theBoard->RowCanHaveZombieType(aRow, aSummon.mZombieType); 
+			// }
+		);
 	}
 	else
 	{
 		aSummon.mZombieType = ZombieType::ZOMBIE_GARGANTUAR;
 	}
-
-	aSummon.mRow = PickRowWithFewestPlants(theBoard, aSummon.mZombieType);
 
 	// 校验合法性
 	if (GetBossZombieCost(aSummon.mZombieType) > theSpawnPoints)
@@ -252,7 +329,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 	}
 	if (aSummon.mRow < 0)
 	{
-		Sexy::PrintF("PickBossSummon: row %d invalid found, use default logic\n", aSummon.mRow);
+		Sexy::PrintF("PickBossSummon: row %d invalid, use default logic\n", aSummon.mRow);
 		aSummon.mRow = theBoard->PickRowForNewZombie(aSummon.mZombieType);  // 原版逻辑
 	}
 	return aSummon;

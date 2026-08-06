@@ -1,11 +1,11 @@
 #ifndef __SPAWNLOGIC_H__
 #define __SPAWNLOGIC_H__
 
+#include <array>
 #include <cstdint>
 
 #include "../ConstEnums.h"
-
-class Board;
+#include "Board.h"
 struct ZombiePicker;
 
 // vx: SpawnLogic: centralized zombie-spawn / boss-target decision layer (Vatrix mod)
@@ -29,6 +29,14 @@ namespace SpawnLogic
 		int							mRow;
 	};
 
+	struct RowState
+	{
+		int							mPlantCount;
+		int							mPultCount;
+		int							mMelonCount;
+		int							mZombieCount;
+	};
+
 	// vx: pool includes a free NORMAL zombie as the budget-floor pick (Vatrix mod)
 	constexpr int BOSS_ZOMBIE_LIST_COUNT = 13;
 	extern const ZombieType			gBossZombieList[BOSS_ZOMBIE_LIST_COUNT];
@@ -36,7 +44,7 @@ namespace SpawnLogic
 	constexpr int					BOSS_SUMMON_POINTS_PER_ACTION = 30;
 
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
-	int								PickRowWithFewestPlants(Board* theBoard, ZombieType theZombieType);
+	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowPlantStates(Board* theBoard);
 	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);

@@ -10228,7 +10228,7 @@ void Zombie::UpdateBoss()
     if (mIceTrapCounter == 0)
     {
         // vx: debug
-        if (mZombieAge % 50 == 0)
+        if (mZombieAge % 200 == 0)
             Sexy::PrintF("Su: %d\tHead: %d  \tBungee: %d\tStomp: %d\n", mSummonCounter, mBossHeadCounter, mBossBungeeCounter, mBossStompCounter);
 
         if (mSummonCounter > 0)

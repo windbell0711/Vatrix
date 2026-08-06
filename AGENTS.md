@@ -38,7 +38,8 @@ When user requests you to "commit" or "提交", please follow the following step
 - `NewOptionsDialog`: hides the "Restart Level" and "Main Menu" buttons while `mIsBossOnLaunch` (both ESC and the in-game menu button open this dialog).
 
 ## Conventions
-- Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code, except for codes in file `src/Lawn/SpawnLogic.cpp`.
+- Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code. Comments in file `src/Lawn/SpawnLogic.cpp` can omit the vx prefix.
 - Tabs for indentation; keep the upstream `// GOTY @Patoke: 0x...` comment style.
 - Source files are UTF-8 without BOM. On Windows, PowerShell's `Get-Content` may mis-decode UTF-8 Chinese comments (GBK console); prefer `rg`/Python/git for reading.
+- When writing files, avoid using Chinese comments. Existing Chinese comments should not be modified.
 - After code changes, run `ninja -C build` to confirm compilation.
