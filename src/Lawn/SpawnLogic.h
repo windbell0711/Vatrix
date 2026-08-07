@@ -2,6 +2,7 @@
 #define __SPAWNLOGIC_H__
 
 #include <array>
+#include <vector>
 #include <cstdint>
 
 #include "../ConstEnums.h"
@@ -34,7 +35,9 @@ namespace SpawnLogic
 		int							mPlantCount;
 		int							mPultCount;
 		int							mMelonCount;
+		int                         mPotCount;
 		bool                        mLastColMelon;
+		float                       mToughness;
 		int							mZombieCount;
 		int							mGargantuarCount;
 	};
@@ -48,7 +51,7 @@ namespace SpawnLogic
 	constexpr int					BOSS_SUMMON_POINTS_ADD  = 5;
 
 	int								GetBossZombieCost(ZombieType theZombieType);
-	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowPlantStates(Board* theBoard);
+	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowStates(Board* theBoard);
 	int								ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats);
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
 	BossFireballDecision			PickBossFireball(Board* theBoard);

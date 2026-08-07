@@ -21,19 +21,19 @@ const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
 	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 3 +
 	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
-	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 5 +
-	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 5 +
-	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 6 +
-	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 6
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 6 +
 	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
-	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 7
+	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 6 +
+	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 8
+	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 8 +
+	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 8 +
 	ZombieType::ZOMBIE_GARGANTUAR       // ggt: 10 -> 12 +
 };
 
 // vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
 const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	0,  // NORMAL (free, budget-floor pick)
-	2,  // DOOR
+	1,  // DOOR
 	2,  // TRAFFIC_CONE
 	2,  // NEWSPAPER
 	3,  // POLEVAULTER
@@ -43,7 +43,7 @@ const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	6,  // POGO
 	6,  // FOOTBALL
 	6,  // CATAPULT
-	7,  // ZAMBONI
+	8,  // ZAMBONI
 	12, // GARGANTUAR
 };
 
@@ -60,13 +60,49 @@ int GetBossZombieCost(ZombieType theZombieType)
 	return 0;
 }
 
+const ZombieType gBossTacticCollapse[3] = {
+	ZombieType::ZOMBIE_LADDER,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_POLEVAULTER
+};
+
+const ZombieType gBossTacticWeak[6] = {
+	ZombieType::ZOMBIE_ZAMBONI,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_GARGANTUAR,
+	ZombieType::ZOMBIE_FOOTBALL,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_PAIL
+};
+
+const ZombieType gBossTacticStrong[3] = {
+	ZombieType::ZOMBIE_FOOTBALL,
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
+	ZombieType::ZOMBIE_POLEVAULTER
+};
+
+template <typename T, typename TF>
+T random_choice_if(const T* arr, size_t len, TF pred, T fallback) {
+    std::vector<T> filtered;
+    for (size_t i = 0; i < len; ++i) {
+        if (pred(arr[i])) {
+            filtered.push_back(arr[i]);
+        }
+    }
+    if (filtered.empty()) {
+        // vx: budget-floor fallback instead of throwing (Vatrix mod)
+        return fallback;
+    }
+    int idx = RandRangeInt(0, static_cast<int>(filtered.size()) - 1);
+    return filtered[idx];
+}
 
 short sign(int value) {
 	return (value > 0) - (value < 0);
 }
 
 // vx: collect per-row plant/zombie stats for the row picker
-std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
+std::array<RowState, MAX_GRID_SIZE_Y> GetRowStates(Board* theBoard)
 {
 	std::array<RowState, MAX_GRID_SIZE_Y> aRowState{};
 
@@ -81,14 +117,29 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 		SeedType aSeedType = aPlant->mSeedType == SeedType::SEED_IMITATER ? aPlant->mImitaterType : aPlant->mSeedType;
 		RowState& aStats = aRowState[aPlant->mRow];
 		aStats.mPlantCount++;
+		if (aSeedType == SeedType::SEED_FLOWERPOT)
+		{
+			aStats.mPotCount++;
+			aStats.mToughness += 0.2f;
+		}
 		if (aSeedType == SeedType::SEED_CABBAGEPULT || aSeedType == SeedType::SEED_KERNELPULT || aSeedType == SeedType::SEED_MELONPULT || aSeedType == SeedType::SEED_WINTERMELON)
 		{
 			aStats.mPultCount++;
-		}
-		if (aSeedType == SeedType::SEED_MELONPULT)
-		{
-			aStats.mMelonCount++;
-			aStats.mLastColMelon |= aPlant->mPlantCol == 0;
+			aStats.mToughness += 1.0f;
+			if (aSeedType == SeedType::SEED_MELONPULT)
+			{
+				aStats.mMelonCount++;
+				aStats.mToughness += 1.0f;
+				if (aPlant->mPlantCol == 0)
+				{
+					aStats.mLastColMelon = true;
+					aStats.mToughness += 0.6f;
+				}
+				else if (aPlant->mPlantCol == 1)
+				{
+					aStats.mToughness += 0.3f;
+				}
+			}
 		}
 	}
 
@@ -139,11 +190,11 @@ int ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y
 
 	if (theRowStats[aRow].mZombieCount >= 2)  // vx: row has 2+ effective zombies
 	{
-		aScore += 2;
+		aScore += 3;
 	}
 	if (aIsPult && theRowStats[aRow].mPultCount <= 3)  // vx: row has <=3 pults
 	{
-		aScore += 3;
+		aScore += 2;
 	}
 	if (aIsPult && thePlant->mPlantCol == 4)  // vx: last column of the 5-col boss board
 	{
@@ -165,16 +216,16 @@ int ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y
 }
 
 template<typename TC, typename TF>
-int PickRow(Board* theBoard, TC compare, TF filter)
+int PickRow(Board* theBoard, const std::array<RowState, MAX_GRID_SIZE_Y>& aRowStates, TC compare, TF filter)
 {
-	auto aRowState = GetRowPlantStates(theBoard);
+	Sexy::PrintF("Toughness: %f %f %f %f %f\n", aRowStates[0].mToughness, aRowStates[1].mToughness, aRowStates[2].mToughness, aRowStates[3].mToughness, aRowStates[4].mToughness);
 
 	int aBestRow = -1;
 	int aTieCount = 0;
 	int aRowCount = theBoard->StageHas6Rows() ? MAX_GRID_SIZE_Y : MAX_GRID_SIZE_Y - 1;
 	for (int aRow = 0; aRow < aRowCount; aRow++)
 	{
-		if (!filter(aRow, aRowState[aRow])) continue;
+		if (!filter(aRow, aRowStates[aRow])) continue;
 
 		if (aBestRow < 0)
 		{
@@ -183,7 +234,7 @@ int PickRow(Board* theBoard, TC compare, TF filter)
 			continue;
 		}
 
-		short aCompareRes = compare(aRowState[aRow], aRowState[aBestRow]);
+		short aCompareRes = compare(aRowStates[aRow], aRowStates[aBestRow]);
 		if (aCompareRes == 1)
 		{
 			aBestRow = aRow;
@@ -290,8 +341,10 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 BossFireballDecision PickBossFireball(Board* theBoard)
 {
 	BossFireballDecision aDecision;
+	auto aRowStates = GetRowStates(theBoard);
 	aDecision.mRow = PickRow(
 		theBoard,
+		aRowStates,
 		[](const RowState& a, const RowState& b) {
 			return sign((a.mPlantCount + a.mMelonCount - a.mZombieCount * 5) -
 				(b.mPlantCount + b.mMelonCount - b.mZombieCount * 5));
@@ -317,7 +370,7 @@ BossFireballDecision PickBossFireball(Board* theBoard)
 	}
 	else if (aIceShroomCount == 1)
 	{
-		aDecision.mIsFireBall = (RandRangeInt(0, 1) == 0);
+		aDecision.mIsFireBall = (RandRangeInt(0, 4) == 0);
 	}
 	else
 	{
@@ -337,7 +390,7 @@ int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCou
 // zombies in the two rows
 BossTargetDecision PickBossRVTarget(Board* theBoard)
 {
-	auto aRowStats = GetRowPlantStates(theBoard);
+	auto aRowStats = GetRowStates(theBoard);
 
 	int aBestRow = -1;
 	int aBestCol = -1;
@@ -405,7 +458,7 @@ int PickBossBungeeCol(Board* theBoard)
 {
 	// vx: pick the 3-column block whose 3 best steals (one per bungee
 	// column) score the highest; first enumerated wins on ties
-	auto aRowStats = GetRowPlantStates(theBoard);
+	auto aRowStats = GetRowStates(theBoard);
 
 	int aBestCol = -1;
 	int aBestScore = 0;
@@ -455,7 +508,7 @@ int PickBossBungeeCol(Board* theBoard)
 BossTargetDecision PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget)
 {
 	// vx: boss bungees take the highest-scoring steal, first enumerated on ties
-	auto aRowStats = GetRowPlantStates(theBoard);
+	auto aRowStats = GetRowStates(theBoard);
 	BossTargetDecision aTarget{ -1, -1 };
 	int aBestScore = -1;
 	for (int x = 0; x < MAX_GRID_SIZE_X; x++)
@@ -508,11 +561,13 @@ BossTargetDecision PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAl
 	return aTarget;
 }
 
-
 // vx: decide summon type and row together
 BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
 	BossSummonDecision aSummon{ZombieType::ZOMBIE_NORMAL, -1};
+
+	// vx: one row-state snapshot per summon decision, shared by all branches
+	auto aRowStates = GetRowStates(theBoard);
 
 	if (theZombieAge < 3500)
 	{
@@ -520,6 +575,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
 		aSummon.mRow = PickRow(
 			theBoard,
+			aRowStates,
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mPultCount - a.mPultCount);
 			},
@@ -531,7 +587,8 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 		// 路障放二四路已有僵尸最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
 		aSummon.mRow = PickRow(
-			theBoard, 
+			theBoard,
+			aRowStates,
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mZombieCount - a.mZombieCount);
 			},
@@ -543,28 +600,57 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 		// 铁桶放一三五路已有僵尸最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
 		aSummon.mRow = PickRow(
-			theBoard, 
+			theBoard,
+			aRowStates,
 			[](const RowState& a, const RowState& b) {
 				return sign(b.mZombieCount - a.mZombieCount);
 			},
 			[](int aRow, const RowState& aRowState) { return aRow == 0 || aRow == 2 || aRow == 4; }
-			// [theBoard, aSummon](int aRow) {
-			// 	return theBoard->RowCanHaveZombieType(aRow, aSummon.mZombieType); 
-			// }
 		);
 	}
 	else
 	{
-		// 随机出僵尸，放在僵尸不多于两个的，且投手最少的地方
-		aSummon.mZombieType = gBossZombieList[RandRangeInt(1, BOSS_ZOMBIE_LIST_COUNT - 1)];
+		// 放在僵尸不多于一个的，且最薄弱的地方
 		aSummon.mRow = PickRow(
-			theBoard, 
+			theBoard,
+			aRowStates,
 			[](const RowState& a, const RowState& b) {
-				return sign(b.mPultCount - a.mPultCount);
+				return sign(b.mToughness - a.mToughness);
 			},
-			[theBoard, aSummon](int aRow, const RowState& aRowState) {
-				return aRowState.mZombieCount <= 2 && theBoard->RowCanHaveZombieType(aRow, aSummon.mZombieType);
+			[](int aRow, const RowState& aRowState) {
+				return aRowState.mZombieCount <= 1;
 			}
+		);
+		if (aSummon.mRow < 0)
+		{
+			aSummon.mRow = RandRangeInt(0, 4);
+		}
+		// 出一个适合的僵尸
+		const ZombieType* aTactic;
+		int aTacticCount;
+		if (aRowStates[aSummon.mRow].mToughness < 2.0f)
+		{
+			aTactic = gBossTacticCollapse;
+			aTacticCount = LENGTH(gBossTacticCollapse);
+		}
+		else if (aRowStates[aSummon.mRow].mToughness < 4.5f)
+		{
+			aTactic = gBossTacticWeak;
+			aTacticCount = LENGTH(gBossTacticWeak);
+		}
+		else
+		{
+			aTactic = gBossTacticStrong;
+			aTacticCount = LENGTH(gBossTacticStrong);
+		}
+		aSummon.mZombieType = random_choice_if(
+			aTactic,
+			aTacticCount,
+			[aSummon, theBoard, theSpawnPoints](ZombieType theZombieType){
+				return GetBossZombieCost(theZombieType) <= theSpawnPoints
+					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType);
+			},
+			ZombieType::ZOMBIE_TRAFFIC_CONE
 		);
 	}
 

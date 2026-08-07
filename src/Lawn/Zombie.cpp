@@ -10314,7 +10314,8 @@ void Zombie::UpdateBoss()
         }
         else if (mBossBungeeCounter == 0)
         {
-            if (Rand(mApp->IsAdventureMode() ? 4 : 2) == 0)  // 1/2 概率砸车（冒险模式为 1/4 概率），否则释放蹦极僵尸
+            // vx: 0-0 launch boss drops the RV at 1/3 probability
+            if (Rand(mBoard->mIsBossOnLaunch ? 3 : (mApp->IsAdventureMode() ? 4 : 2)) == 0)  // 1/2 概率砸车（冒险模式为 1/4 概率），否则释放蹦极僵尸
             {
                 mBossBungeeCounter = RandRangeInt(4000, 5000);
                 BossRVAttack();
