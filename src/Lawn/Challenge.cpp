@@ -328,6 +328,8 @@ Challenge::Challenge()
 	mBeghouledMouseDownY = 0;
 	mChallengeStateCounter = 0;
 	mConveyorBeltCounter = 0;
+	// vx: belt drop counter for the fixed jalapeno schedule
+	mConveyorBeltDropCount = 0;
 	mChallengeScore = 0;
 	mChallengeState = STATECHALLENGE_NORMAL;
 	mShowBowlingLine = false;
@@ -384,10 +386,13 @@ void Challenge::InitLevel()
 	}
 	if (mApp->IsFinalBossLevel())
 	{
+		// vx: fixed starting belt
 		mBoard->mSeedBank->AddSeed(SEED_CABBAGEPULT);
 		mBoard->mSeedBank->AddSeed(SEED_JALAPENO);
-		mBoard->mSeedBank->AddSeed(SEED_CABBAGEPULT);
+		mBoard->mSeedBank->AddSeed(SEED_KERNELPULT);
 		mBoard->mSeedBank->AddSeed(SEED_ICESHROOM);
+		mBoard->mSeedBank->AddSeed(SEED_MELONPULT);
+		mBoard->mSeedBank->AddSeed(SEED_FLOWERPOT);
 		mConveyorBeltCounter = 1000;
 	}
 	if (mApp->mGameMode == GAMEMODE_CHALLENGE_ZEN_GARDEN)
@@ -1738,19 +1743,18 @@ void Challenge::UpdateConveyorBelt()
 	}
 	else if (mApp->IsFinalBossLevel())
 	{
-		aSeedPickCount = 6;
+		// vx: jalapeno removed from the random pool, now only via the fixed every-9th-drop schedule
+		aSeedPickCount = 5;
 		aSeedPickArray[0].mItem = SEED_FLOWERPOT;
 		aSeedPickArray[0].mWeight = 55;
 		aSeedPickArray[1].mItem = SEED_MELONPULT;
 		aSeedPickArray[1].mWeight = 10;
-		aSeedPickArray[2].mItem = SEED_JALAPENO;
-		aSeedPickArray[2].mWeight = 12;
-		aSeedPickArray[3].mItem = SEED_CABBAGEPULT;
-		aSeedPickArray[3].mWeight = 10;
-		aSeedPickArray[4].mItem = SEED_KERNELPULT;
-		aSeedPickArray[4].mWeight = 5;
-		aSeedPickArray[5].mItem = SEED_ICESHROOM;
-		aSeedPickArray[5].mWeight = 8;
+		aSeedPickArray[2].mItem = SEED_CABBAGEPULT;
+		aSeedPickArray[2].mWeight = 10;
+		aSeedPickArray[3].mItem = SEED_KERNELPULT;
+		aSeedPickArray[3].mWeight = 5;
+		aSeedPickArray[4].mItem = SEED_ICESHROOM;
+		aSeedPickArray[4].mWeight = 8;
 	}
 	else if (mApp->IsShovelLevel())
 	{
@@ -1926,9 +1930,19 @@ void Challenge::UpdateConveyorBelt()
 		}
 	}
 
-	SeedType aSeedType = (SeedType)PvzpPickFromWeightedArray(aSeedPickArray, aSeedPickCount);
+	// vx: boss conveyor guarantees a jalapeno on every 9th drop (~11%, close to the original 12%)
+	SeedType aSeedType;
+	if (mApp->IsFinalBossLevel() && mConveyorBeltDropCount % 9 == 8)
+	{
+		aSeedType = SEED_JALAPENO;
+	}
+	else
+	{
+		aSeedType = (SeedType)PvzpPickFromWeightedArray(aSeedPickArray, aSeedPickCount);
+	}
 	mBoard->mSeedBank->AddSeed(aSeedType);
 	mLastConveyorSeedType = aSeedType;
+	mConveyorBeltDropCount++;
 }
 
 void Challenge::UpdateRainingSeeds()

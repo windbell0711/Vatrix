@@ -71,6 +71,8 @@ public:
     ChallengeState          mChallengeState;
     int32_t                 mChallengeStateCounter;
     int32_t                 mConveyorBeltCounter;
+    // vx: belt drops since level start, drives the fixed jalapeno schedule
+    int32_t                 mConveyorBeltDropCount;
     int32_t                 mChallengeScore;
     int32_t                mShowBowlingLine;
     SeedType                mLastConveyorSeedType;

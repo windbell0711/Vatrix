@@ -202,6 +202,8 @@ void Zombie::ZombieInitialize(int theRow, ZombieType theType, bool theVariant, Z
     mBossStompCounter = -1;
     mBossBungeeCounter = -1;
     mBossHeadCounter = -1;
+    // vx: start the fixed 2-bungee/1-RV attack pattern with a bungee
+    mBossBungeeStreak = 0;
     mBodyReanimID = ReanimationID::REANIMATIONID_NULL;
     mTargetPlantID = PlantID::PLANTID_NULL;
     mBossMode = 0;
@@ -9778,6 +9780,8 @@ void Zombie::DrawBossBackArm(Graphics* g, const ZombieDrawPosition& theDrawPos)
 
 void Zombie::BossRVAttack()
 {
+    // vx: RV resets the 2-bungee/1-RV pattern
+    mBossBungeeStreak = 0;
     RemoveColdEffects();
     mZombiePhase = ZombiePhase::PHASE_BOSS_DROP_RV;
     SpawnLogic::BossTargetDecision aTarget = SpawnLogic::PickBossRVTarget(mBoard);
@@ -9936,6 +9940,8 @@ void Zombie::BossStompContact()
 
 void Zombie::BossBungeeAttack()
 {
+    // vx: count toward the 2-bungee/1-RV pattern
+    mBossBungeeStreak++;
     RemoveColdEffects();
     mZombiePhase = ZombiePhase::PHASE_BOSS_BUNGEES_ENTER;
     mBossBungeeCounter = RandRangeInt(4000, 5000);
@@ -10314,8 +10320,8 @@ void Zombie::UpdateBoss()
         }
         else if (mBossBungeeCounter == 0)
         {
-            // vx: 0-0 launch boss drops the RV at 1/3 probability
-            if (Rand(mBoard->mIsBossOnLaunch ? 3 : (mApp->IsAdventureMode() ? 4 : 2)) == 0)  // 1/2 概率砸车（冒险模式为 1/4 概率），否则释放蹦极僵尸
+            // vx: fixed attack pattern: two bungee attacks, then one RV attack
+            if (mBossBungeeStreak >= 2)
             {
                 mBossBungeeCounter = RandRangeInt(4000, 5000);
                 BossRVAttack();

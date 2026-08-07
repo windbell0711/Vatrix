@@ -154,6 +154,8 @@ public:
     int32_t                         mBossBungeeCounter;
     int32_t                         mBossStompCounter;
     int32_t                         mBossHeadCounter;
+    // vx: consecutive bungee attacks since the last RV, drives the 2:1 pattern
+    int32_t                         mBossBungeeStreak;
     ReanimationID                   mBossFireBallReanimID;
     ReanimationID                   mSpecialHeadReanimID;
     int32_t                         mFireballRow;
