@@ -206,7 +206,7 @@ void Zombie::ZombieInitialize(int theRow, ZombieType theType, bool theVariant, Z
     mTargetPlantID = PlantID::PLANTID_NULL;
     mBossMode = 0;
     // vx: spawn-point budget for boss summons (Vatrix mod)
-    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_PER_ACTION;
+    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_INIT;
     mBossFireBallReanimID = ReanimationID::REANIMATIONID_NULL;
     mSpecialHeadReanimID = ReanimationID::REANIMATIONID_NULL;
     mTargetRow = -1;
@@ -9865,6 +9865,8 @@ void Zombie::BossSpawnContact()
     mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(mSummonType);
     Zombie* aZombie = mBoard->AddZombieInRow(mSummonType, mTargetRow, 0);
     aZombie->mPosX = 600.0f;
+    // vx: grant summon points
+    mBossSpawnPoints += SpawnLogic::BOSS_SUMMON_POINTS_ADD;
 }
 
 void Zombie::BossStompAttack()
@@ -9997,8 +9999,8 @@ void Zombie::BossHeadAttack()
     mZombiePhase = ZombiePhase::PHASE_BOSS_HEAD_ENTER;
     mBossHeadCounter = RandRangeInt(4000, 5000);
     
-    // vx: bowing the head to summon resets spawn points to 30 
-    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_PER_ACTION;
+    // vx: bowing the head to summon resets spawn points
+    mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_INIT;
 
     PlayZombieReanim("anim_head_enter", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 12.0f);
     mApp->PlayFoley(FoleyType::FOLEY_HYDRAULIC_SHORT);

@@ -34,6 +34,7 @@ namespace SpawnLogic
 		int							mPlantCount;
 		int							mPultCount;
 		int							mMelonCount;
+		bool                        mLastColMelon;
 		int							mZombieCount;
 		int							mGargantuarCount;
 	};
@@ -42,7 +43,9 @@ namespace SpawnLogic
 	constexpr int BOSS_ZOMBIE_LIST_COUNT = 13;
 	extern const ZombieType			gBossZombieList[BOSS_ZOMBIE_LIST_COUNT];
 	extern const int				gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT];
-	constexpr int					BOSS_SUMMON_POINTS_PER_ACTION = 30;
+	
+	constexpr int					BOSS_SUMMON_POINTS_INIT = 8;
+	constexpr int					BOSS_SUMMON_POINTS_ADD  = 5;
 
 	int								GetBossZombieCost(ZombieType theZombieType);
 	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowPlantStates(Board* theBoard);

@@ -16,24 +16,24 @@ namespace SpawnLogic
 // 为保证平衡，我修改了部分僵尸的点数
 const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_NORMAL,          // zom: 1 -> 0  增加了普僵，作为点数耗尽时的选择
-	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 1 -
+	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 2 -
 	ZombieType::ZOMBIE_TRAFFIC_CONE,    // con: 2 -> 2
 	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
-	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 3
+	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 3 +
 	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
 	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 5 +
 	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 5 +
 	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 6 +
+	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 6
 	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
 	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 7
-	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 7
 	ZombieType::ZOMBIE_GARGANTUAR       // ggt: 10 -> 12 +
 };
 
 // vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
 const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	0,  // NORMAL (free, budget-floor pick)
-	1,  // DOOR
+	2,  // DOOR
 	2,  // TRAFFIC_CONE
 	2,  // NEWSPAPER
 	3,  // POLEVAULTER
@@ -41,9 +41,9 @@ const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	5,  // JACK_IN_THE_BOX
 	5,  // LADDER
 	6,  // POGO
+	6,  // FOOTBALL
 	6,  // CATAPULT
 	7,  // ZAMBONI
-	7,  // FOOTBALL
 	12, // GARGANTUAR
 };
 
@@ -88,6 +88,7 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowPlantStates(Board* theBoard)
 		if (aSeedType == SeedType::SEED_MELONPULT)
 		{
 			aStats.mMelonCount++;
+			aStats.mLastColMelon |= aPlant->mPlantCol == 0;
 		}
 	}
 
