@@ -60,6 +60,12 @@ int GetBossZombieCost(ZombieType theZombieType)
 	return 0;
 }
 
+const ZombieType gBossZombieCheap[3] = {
+	ZombieType::ZOMBIE_NORMAL,
+	ZombieType::ZOMBIE_DOOR,
+	ZombieType::ZOMBIE_NEWSPAPER
+};
+
 const ZombieType gBossTacticCollapse[3] = {
 	ZombieType::ZOMBIE_LADDER,
 	ZombieType::ZOMBIE_POGO,
@@ -133,11 +139,11 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowStates(Board* theBoard)
 				if (aPlant->mPlantCol == 0)
 				{
 					aStats.mLastColMelon = true;
-					aStats.mToughness += 0.6f;
+					aStats.mToughness += 0.4f;
 				}
 				else if (aPlant->mPlantCol == 1)
 				{
-					aStats.mToughness += 0.3f;
+					aStats.mToughness += 0.2f;
 				}
 			}
 		}
@@ -584,8 +590,21 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 	}
 	else if (theZombieAge < 8000)
 	{
-		// 路障放二四路已有僵尸最少的地方
+		// 路障放一五路已有僵尸最少的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
+		aSummon.mRow = PickRow(
+			theBoard,
+			aRowStates,
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mZombieCount - a.mZombieCount);
+			},
+			[](int aRow, const RowState& aRowState) { return aRow == 0 || aRow == 4; }
+		);
+	}
+	else if (theZombieAge < 12500)
+	{
+		// 铁桶放二四路已有僵尸最少的地方
+		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
 		aSummon.mRow = PickRow(
 			theBoard,
 			aRowStates,
@@ -595,17 +614,18 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 			[](int aRow, const RowState& aRowState) { return aRow == 1 || aRow == 3; }
 		);
 	}
-	else if (theZombieAge < 12500)
+	else if (theSpawnPoints <= 8)
 	{
-		// 铁桶放一三五路已有僵尸最少的地方
-		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
-		aSummon.mRow = PickRow(
-			theBoard,
-			aRowStates,
-			[](const RowState& a, const RowState& b) {
-				return sign(b.mZombieCount - a.mZombieCount);
+		// 积累点数
+		aSummon.mRow = RandRangeInt(0, 4);
+		aSummon.mZombieType = random_choice_if(
+			gBossZombieCheap,
+			LENGTH(gBossZombieCheap),
+			[aSummon, theBoard, theSpawnPoints](ZombieType theZombieType){
+				return GetBossZombieCost(theZombieType) <= theSpawnPoints
+					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType);
 			},
-			[](int aRow, const RowState& aRowState) { return aRow == 0 || aRow == 2 || aRow == 4; }
+			ZombieType::ZOMBIE_NORMAL
 		);
 	}
 	else
@@ -633,15 +653,24 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 			aTactic = gBossTacticCollapse;
 			aTacticCount = LENGTH(gBossTacticCollapse);
 		}
-		else if (aRowStates[aSummon.mRow].mToughness < 4.5f)
+		else if (aRowStates[aSummon.mRow].mToughness < 4.0f)
 		{
 			aTactic = gBossTacticWeak;
 			aTacticCount = LENGTH(gBossTacticWeak);
 		}
 		else
 		{
-			aTactic = gBossTacticStrong;
-			aTacticCount = LENGTH(gBossTacticStrong);
+			if (aRowStates[aSummon.mRow].mLastColMelon && aRowStates[aSummon.mRow].mZombieCount > 0)
+			{
+				const ZombieType aCatapult[1] = {ZombieType::ZOMBIE_CATAPULT};
+				aTactic = aCatapult;
+				aTacticCount = LENGTH(aCatapult);
+			}
+			else
+			{
+				aTactic = gBossTacticStrong;
+				aTacticCount = LENGTH(gBossTacticStrong);
+			}
 		}
 		aSummon.mZombieType = random_choice_if(
 			aTactic,
@@ -650,7 +679,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 				return GetBossZombieCost(theZombieType) <= theSpawnPoints
 					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType);
 			},
-			ZombieType::ZOMBIE_TRAFFIC_CONE
+			ZombieType::ZOMBIE_NORMAL
 		);
 	}
 
@@ -665,6 +694,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 		Sexy::PrintF("PickBossSummon: row %d invalid, use default logic\n", aSummon.mRow);
 		aSummon.mRow = theBoard->PickRowForNewZombie(aSummon.mZombieType);  // 原版逻辑
 	}
+	Sexy::PrintF("Summon: typ %d  (Points: %d/%d)\n", aSummon.mZombieType, GetBossZombieCost(aSummon.mZombieType), theSpawnPoints);
 	return aSummon;
 }
 

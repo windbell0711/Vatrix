@@ -47,7 +47,7 @@ namespace SpawnLogic
 	extern const ZombieType			gBossZombieList[BOSS_ZOMBIE_LIST_COUNT];
 	extern const int				gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT];
 	
-	constexpr int					BOSS_SUMMON_POINTS_INIT = 6;
+	constexpr int					BOSS_SUMMON_POINTS_INIT = 8;
 	constexpr int					BOSS_SUMMON_POINTS_ADD  = 5;
 
 	int								GetBossZombieCost(ZombieType theZombieType);
