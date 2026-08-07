@@ -155,13 +155,11 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowStates(Board* theBoard)
 		{
 			continue;
 		}
-		// vx: skip the boss itself
-		if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
-		{
-			continue;
-		}
-		// vx: bungees are airborne, not field zombies; exclude from row counts
-		if (aZombie->mZombieType == ZombieType::ZOMBIE_BUNGEE)
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS ||
+			aZombie->mZombieType == ZombieType::ZOMBIE_BUNGEE ||
+			aZombie->mZombieType == ZombieType::ZOMBIE_NORMAL ||
+			aZombie->mZombieType == ZombieType::ZOMBIE_DOOR ||
+			aZombie->mZombieType == ZombieType::ZOMBIE_NEWSPAPER)
 		{
 			continue;
 		}
@@ -590,15 +588,15 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 	}
 	else if (theZombieAge < 8000)
 	{
-		// 路障放一五路已有僵尸最少的地方
+		// 路障放最薄弱且已有僵尸不超过一个的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
 		aSummon.mRow = PickRow(
 			theBoard,
 			aRowStates,
 			[](const RowState& a, const RowState& b) {
-				return sign(b.mZombieCount - a.mZombieCount);
+				return sign(b.mToughness - a.mToughness);
 			},
-			[](int aRow, const RowState& aRowState) { return aRow == 0 || aRow == 4; }
+			[](int aRow, const RowState& aRowState) { return aRowState.mZombieCount <= 1; }
 		);
 	}
 	else if (theZombieAge < 12500)
