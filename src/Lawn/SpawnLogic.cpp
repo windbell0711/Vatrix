@@ -17,32 +17,32 @@ namespace SpawnLogic
 const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_NORMAL,          // zom: 1 -> 0  增加了普僵，作为点数耗尽时的选择
 	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 2 -
-	ZombieType::ZOMBIE_TRAFFIC_CONE,    // con: 2 -> 2
 	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
-	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 3 +
-	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 4
+	ZombieType::ZOMBIE_TRAFFIC_CONE,    // con: 2 -> 4 +
+	ZombieType::ZOMBIE_POLEVAULTER,     // pol: 2 -> 4 +
+	ZombieType::ZOMBIE_PAIL,            // bkt: 4 -> 6 +
 	ZombieType::ZOMBIE_JACK_IN_THE_BOX, // jac: 3 -> 6 +
 	ZombieType::ZOMBIE_CATAPULT,        // ctp: 5 -> 6 +
 	ZombieType::ZOMBIE_LADDER,          // lad: 4 -> 6 +
-	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 8
+	ZombieType::ZOMBIE_FOOTBALL,        // ftb: 7 -> 8 +
 	ZombieType::ZOMBIE_POGO,            // pog: 4 -> 8 +
 	ZombieType::ZOMBIE_ZAMBONI,         // zbn: 7 -> 8 +
-	ZombieType::ZOMBIE_GARGANTUAR       // ggt: 10 -> 12 +
+	ZombieType::ZOMBIE_GARGANTUAR,      // ggt: 10 -> 12 +
 };
 
 // vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
 const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	0,  // NORMAL (free, budget-floor pick)
-	1,  // DOOR
-	2,  // TRAFFIC_CONE
+	2,  // DOOR
 	2,  // NEWSPAPER
-	3,  // POLEVAULTER
-	4,  // PAIL
-	5,  // JACK_IN_THE_BOX
-	5,  // LADDER
-	6,  // POGO
-	6,  // FOOTBALL
+	4,  // TRAFFIC_CONE
+	4,  // POLEVAULTER
+	6,  // PAIL
+	6,  // JACK_IN_THE_BOX
 	6,  // CATAPULT
+	6,  // LADDER
+	8,  // FOOTBALL
+	8,  // POGO
 	8,  // ZAMBONI
 	12, // GARGANTUAR
 };
@@ -337,7 +337,7 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
 }
 
-// vx: fireball targets the row with the most plants + melons, minus 5 per effective zombie
+// vx: fireball targets the row with the most mToughness, minus 5 per effective zombie
 BossFireballDecision PickBossFireball(Board* theBoard)
 {
 	BossFireballDecision aDecision;
@@ -346,8 +346,8 @@ BossFireballDecision PickBossFireball(Board* theBoard)
 		theBoard,
 		aRowStates,
 		[](const RowState& a, const RowState& b) {
-			return sign((a.mPlantCount + a.mMelonCount - a.mZombieCount * 5) -
-				(b.mPlantCount + b.mMelonCount - b.mZombieCount * 5));
+			return sign((a.mToughness - a.mZombieCount * 5) -
+				(b.mToughness - b.mZombieCount * 5));
 		},
 		[](int aRow, const RowState& aRowState) { return true; }
 	);
