@@ -77,13 +77,14 @@ const ZombieType gBossTacticWeak[6] = {
 	ZombieType::ZOMBIE_POGO,
 	ZombieType::ZOMBIE_GARGANTUAR,
 	ZombieType::ZOMBIE_FOOTBALL,
-	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
 	ZombieType::ZOMBIE_PAIL
 };
 
-const ZombieType gBossTacticStrong[3] = {
+const ZombieType gBossTacticStrong[4] = {
 	ZombieType::ZOMBIE_FOOTBALL,
 	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
+	ZombieType::ZOMBIE_GARGANTUAR,
 	ZombieType::ZOMBIE_POLEVAULTER
 };
 
@@ -350,36 +351,37 @@ BossFireballDecision PickBossFireball(Board* theBoard)
 		theBoard,
 		aRowStates,
 		[](const RowState& a, const RowState& b) {
-			return sign((a.mToughness - a.mZombieCount * 5) -
-				(b.mToughness - b.mZombieCount * 5));
+			return sign((a.mToughness - a.mZombieCount * 5) - (b.mToughness - b.mZombieCount * 5));
 		},
 		[](int aRow, const RowState& aRowState) { return true; }
 	);
 
 	// vx: ball type depends on ice-shrooms on the conveyor belt
-	int aIceShroomCount = 0;
+	int aIceShroomCount = 0, aJalapenoCount = 0;
 	if (theBoard->mSeedBank)
 	{
 		for (int i = 0; i < theBoard->mSeedBank->mNumPackets; i++)
 		{
-			if (theBoard->mSeedBank->mSeedPackets[i].mPacketType == SeedType::SEED_ICESHROOM)
+			switch (theBoard->mSeedBank->mSeedPackets[i].mPacketType)
 			{
+			case SeedType::SEED_ICESHROOM:
 				aIceShroomCount++;
+				break;
+			case SeedType::SEED_JALAPENO:
+				aJalapenoCount++;
+				break;
 			}
 		}
 	}
-	if (aIceShroomCount == 0)
-	{
+	if (aJalapenoCount == 0)
 		aDecision.mIsFireBall = true;
-	}
+	else if (aIceShroomCount == 0)
+		aDecision.mIsFireBall = true;
 	else if (aIceShroomCount == 1)
-	{
 		aDecision.mIsFireBall = (RandRangeInt(0, 4) == 0);
-	}
 	else
-	{
 		aDecision.mIsFireBall = false;
-	}
+	
 	return aDecision;
 }
 

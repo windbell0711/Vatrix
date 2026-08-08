@@ -2048,6 +2048,20 @@ void Zombie::UpdateZombieJackInTheBox()
 {
     if (mZombiePhase == ZombiePhase::PHASE_JACK_IN_THE_BOX_RUNNING)
     {
+        // vx: boss fight: damaged jacks (health < 200) in the set age windows pop immediately
+        // mZombieAge is in centiseconds : [4.40,7.54) | [13.22,22.68)
+        if (mApp->IsFinalBossLevel() && mBodyHealth < 200 &&
+            ((mZombieAge >= 440 && mZombieAge < 754) || (mZombieAge >= 1322 && mZombieAge < 2268)))
+        {
+            mPhaseCounter = 0;
+        }
+        
+        // vx: boss fight: damaged jacks (health < 300) in the set age window pop immediately
+        if (mApp->IsFinalBossLevel() && mBodyHealth < 300 && mZombieAge == 750)
+        {
+            mPhaseCounter = 0;
+        }
+
         if (mPhaseCounter <= 0 && mHasHead)
         {
             mPhaseCounter = 110;
