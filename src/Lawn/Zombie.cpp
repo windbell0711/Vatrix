@@ -117,7 +117,13 @@ constinit const ZombieDefinition gZombieDefs[NUM_ZOMBIE_TYPES] = {
 const ZombieDefinition& GetZombieDefinition(ZombieType theZombieType)
 {
     PVZP_ASSERT(theZombieType >= 0 && theZombieType < NUM_ZOMBIE_TYPES);
-    PVZP_ASSERT(gZombieDefs[theZombieType].mZombieType == theZombieType);
+    // vx: release-active guard; a garbage type previously OOB-read the def array
+    // and crashed while the boss summon loaded the zombie reanim (growing-flower bug)
+    if (theZombieType < ZombieType::ZOMBIE_NORMAL || theZombieType >= ZombieType::NUM_ZOMBIE_TYPES)
+    {
+        PvzpTraceAndLogLn("WARNING: GetZombieDefinition(%d) out of range, fallback to NORMAL", static_cast<int>(theZombieType));
+        return gZombieDefs[ZombieType::ZOMBIE_NORMAL];
+    }
 
     return gZombieDefs[theZombieType];
 }

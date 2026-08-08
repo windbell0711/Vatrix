@@ -25,6 +25,9 @@
 #include <stdexcept>
 #include <fstream>
 #include <exception>
+#if defined(__GNUC__)
+#include <unwind.h>
+#endif
 
 #ifdef __SWITCH__
 #include <switch.h>
@@ -180,6 +183,58 @@ void PvzpAssertInitForApp()
 	PvzpLogLn("Started %" PRIu64, static_cast<uint64_t>(time(nullptr)));
 }
 
+// vx: stack-trace helpers for crash logs
+struct VxTraceState
+{
+	void**		mFrames;
+	int			mCount;
+	uintptr_t	mBase;
+};
+
+static _Unwind_Reason_Code VxTraceCallback(struct _Unwind_Context* aContext, void* anArg)
+{
+	VxTraceState* aState = static_cast<VxTraceState*>(anArg);
+	if (aState->mCount >= 32)
+		return _URC_END_OF_STACK;
+	aState->mFrames[aState->mCount++] = (void*)_Unwind_GetIP(aContext);
+	return _URC_NO_REASON;
+}
+
+#ifdef _WIN32
+static bool VxAddressInExe(uintptr_t anAddress)
+{
+	HMODULE aModule = nullptr;
+	if (GetModuleHandleExA(
+			GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			reinterpret_cast<LPCSTR>(anAddress), &aModule))
+		return aModule == GetModuleHandleA(nullptr);
+	return false;
+}
+#endif
+
+static std::string VxFormatStackTrace()
+{
+	std::string aResult = "STACK:\n";
+#if defined(__GNUC__)
+	void* aFrames[32];
+	VxTraceState aState = { aFrames, 0, 0 };
+	_Unwind_Backtrace(&VxTraceCallback, &aState);
+#ifdef _WIN32
+	aState.mBase = (uintptr_t)GetModuleHandleA(nullptr);
+#endif
+	for (int i = 0; i < aState.mCount; i++)
+	{
+		uintptr_t aAddress = (uintptr_t)aFrames[i];
+		if (aState.mBase && aAddress >= aState.mBase && VxAddressInExe(aAddress))
+			aResult += Sexy::StrFormat("  #%02d 0x%llX (rva, exe)\n",
+				i, (unsigned long long)(aAddress - aState.mBase));
+		else
+			aResult += Sexy::StrFormat("  #%02d %p (other module)\n", i, (void*)aAddress);
+	}
+#endif
+	return aResult;
+}
+
 // vx: crash handler: log unhandled exceptions and SEH crashes, then show a message box
 static void VxTerminateHandler()
 {
@@ -197,6 +252,7 @@ static void VxTerminateHandler()
 	}
 
 	PvzpLogStringLn(aMessage.c_str());
+	PvzpLogStringLn(VxFormatStackTrace().c_str());
 
 #ifdef _WIN32
 	std::string aBox = aMessage + "\n\nError details were written to:\n" + gLogFileName;
@@ -219,8 +275,10 @@ static LONG WINAPI VxSehExceptionFilter(EXCEPTION_POINTERS* aExceptionInfo)
 	}
 
 	PvzpLogStringLn(Sexy::StrFormat(
-		"CRASH: SEH exception 0x%08X at %p (module: %s)",
-		static_cast<unsigned>(aRecord->ExceptionCode), aRecord->ExceptionAddress, aModuleName).c_str());
+		"CRASH: SEH exception 0x%08X at %p (rva 0x%llX, module: %s)",
+		static_cast<unsigned>(aRecord->ExceptionCode), aRecord->ExceptionAddress,
+		(unsigned long long)((uintptr_t)aRecord->ExceptionAddress - (uintptr_t)GetModuleHandleA(nullptr)), aModuleName).c_str());
+	PvzpLogStringLn(VxFormatStackTrace().c_str());
 
 	std::string aBox = Sexy::StrFormat(
 		"Vatrix crashed (0x%08X at %p, module: %s).\nError details were written to:\n%s",

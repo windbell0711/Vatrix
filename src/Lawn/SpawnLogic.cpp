@@ -692,7 +692,7 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 		Sexy::PrintF("PickBossSummon: row %d invalid, use default logic\n", aSummon.mRow);
 		aSummon.mRow = theBoard->PickRowForNewZombie(aSummon.mZombieType);  // 原版逻辑
 	}
-	Sexy::PrintF("Summon: typ %d  (Points: %d/%d)\n", aSummon.mZombieType, GetBossZombieCost(aSummon.mZombieType), theSpawnPoints);
+	PvzpTraceAndLogLn("Summon: typ %d row %d  (Points: %d/%d)", static_cast<int>(aSummon.mZombieType), aSummon.mRow, GetBossZombieCost(aSummon.mZombieType), theSpawnPoints);
 	return aSummon;
 }
 

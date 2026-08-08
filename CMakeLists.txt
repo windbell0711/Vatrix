@@ -110,6 +110,10 @@ else()
 endif()
 
 option(PVZ_DEBUG "Enable PVZ_DEBUG macro to enable cheats, hidden features, etc." ${PVZ_DEBUG_DEFAULT})
+# vx: keep debug info in release builds so crash-log stack RVAs can be symbolized with addr2line
+if(CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE MATCHES "^[Rr][Ee][Ll][Ee][Aa][Ss][Ee]$" AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
+	add_compile_options(-g)
+endif()
 option(CONSOLE "Show console on Windows" ${WIN_CONSOLE_DEFAULT})
 option(DO_FIX_BUGS "Define DO_FIX_BUGS macro (Community fixes for original game bugs of 1.2.0.1073 GOTY Edition)" OFF)
 

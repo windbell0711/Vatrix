@@ -352,6 +352,13 @@ void Reanimation::ReanimationDelete()
 void Reanimation::ReanimationInitializeType(float theX, float theY, ReanimationType theReanimType)
 {
 	PVZP_ASSERT(theReanimType >= 0 && theReanimType < gReanimatorDefCount);
+	// vx: release-active guard; invalid type previously OOB-read gReanimatorDefArray
+	// inside ReanimatorEnsureDefinitionLoaded and crashed the boss summon
+	if (static_cast<unsigned>(theReanimType) >= gReanimatorDefCount)
+	{
+		PvzpTraceAndLogLn("WARNING: ReanimationInitializeType(%d) out of range, count %u", static_cast<int>(theReanimType), gReanimatorDefCount);
+		return;
+	}
 	ReanimatorEnsureDefinitionLoaded(theReanimType, false);
 	mReanimationType = theReanimType;
 	ReanimationInitialize(theX, theY, &gReanimatorDefArray[theReanimType]);
