@@ -16,6 +16,21 @@ ninja -C build
 - Useful CMake options: `PVZ_DEBUG` (debug keys/display), `CONSOLE` (Windows console).
 - No unit tests; verify by running the game manually through the main flow.
 
+## Packaging (Windows 发布包)
+When the user asks to 打包/发布, produce a Release build and bundle it:
+
+```bash
+cmake -G Ninja -B build-release -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=D:/msys64/ucrt64/bin/gcc.exe \
+  -DCMAKE_CXX_COMPILER=D:/msys64/ucrt64/bin/g++.exe
+ninja -C build-release
+```
+
+- 显式指定 MinGW 编译器(默认 cmake 可能误选 MSVC)。Release 默认 CONSOLE=OFF、PVZ_DEBUG=OFF;`build-release/` 已被 git 忽略。
+- 运行时 DLL 来自 `D:/msys64/ucrt64/bin/`:`SDL2.dll`、`libopenmpt-0.dll`、`libpng16-16.dll`、`libjpeg-8.dll`、`zlib1.dll`、`libgcc_s_seh-1.dll`、`libstdc++-6.dll`、`libwinpthread-1.dll`。用 `objdump -p build-release/pvz-portable.exe | Select-String "DLL Name"` 核对;SDL Mixer X 为静态链接,无需带 mixer DLL。
+- 组装 `dist/pvz-portable-win64/`(`dist/` 已被 git 忽略):exe + 上述 DLL + LICENSE + COPYING + `使用说明.txt`(写明玩家需自备 `main.pak` 和 `properties/`,包内不得包含)。
+- 有新提交后重新打包:只重跑 `ninja -C build-release` 并覆盖 exe、重新压缩即可;DLL 未变则无需重拷。
+
 ## Development
 When user requests you to "commit" or "提交", please follow the following steps:
 1. Check `git diff` to summarize the changes.

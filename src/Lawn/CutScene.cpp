@@ -845,6 +845,11 @@ void CutScene::StartLevelIntro()
 	{
 		mCrazyDaveDialogStart = 2300;
 	}
+	else if (mBoard->mIsBossOnLaunch)
+	{
+		// vx: 0-0 intro dialogue; lines live in Properties/VatrixStrings.txt
+		mCrazyDaveDialogStart = 9000;
+	}
 	else if (mApp->mGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM)
 	{
 		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_TREE_FOOD] < PURCHASE_COUNT_OFFSET)

@@ -318,3 +318,15 @@ elseif (IOS)
 			PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	endif()
 endif()
+
+# vx: sync the mod string table into the build's properties dir so dialogue edits apply without manual copying
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
+	add_custom_command(
+		OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/properties"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt"
+			"${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt"
+		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
+	add_custom_target(vatrix_strings ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt")
+endif()

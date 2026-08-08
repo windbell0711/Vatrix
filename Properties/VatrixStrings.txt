@@ -1,0 +1,5 @@
+[CRAZY_DAVE_9000] Something is happening. 
+[CRAZY_DAVE_9001] Did you notice?
+[CRAZY_DAVE_9002] High above the wisdom tree, he is watching.
+[CRAZY_DAVE_9003] Here's the collision,
+[CRAZY_DAVE_9004] and integration OR substitution.

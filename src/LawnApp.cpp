@@ -1773,6 +1773,11 @@ void LawnApp::LoadingThreadProc()
 		return;
 
 	PvzpStringListLoad("Properties/LawnStrings.txt");
+	// vx: mod-provided strings (dialogue, etc.) live in a separate file so content is editable without rebuilding
+	if (FileExists("Properties/VatrixStrings.txt"))
+	{
+		PvzpStringListLoad("Properties/VatrixStrings.txt");
+	}
 	PvzpStringListReadFile("Properties/ZombatarTOS.txt");
 
 	// Load localized properties AFTER LawnStrings so they can override string values
