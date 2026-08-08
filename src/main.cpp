@@ -22,6 +22,7 @@
 #include "LawnApp.h"
 #include "Resources.h"
 #include "PvzpLib/PvzpStringFile.h"
+#include "PvzpLib/PvzpDebug.h"
 #include <cstdlib>
 #include <vector>
 using namespace Sexy;
@@ -91,6 +92,9 @@ int main(int argc, char** argv)
 #ifdef _WIN32
 	BuildUtf8ArgsFromWin32(argc, argv);
 #endif
+
+	// vx: install crash handler before anything else
+	PvzpInstallCrashHandler();
 
 	PvzpStringListSetColors(gLawnStringFormats, gLawnStringFormatCount);
 	gExtractResourcesByName = Sexy::ExtractResourcesByName;

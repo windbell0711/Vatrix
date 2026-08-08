@@ -48,6 +48,8 @@ void				PvzpAssertFailed(const char* theCondition, const char* theFile, int theL
 /*inline*/ void*	PvzpMalloc(int theSize);
 /*inline*/ void		PvzpFree(void* theBlock);
 void				PvzpAssertInitForApp();
+// vx: install crash logging handler (call once at startup)
+void				PvzpInstallCrashHandler();
 
 #ifdef PVZ_DEBUG
 #define PVZP_ASSERT(condition, ...) { \

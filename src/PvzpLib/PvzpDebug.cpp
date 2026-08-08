@@ -24,9 +24,14 @@
 #include <stdarg.h>
 #include <stdexcept>
 #include <fstream>
+#include <exception>
 
 #ifdef __SWITCH__
 #include <switch.h>
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
 #endif
 
 #include "PvzpDebug.h"
@@ -37,7 +42,8 @@
 
 using namespace Sexy;
 
-static char gLogFileName[512];
+// vx: default path; replaced with appdata userdata/log.txt at PvzpAssertInitForApp
+static char gLogFileName[512] = "vatrix_crash.txt";
 static char gDebugDataFolder[512];
 
 void PvzpErrorMessageBox(const char* theMessage, const char* theTitle)
@@ -100,7 +106,7 @@ void PvzpLogLn(const char* theFormat, ...)
 
 void PvzpLogStringLn(const char* theMsg)
 {
-#ifdef PVZ_DEBUG
+	// vx: always write log.txt (release builds too)
 	std::ofstream f(Sexy::PathFromU8(gLogFileName), std::ios::app | std::ios::binary);
 	if (!f)
 	{
@@ -113,7 +119,6 @@ void PvzpLogStringLn(const char* theMsg)
 	{
 		Sexy::LogError("Failed to write to log file");
 	}
-#endif
 }
 
 void PvzpTrace(const char* theFormat, ...)
@@ -173,4 +178,63 @@ void PvzpAssertInitForApp()
 	PVZP_ASSERT(strlen(gLogFileName) < 512);
 
 	PvzpLogLn("Started %" PRIu64, static_cast<uint64_t>(time(nullptr)));
+}
+
+// vx: crash handler: log unhandled exceptions and SEH crashes, then show a message box
+static void VxTerminateHandler()
+{
+	std::string aMessage = "CRASH: unhandled C++ exception (unknown type)";
+	try
+	{
+		std::rethrow_exception(std::current_exception());
+	}
+	catch (const std::exception& aException)
+	{
+		aMessage = std::string("CRASH: unhandled C++ exception: ") + aException.what();
+	}
+	catch (...)
+	{
+	}
+
+	PvzpLogStringLn(aMessage.c_str());
+
+#ifdef _WIN32
+	std::string aBox = aMessage + "\n\nError details were written to:\n" + gLogFileName;
+	MessageBoxA(nullptr, aBox.c_str(), "Vatrix crashed", MB_OK | MB_ICONERROR);
+#endif
+	std::abort();
+}
+
+#ifdef _WIN32
+static LONG WINAPI VxSehExceptionFilter(EXCEPTION_POINTERS* aExceptionInfo)
+{
+	EXCEPTION_RECORD* aRecord = aExceptionInfo->ExceptionRecord;
+	char aModuleName[MAX_PATH] = "?";
+	HMODULE aModule = nullptr;
+	if (GetModuleHandleExA(
+			GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+			static_cast<LPCSTR>(aRecord->ExceptionAddress), &aModule))
+	{
+		GetModuleFileNameA(aModule, aModuleName, MAX_PATH);
+	}
+
+	PvzpLogStringLn(Sexy::StrFormat(
+		"CRASH: SEH exception 0x%08X at %p (module: %s)",
+		static_cast<unsigned>(aRecord->ExceptionCode), aRecord->ExceptionAddress, aModuleName).c_str());
+
+	std::string aBox = Sexy::StrFormat(
+		"Vatrix crashed (0x%08X at %p, module: %s).\nError details were written to:\n%s",
+		static_cast<unsigned>(aRecord->ExceptionCode), aRecord->ExceptionAddress, aModuleName, gLogFileName);
+	MessageBoxA(nullptr, aBox.c_str(), "Vatrix crashed", MB_OK | MB_ICONERROR);
+	TerminateProcess(GetCurrentProcess(), 1);
+	return EXCEPTION_EXECUTE_HANDLER; // unreachable
+}
+#endif
+
+void PvzpInstallCrashHandler()
+{
+	std::set_terminate(&VxTerminateHandler);
+#ifdef _WIN32
+	SetUnhandledExceptionFilter(&VxSehExceptionFilter);
+#endif
 }
