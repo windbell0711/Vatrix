@@ -929,15 +929,7 @@ void CutScene::StartLevelIntro()
 		}
 		else
 		{
-			// vx: "Level 0-0" intro banner for the launch-to-boss game (Vatrix mod)
-			if (mBoard->mIsBossOnLaunch)
-			{
-				aHouseMessage = PvzpStringTranslate("[LEVEL]") + " 0-0";
-			}
-			else
-			{
-				aHouseMessage = mApp->GetCurrentChallengeDef().mChallengeName;
-			}
+			aHouseMessage = mApp->GetCurrentChallengeDef().mChallengeName;
 		}
 	}
 

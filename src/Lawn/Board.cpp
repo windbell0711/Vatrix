@@ -6744,15 +6744,6 @@ void Board::DrawLevel(Graphics* g)
 	}
 	else
 	{
-		// vx: show "Level 0-0" for the launch-to-boss game (Vatrix mod)
-		if (mIsBossOnLaunch)
-		{
-			aLevelStr = PvzpStringTranslate("[LEVEL]") + " 0-0";
-		}
-		else
-		{
-			aLevelStr = mApp->GetCurrentChallengeDef().mChallengeName;
-		}
 		if (mApp->IsSurvivalMode() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_LAST_STAND)
 		{
 			int aFlags = GetSurvivalFlagsCompleted();

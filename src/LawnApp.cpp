@@ -580,10 +580,10 @@ void LawnApp::KillGameSelector()
 }
 
 // GOTY @Patoke: 0x452CB0
-void LawnApp::ShowAwardScreen(AwardType theAwardType, bool theShowAchievements)
+void LawnApp::ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, bool theIsBossNote)
 {
 	mGameScene = GameScenes::SCENE_AWARD;
-	mAwardScreen = new AwardScreen(this, theAwardType, theShowAchievements);
+	mAwardScreen = new AwardScreen(this, theAwardType, theShowAchievements, theIsBossNote);
 	mAwardScreen->Resize(0, 0, mWidth, mHeight);
 	mWidgetManager->AddWidget(mAwardScreen);
 	mWidgetManager->BringToBack(mAwardScreen);
@@ -1531,6 +1531,9 @@ void LawnApp::CheckForGameEnd()
 
 	bool aUnlockedNewChallenge = UpdatePlayerProfileForFinishingLevel();
 
+	// vx: ends with a note award instead of jumping to the challenge screen
+	bool aIsBossOnLaunch = mBoard->mIsBossOnLaunch;
+
 	if (IsAdventureMode())
 	{
 		int aLevel = mBoard->mLevel;
@@ -1611,7 +1614,11 @@ void LawnApp::CheckForGameEnd()
 	{
 		KillBoard();
 
-		if (aUnlockedNewChallenge && HasFinishedAdventure())
+		if (aIsBossOnLaunch)
+		{
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, true);
+		}
+		else if (aUnlockedNewChallenge && HasFinishedAdventure())
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
 		}

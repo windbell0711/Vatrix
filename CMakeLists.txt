@@ -328,5 +328,16 @@ if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
 			"${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt"
 			"${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt"
 		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
-	add_custom_target(vatrix_strings ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt")
+	set(VATRIX_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt")
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png")
+		add_custom_command(
+			OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png"
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/properties"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png"
+				"${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png"
+			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png")
+		list(APPEND VATRIX_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png")
+	endif()
+	add_custom_target(vatrix_strings ALL DEPENDS ${VATRIX_SYNC_DEPS})
 endif()

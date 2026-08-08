@@ -189,7 +189,7 @@ public:
 	void							PreNewGame(GameMode theGameMode, bool theLookForSavedGame);
 	void							ShowGameSelector();
 	void							KillGameSelector();
-	void							ShowAwardScreen(AwardType theAwardType, bool theShowAchievements); // @Patoke: add argument
+	void							ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, bool theIsBossNote = false); // vx: boss-note arg
 	void							KillAwardScreen();
 	void							ShowSeedChooserScreen();
 	void							KillSeedChooserScreen();

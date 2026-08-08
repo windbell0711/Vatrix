@@ -413,6 +413,7 @@ main.unpak
 properties/*
 Properties/*
 !Properties/VatrixStrings.txt
+!Properties/VX_HINT_1.png
 tools/res/
 tools/res-bak/
 tools/run/

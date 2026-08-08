@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "graphics/GLImage.h"
 #include "../Plant.h"
 #include "../Board.h"
 #include "GameButton.h"
@@ -38,7 +39,7 @@
 #include "AchievementsScreen.h"
 
 // GOTY @Patoke: 0x4063E0
-AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements)
+AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements, bool theIsBossNote)
 {
 	mApp = theApp;
 	mClip = false;
@@ -46,6 +47,7 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 	mAchievementAnimTime = 0;
 	mAwardType = theAwardType;
 	mShowingAchievements = theShowingAchievements;
+	mIsBossNoteAward = theIsBossNote;
 
 	mLoadedResourceNames.push_back("DelayLoad_AwardScreen");
 
@@ -98,6 +100,14 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mLoadedResourceNames.push_back("DelayLoad_Background1");
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNote");
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNoteHelp");
+	}
+	else if (mIsBossNoteAward)
+	{
+		mLoadedResourceNames.push_back("DelayLoad_Background1");
+		mLoadedResourceNames.push_back("DelayLoad_ZombieNote");
+		mLoadedResourceNames.push_back("DelayLoad_ZombieNote1");
+		// vx: custom note content image (falls back to the built-in placeholder if missing)
+		mNoteCustomImage = mApp->GetImage("Properties/VX_HINT_1.png");
 	}
 	else if (mApp->IsAdventureMode())
 	{
@@ -205,6 +215,8 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mMenuButton->mBtnNoDraw = true;
 		mMenuButton->mDisabled = true;
 	}
+	else if (mIsBossNoteAward)
+		mStartButton->SetLabel("[CONTINUE_BUTTON]");
 	else if (!mApp->IsAdventureMode())
 	{
 		mStartButton->SetLabel("[MAIN_MENU_BUTTON]");
@@ -262,6 +274,7 @@ AwardScreen::~AwardScreen()
 	if (mStartButton) delete mStartButton;
 	if (mContinueButton) delete mContinueButton; // @Patoke: add new button
 	if (mMenuButton) delete mMenuButton;
+	if (mNoteCustomImage) delete mNoteCustomImage; // vx: custom note PNG
 }
 
 bool AwardScreen::IsPaperNote()
@@ -270,7 +283,8 @@ bool AwardScreen::IsPaperNote()
 		return true;
 
 	int aLevel = mApp->mPlayerInfo->GetLevel();
-	return mApp->IsAdventureMode() && (aLevel == 10 || aLevel == 20 || aLevel == 30 || aLevel == 40 || aLevel == 50);
+	return (mApp->IsAdventureMode() && (aLevel == 10 || aLevel == 20 || aLevel == 30 || aLevel == 40 || aLevel == 50))
+		|| mIsBossNoteAward;  // vx: 0-0 note award
 }
 
 void AwardScreen::DrawBottom(Graphics* g, std::string_view theTitle, std::string_view theAward, std::string_view theMessage)
@@ -324,6 +338,15 @@ void AwardScreen::Draw(Graphics* g)
 	}
 	else if (mAwardType != AWARD_ACHIEVEMENTONLY) // @Patoke: add check
 	{
+		// vx: award shows a paper note with a placeholder picture
+		if (mIsBossNoteAward)
+		{
+			g->DrawImage(Sexy::IMAGE_BACKGROUND1, -700, -300, 2800, 1200);
+			g->DrawImage(Sexy::IMAGE_ZOMBIE_NOTE, 80, 80);
+			g->DrawImage(mNoteCustomImage ? mNoteCustomImage : Sexy::IMAGE_ZOMBIE_NOTE1, 131, 132);  // vx: custom note content, fallback to placeholder
+			PvzpDrawString(g, "[FOUND_NOTE]", BOARD_WIDTH / 2, 70, Sexy::FONT_DWARVENTODCRAFT24, Color(255, 200, 0, 255), DS_ALIGN_CENTER);
+		}
+		else
 		if (!mApp->IsAdventureMode())
 		{
 			if (mApp->EarnedGoldTrophy())

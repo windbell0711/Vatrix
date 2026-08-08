@@ -681,7 +681,8 @@ void Zombie::ZombieInitialize(int theRow, ZombieType theType, bool theVariant, Z
         mZombieRect = Rect(700, 80, 90, 430);
         mZombieAttackRect = Rect(0, 0, 0, 0);
         aRenderLayer = RenderLayer::RENDER_LAYER_TOP;
-        mBodyHealth = mApp->IsAdventureMode() ? 40000 : 60000;
+        // vx: fix boss health to 60000
+        mBodyHealth = 60000;  // mBodyHealth = mApp->IsAdventureMode() ? 40000 : 60000;
         if (IsOnBoard())
         {
             PlayZombieReanim("anim_enter", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 0, 12.0f);
@@ -7206,6 +7207,12 @@ bool Zombie::TrySpawnLevelAward()
     }
 
     CoinType aCoinType;
+    // vx: gives a paper note instead of the money bag/trophy
+    if (mBoard->mIsBossOnLaunch)
+    {
+        aCoinType = CoinType::COIN_NOTE;
+    }
+    else
     if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
     {
         aCoinType = CoinType::COIN_NONE;
