@@ -7825,6 +7825,59 @@ static void PvzpCrash()
 
 void Board::KeyChar(char theChar)
 {
+	// vx: kill-all-zombies hotkey, works in release too (boss excluded; use 'd' for the boss)
+	if (theChar == 'k')
+	{
+		for (Zombie* aZombie : mZombies)
+		{
+			if (aZombie->mDead || aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
+				continue;
+			if (!aZombie->IsDeadOrDying())
+				aZombie->DieNoLoot();
+		}
+		PvzpTraceAndLogLn("Hotkey: killed all zombies");
+		return;
+	}
+
+	// vx: boss-tuning keys work in every build (no debug mode / -cheat needed)
+	if (mApp->mGameScene == GameScenes::SCENE_PLAYING)
+	{
+		Zombie* aBossZombie = GetBossZombie();
+		if (aBossZombie && !aBossZombie->IsDeadOrDying())
+		{
+			if (theChar == 'b')
+			{
+				aBossZombie->mBossBungeeCounter = 0;
+				return;
+			}
+			if (theChar == 'u')
+			{
+				aBossZombie->mSummonCounter = 0;
+				return;
+			}
+			if (theChar == 's')
+			{
+				aBossZombie->mBossStompCounter = 0;
+				return;
+			}
+			if (theChar == 'r')
+			{
+				aBossZombie->BossRVAttack();
+				return;
+			}
+			if (theChar == 'h')
+			{
+				aBossZombie->mBossHeadCounter = 0;
+				return;
+			}
+			if (theChar == 'd')
+			{
+				aBossZombie->TakeDamage(10000, 0U);
+				return;
+			}
+		}
+	}
+
 	if (!mApp->mDebugKeysEnabled)
 		return;
 
@@ -8172,45 +8225,7 @@ void Board::KeyChar(char theChar)
 		}
 	}
 
-	if (mApp->mGameScene != GameScenes::SCENE_PLAYING)
-	{
-		return;
-	}
 
-	Zombie* aBossZombie = GetBossZombie();
-	if (aBossZombie && !aBossZombie->IsDeadOrDying())
-	{
-		if (theChar == 'b')
-		{
-			aBossZombie->mBossBungeeCounter = 0;
-			return;
-		}
-		if (theChar == 'u')
-		{
-			aBossZombie->mSummonCounter = 0;
-			return;
-		}
-		if (theChar == 's')
-		{
-			aBossZombie->mBossStompCounter = 0;
-			return;
-		}
-		if (theChar == 'r')
-		{
-			aBossZombie->BossRVAttack();
-			return;
-		}
-		if (theChar == 'h')
-		{
-			aBossZombie->mBossHeadCounter = 0;
-			return;
-		}
-		if (theChar == 'd')
-		{
-			aBossZombie->TakeDamage(10000, 0U);
-			return;
-		}
-	}
 
 	if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_WAR_AND_PEAS || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_WAR_AND_PEAS_2)
 	{
