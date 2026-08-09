@@ -1830,19 +1830,49 @@ void Board::VxPlantFromBank(int theSlot, int theGridX, int theGridY)
 	aPacket->WasPlanted();
 }
 
+// vx: shovel a specific plant (shared by the cell and id entry points)
+void Board::VxShovelPlant(Plant* thePlant)
+{
+	mApp->PlayFoley(FoleyType::FOLEY_USE_SHOVEL);
+	mPlantsShoveled++;
+	thePlant->Die();
+	if (thePlant->mSeedType == SeedType::SEED_CATTAIL && GetTopPlantAt(thePlant->mPlantCol, thePlant->mRow, PlantPriority::TOPPLANT_ONLY_PUMPKIN))
+	{
+		NewPlant(thePlant->mPlantCol, thePlant->mRow, SeedType::SEED_LILYPAD, SeedType::SEED_NONE);
+	}
+}
+
 // vx: shovel the plant at grid cell (theGridX, theGridY)
 void Board::VxShovelAt(int theGridX, int theGridY)
 {
 	Plant* aPlant = GetTopPlantAt(theGridX, theGridY, PlantPriority::TOPPLANT_ONLY_NORMAL_POSITION);
 	if (!aPlant)
 		return;
-	mApp->PlayFoley(FoleyType::FOLEY_USE_SHOVEL);
-	mPlantsShoveled++;
-	aPlant->Die();
-	if (aPlant->mSeedType == SeedType::SEED_CATTAIL && GetTopPlantAt(aPlant->mPlantCol, aPlant->mRow, PlantPriority::TOPPLANT_ONLY_PUMPKIN))
-	{
-		NewPlant(aPlant->mPlantCol, aPlant->mRow, SeedType::SEED_LILYPAD, SeedType::SEED_NONE);
-	}
+	VxShovelPlant(aPlant);
+}
+
+// vx: shovel the plant with the given DataArray id
+void Board::VxShovelPlantID(int thePlantID)
+{
+	Plant* aPlant = mPlants.DataArrayTryToGet(thePlantID);
+	if (!aPlant || aPlant->mDead)
+		return;
+	VxShovelPlant(aPlant);
+}
+
+// vx: plant a dropped seed card (coin) at grid cell (theGridX, theGridY)
+void Board::VxPlantFromCard(int theCoinID, int theGridX, int theGridY)
+{
+	Coin* aCoin = mCoins.DataArrayTryToGet(theCoinID);
+	if (!aCoin || aCoin->mDead)
+		return;
+	if (aCoin->mType != CoinType::COIN_USABLE_SEED_PACKET)
+		return;
+	SeedType aSeedType = aCoin->mUsableSeedType;
+	if (CanPlantAt(theGridX, theGridY, aSeedType) != PlantingReason::PLANTING_OK)
+		return;
+	AddPlant(theGridX, theGridY, aSeedType, SeedType::SEED_NONE);
+	aCoin->Die();
 }
 
 LawnMower* Board::GetBottomLawnMower()

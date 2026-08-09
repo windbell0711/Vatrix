@@ -1,6 +1,22 @@
 # vx: Vatrix scripting API
 import _vb
 import time
+from . import consts
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Zombie:
+    """Snapshot of a zombie; row/col are 1-based (feed them back into brk/plt/rmv directly)."""
+    row: int
+    col: int
+    x: float
+    hp: int
+    helm: int
+    hp_max: int
+    helm_max: int
+    slow: int  # freeze countdown
+    typ: int  # ZombieType
 
 
 def brk(row: int, col: int, delay=0.0):
@@ -23,3 +39,66 @@ def plt(row: int, col: int, card_id=0):
 def rmv(row: int, col: int):
     """Shovel the plant at (row, col) (1-based)."""
     _vb.rmv(row-1, col-1)
+
+
+@dataclass(frozen=True)
+class Plant:
+    """Snapshot of a plant; row/col are 1-based."""
+    row: int
+    col: int
+    hp: int
+    hp_max: int
+    age: int  # ticks since planted
+    asleep: bool
+    typ: int  # SeedType
+    _id: int  # internal plant handle
+
+    def rmv(self):
+        """Shovel this plant."""
+        _vb.rmv_plant(self._id)
+
+
+@dataclass(frozen=True)
+class Card:
+    """Snapshot of a dropped seed card on the field (a COIN_USABLE_SEED_PACKET)."""
+    age: int  # ticks since it was dropped
+    typ: int  # SeedType the card grants
+    _id: int  # internal coin handle
+
+    def plc(self, row, col):
+        """Plant this dropped card at (row, col) (1-based)."""
+        _vb.plc(self._id, row - 1, col - 1)
+
+
+@dataclass(frozen=True)
+class Vase:
+    """Snapshot of a vase (scary pot); row/col are 1-based."""
+    row: int
+    col: int
+    vase_typ: int     # ????:QUESTION/LEAF/ZOMBIE
+    content_typ: int  # ??????(SCARYPOT_*)
+    transparent: bool
+
+
+def get_zombies():
+    """Return the current zombies as a list of Zombie dataclasses (row/col 1-based)."""
+    return [Zombie(row=z["row"] + 1, col=z["col"] + 1, x=z["x"], hp=z["hp"], helm=z["helm"],
+                   hp_max=z["hp_max"], helm_max=z["helm_max"], slow=z["slow"],
+                   typ=z["typ"] + 100) for z in _vb.get_zombies()]  # 0-based -> consts.zt
+
+
+def get_plants():
+    """Return the current plants as a list of Plant dataclasses (row/col 1-based)."""
+    return [Plant(row=p["row"] + 1, col=p["col"] + 1, hp=p["hp"], hp_max=p["hp_max"],
+                  age=p["age"], asleep=p["asleep"], typ=p["typ"], _id=p["id"]) for p in _vb.get_plants()]
+
+
+def get_cards():
+    """Return the dropped seed cards as a list of Card dataclasses."""
+    return [Card(age=c["age"], typ=c["typ"], _id=c["id"]) for c in _vb.get_cards()]
+
+
+def get_vases():
+    """Return the vases on the field as a list of Vase dataclasses (row/col 1-based)."""
+    return [Vase(row=v["row"] + 1, col=v["col"] + 1, vase_typ=v["vase_typ"],
+                 content_typ=v["content_typ"], transparent=v["transparent"]) for v in _vb.get_vases()]

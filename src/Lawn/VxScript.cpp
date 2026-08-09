@@ -3,6 +3,9 @@
 
 #include <Python.h>
 
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -23,6 +26,8 @@ namespace
 		BreakPot,
 		Plant,
 		Shovel,
+		PlantCard,
+		ShovelId,
 	};
 
 	struct VxCmd
@@ -121,6 +126,22 @@ namespace
 	int gScriptLevel = 0;
 	int gScriptGameMode = 0;
 	bool gPythonReady = false;
+
+	// vx: blocking script query (vb.get_zombies / get_plants / get_cards):
+	// script thread asks, main thread answers in ProcessBoardQueue
+	enum class VxQueryType
+	{
+		Zombies,
+		Plants,
+		Cards,
+		Vases,
+	};
+
+	std::mutex gQueryMutex;
+	std::condition_variable gQueryCv;
+	bool gQueryPending = false;
+	VxQueryType gQueryType = VxQueryType::Zombies;
+	PyObject* gQueryResult = nullptr;
 	// vx: import vx_init_lvl and call <theFuncName>(theLevel); caller holds the GIL and owns the result
 	// vx: resolve script/data dirs; dev builds (running from <repo>/build) use the live source dirs,
 	// so editing scripts/ or Properties/ takes effect without rebuilding
@@ -319,10 +340,99 @@ if log is not None:
 		Py_RETURN_NONE;
 	}
 
+	PyObject* VxRunQuery(VxQueryType theType)
+	{
+		{
+			std::lock_guard<std::mutex> aLock(gQueryMutex);
+			gQueryType = theType;
+			gQueryPending = true;
+		}
+		PyObject* aResult = nullptr;
+		Py_BEGIN_ALLOW_THREADS
+		{
+			std::unique_lock<std::mutex> aLock(gQueryMutex);
+			if (gQueryCv.wait_for(aLock, std::chrono::seconds(5), [] { return gQueryResult != nullptr; }))
+			{
+				aResult = gQueryResult;
+			}
+			gQueryResult = nullptr;
+			gQueryPending = false;
+		}
+		Py_END_ALLOW_THREADS
+		if (!aResult)
+		{
+			PyErr_SetString(PyExc_RuntimeError, "query timed out (no board update)");
+			return nullptr;
+		}
+		return aResult;
+	}
+
+	PyObject* VbGetZombies(PyObject*, PyObject*)
+	{
+		return VxRunQuery(VxQueryType::Zombies);
+	}
+
+	PyObject* VbGetPlants(PyObject*, PyObject*)
+	{
+		return VxRunQuery(VxQueryType::Plants);
+	}
+
+	PyObject* VbGetCards(PyObject*, PyObject*)
+	{
+		return VxRunQuery(VxQueryType::Cards);
+	}
+
+	PyObject* VbGetVases(PyObject*, PyObject*)
+	{
+		return VxRunQuery(VxQueryType::Vases);
+	}
+
+	PyObject* VbPlc(PyObject*, PyObject* theArgs)
+	{
+		int aCoinID = 0;
+		int aRow = 0;
+		int aCol = 0;
+		if (!PyArg_ParseTuple(theArgs, "iii", &aCoinID, &aRow, &aCol))
+			return nullptr;
+		if (aCoinID <= 0 || aRow < 0 || aCol < 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "coin id must be positive, row/col >= 0");
+			return nullptr;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gQueueMutex);
+			gQueue.push_back({VxCmdType::PlantCard, aRow, aCol, aCoinID});
+		}
+		Py_RETURN_NONE;
+	}
+
+	PyObject* VbRmvPlant(PyObject*, PyObject* theArgs)
+	{
+		int aPlantID = 0;
+		if (!PyArg_ParseTuple(theArgs, "i", &aPlantID))
+			return nullptr;
+		if (aPlantID <= 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "plant id must be positive");
+			return nullptr;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gQueueMutex);
+			gQueue.push_back({VxCmdType::ShovelId, 0, 0, aPlantID});
+		}
+		Py_RETURN_NONE;
+	}
+
 	PyMethodDef gVbMethods[] = {
 		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
 		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
 		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
+		{"plc", VbPlc, METH_VARARGS, "Queue a plant from a dropped card (coin id) at (row, col)."},
+		{"rmv_plant", VbRmvPlant, METH_VARARGS, "Queue a shovel of the plant with the given id."},
+		{"get_zombies", VbGetZombies, METH_NOARGS, "Return a list of dicts describing the current zombies."},
+		{"get_plants", VbGetPlants, METH_NOARGS, "Return a list of dicts describing the current plants."},
+		{"get_cards", VbGetCards, METH_NOARGS, "Return a list of dicts describing the dropped seed cards."},
+		{"get_vases", VbGetVases, METH_NOARGS, "Return a list of dicts describing the vases on the field."},
 		{nullptr, nullptr, 0, nullptr},
 	};
 
@@ -571,6 +681,109 @@ namespace VX
 
 	void ProcessBoardQueue(Board* theBoard)
 	{
+		// vx: answer a pending vb.get_zombies() query on the game thread
+		{
+			std::lock_guard<std::mutex> aLock(gQueryMutex);
+			if (gQueryPending)
+			{
+				PyGILState_STATE aGILState = PyGILState_Ensure();
+				PyObject* aList = PyList_New(0);
+				switch (gQueryType)
+				{
+				case VxQueryType::Zombies:
+					for (Zombie* aZombie : theBoard->mZombies)
+					{
+						if (aZombie->mDead)
+							continue;
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:i,s:i,s:i,s:i,s:i,s:i}",
+							"row", aZombie->mRow,
+							"col", theBoard->PixelToGridXKeepOnBoard(static_cast<int>(aZombie->mPosX), static_cast<int>(aZombie->mPosY)),
+							"x", aZombie->mPosX,
+							"hp", aZombie->mBodyHealth,
+							"helm", aZombie->mHelmHealth,
+							"hp_max", aZombie->mBodyMaxHealth,
+							"helm_max", aZombie->mHelmMaxHealth,
+							"slow", aZombie->mChilledCounter,
+							"typ", static_cast<int>(aZombie->mZombieType));
+						PyList_Append(aList, aDict);
+						Py_DECREF(aDict);
+					}
+					break;
+				case VxQueryType::Plants:
+					for (Plant* aPlant : theBoard->mPlants)
+					{
+						if (aPlant->mDead)
+							continue;
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:i,s:i,s:i,s:O,s:i,s:i}",
+							"row", aPlant->mRow,
+							"col", aPlant->mPlantCol,
+							"hp", aPlant->mPlantHealth,
+							"hp_max", aPlant->mPlantMaxHealth,
+							"age", aPlant->mAnimCounter,
+							"asleep", aPlant->mIsAsleep ? Py_True : Py_False,
+							"typ", static_cast<int>(aPlant->mSeedType),
+							"id", static_cast<int>(theBoard->mPlants.DataArrayGetID(aPlant)));
+						PyList_Append(aList, aDict);
+						Py_DECREF(aDict);
+					}
+					break;
+				case VxQueryType::Vases:
+					for (GridItem* aGridItem : theBoard->mGridItems)
+					{
+						if (aGridItem->mDead)
+							continue;
+						if (aGridItem->mGridItemType != GridItemType::GRIDITEM_SCARY_POT)
+							continue;
+						// vx: content_typ convention: pt/zt values, -1 empty, -25/-50/-75 sun (no -100)
+						int aContentTyp = -1;
+						switch (aGridItem->mScaryPotType)
+						{
+						case ScaryPotType::SCARYPOT_SEED:
+							aContentTyp = static_cast<int>(aGridItem->mSeedType);
+							break;
+						case ScaryPotType::SCARYPOT_ZOMBIE:
+							aContentTyp = 100 + static_cast<int>(aGridItem->mZombieType);
+							break;
+						case ScaryPotType::SCARYPOT_SUN:
+							aContentTyp = -25 * std::clamp(aGridItem->mSunCount, 1, 3);
+							break;
+						default:
+							aContentTyp = -1;
+							break;
+						}
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:i,s:i,s:O}",
+							"row", aGridItem->mGridY,
+							"col", aGridItem->mGridX,
+							"vase_typ", static_cast<int>(aGridItem->mGridItemState),
+							"content_typ", aContentTyp,
+							"transparent", aGridItem->mTransparentCounter > 0 ? Py_True : Py_False);
+						PyList_Append(aList, aDict);
+						Py_DECREF(aDict);
+					}
+					break;
+				case VxQueryType::Cards:
+					for (Coin* aCoin : theBoard->mCoins)
+					{
+						if (aCoin->mDead)
+							continue;
+						if (aCoin->mType != CoinType::COIN_USABLE_SEED_PACKET)
+							continue;
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:i}",
+							"age", aCoin->mCoinAge,
+							"typ", static_cast<int>(aCoin->mUsableSeedType),
+							"id", static_cast<int>(theBoard->mCoins.DataArrayGetID(aCoin)));
+						PyList_Append(aList, aDict);
+						Py_DECREF(aDict);
+					}
+					break;
+				}
+				PyGILState_Release(aGILState);
+				gQueryResult = aList;
+				gQueryPending = false;
+			}
+		}
+		gQueryCv.notify_all();
+
 		std::vector<VxCmd> aCommands;
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
@@ -596,6 +809,12 @@ namespace VX
 				break;
 			case VxCmdType::Shovel:
 				theBoard->VxShovelAt(aCommand.mCol, aCommand.mRow);
+				break;
+			case VxCmdType::PlantCard:
+				theBoard->VxPlantFromCard(aCommand.mArg, aCommand.mCol, aCommand.mRow);
+				break;
+			case VxCmdType::ShovelId:
+				theBoard->VxShovelPlantID(aCommand.mArg);
 				break;
 			}
 		}
