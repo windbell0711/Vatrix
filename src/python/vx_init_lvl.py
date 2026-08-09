@@ -2,6 +2,7 @@
 # stdlib only so it runs in the embedded python; the alias table below is hardcoded from plants_zombies_info.csv
 # Game-facing entry: generate(level) -> list of pot dicts, consumed by VX::GetScaryPotLineup.
 import csv
+import random
 import sys
 from pathlib import Path
 from dataclasses import dataclass
@@ -136,14 +137,18 @@ def parse_vase_rules(info: InfoInput) -> Optional[Dict[str, List[List[str]]]]:
     return None
 
 
-def generate(level) -> list:
+def generate(level, seed=0) -> list:
     """Game-facing entry: pot lineup for VX::GetScaryPotLineup.
-    Each dict: {"row", "col", "type": "seed"|"zombie"|"sun"|"empty", "seed"/"zombie": int code}."""
+    Each dict: {"row", "col", "type": "seed"|"zombie"|"sun"|"empty", "seed"/"zombie": int code}.
+    seed deterministically shuffles each category's content pool, so layouts vary by seed."""
     print("generate!!!")
     info = get_input(level)
     pools = parse_vase_rules(info)
     if not pools:
         return []
+    rng = random.Random(seed)
+    for pool in pools.values():
+        rng.shuffle(pool)
     result = []
     # vase_design is a flat string: 9 digits + "/" per row, so cell (row, col) is at row*10+col
     for row in range(5):
@@ -168,7 +173,7 @@ def generate(level) -> list:
     return result
 
 
-def get_scene(level) -> list:
+def get_scene(level, seed=0) -> list:
     """Pre-placed plants/zombies: [{"row","col","type":"plant"|"zombie","seed"/"zombie": int}].
     Levels without a CSV row return an empty list."""
     try:
@@ -195,7 +200,7 @@ def get_scene(level) -> list:
     return result
 
 
-def get_slot(level) -> dict:
+def get_slot(level, seed=0) -> dict:
     """Starting sun and seed bank: {"sun": int, "slots": [SeedType int, ...]}. Empty dict if unconfigured."""
     try:
         info = get_input(level)

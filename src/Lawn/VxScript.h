@@ -25,7 +25,7 @@ namespace VX
 	void StartScripts(int theLevel, int theGameMode);
 	void StopScripts();
 	void ProcessBoardQueue(Board* theBoard);
-	bool GetScaryPotLineup(int theLevel, std::vector<VxPotDef>& theOut);
+	bool GetScaryPotLineup(int theLevel, int theSeed, std::vector<VxPotDef>& theOut);
 
 	// vx: one scene entry produced by vx_init_lvl.get_scene
 	struct VxSceneDef

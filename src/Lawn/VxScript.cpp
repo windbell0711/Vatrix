@@ -189,7 +189,7 @@ namespace
 		PySys_SetObject("vx_data_dir", PyUnicode_FromWideChar(aDataWide.c_str(), static_cast<Py_ssize_t>(aDataWide.size())));
 	}
 
-	PyObject* VxCallLevelFunc(const char* theFuncName, int theLevel)
+	PyObject* VxCallLevelFunc(const char* theFuncName, int theLevel, int theSeed)
 	{
 		if (gScriptDirs.empty())
 			VxResolveDirs();
@@ -204,7 +204,7 @@ namespace
 		PyObject* aFunc = PyObject_GetAttrString(aModule, theFuncName);
 		if (aFunc && PyCallable_Check(aFunc))
 		{
-			PyObject* aArgs = Py_BuildValue("(i)", theLevel);
+			PyObject* aArgs = Py_BuildValue("(ii)", theLevel, theSeed);
 			aResult = PyObject_CallObject(aFunc, aArgs);
 			Py_XDECREF(aArgs);
 		}
@@ -524,14 +524,14 @@ namespace VX
 		}
 	}
 
-	bool GetScaryPotLineup(int theLevel, std::vector<VxPotDef>& theOut)
+	bool GetScaryPotLineup(int theLevel, int theSeed, std::vector<VxPotDef>& theOut)
 	{
 		if (!gPythonReady)
 			return false;
 		PyGILState_STATE aGILState = PyGILState_Ensure();
 
 		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("generate", theLevel);
+		PyObject* aResult = VxCallLevelFunc("generate", theLevel, theSeed);
 		if (aResult == nullptr)
 		{
 			ScriptLog("[vb] vx_init_lvl.generate failed for level " + std::to_string(theLevel));
@@ -604,7 +604,7 @@ namespace VX
 		PyGILState_STATE aGILState = PyGILState_Ensure();
 
 		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel);
+		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel, 0);
 		// vx: unconfigured levels are normal (get_scene returns []), so failures stay silent here
 		PyErr_Clear();
 
@@ -656,7 +656,7 @@ namespace VX
 		PyGILState_STATE aGILState = PyGILState_Ensure();
 
 		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_slot", theLevel);
+		PyObject* aResult = VxCallLevelFunc("get_slot", theLevel, 0);
 		PyErr_Clear();
 		if (aResult && PyDict_Check(aResult))
 		{
@@ -832,7 +832,7 @@ namespace VX
 	void StartScripts(int, int) {}
 	void StopScripts() {}
 	void ProcessBoardQueue(Board*) {}
-	bool GetScaryPotLineup(int, std::vector<VxPotDef>&) { return false; }
+	bool GetScaryPotLineup(int, int, std::vector<VxPotDef>&) { return false; }
 	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
 }

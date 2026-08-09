@@ -3906,7 +3906,7 @@ void Challenge::ScaryPotterPopulate()
 	{
 		// vx: world 6 lineups come from scripts/vx_pots.py (VX::GetScaryPotLineup)
 		std::vector<VX::VxPotDef> aDefs;
-		if (VX::GetScaryPotLineup(mBoard->mLevel, aDefs))
+		if (VX::GetScaryPotLineup(mBoard->mLevel, mBoard->GetLevelRandSeed(), aDefs))
 		{
 			for (const VX::VxPotDef& aDef : aDefs)
 			{
