@@ -29,6 +29,7 @@
 #include "ZenGarden.h"
 #include "LawnMower.h"
 #include "Challenge.h"
+#include "VxScript.h"
 #include "SeedPacket.h"
 #include "Projectile.h"
 #include "../LawnApp.h"
@@ -3762,28 +3763,48 @@ void Challenge::ScaryPotterFillColumnWithPlant(int theCol, SeedType theSeedType,
 	}
 }
 
+// vx: allocate one pot at a grid cell (shared by random and exact placement)
+void Challenge::ScaryPotterAddPotAt(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theGridX, int theGridY)
+{
+	GridItem* aScaryPot = mBoard->mGridItems.DataArrayAlloc();
+	aScaryPot->mGridItemType = GRIDITEM_SCARY_POT;
+	aScaryPot->mGridItemState = GRIDITEM_STATE_SCARY_POT_QUESTION;
+	aScaryPot->mGridX = theGridX;
+	aScaryPot->mGridY = theGridY;
+	aScaryPot->mRenderOrder = mBoard->MakeRenderOrder(RENDER_LAYER_PLANT, theGridY, 0);
+	aScaryPot->mZombieType = theZombieType;
+	aScaryPot->mSeedType = theSeedType;
+	aScaryPot->mScaryPotType = theScaryPotType;
+	if (theScaryPotType == SCARYPOT_SUN)
+	{
+		aScaryPot->mSunCount = Rand(3) + 1;
+	}
+}
+
 // GOTY @Patoke: 0x42AFA0
 void Challenge::ScaryPotterPlacePot(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theCount, PvzpWeightedGridArray* theGridArray, int theGridArrayCount)
 {
-	ScaryPotType aPotType = theScaryPotType;
 	while (theCount > 0)
 	{
 		PvzpWeightedGridArray* aGrid = PvzpPickFromWeightedGridArray(theGridArray, theGridArrayCount);
-
-		GridItem* aScaryPot = mBoard->mGridItems.DataArrayAlloc();
-		aScaryPot->mGridItemType = GRIDITEM_SCARY_POT;
-		aScaryPot->mGridItemState = GRIDITEM_STATE_SCARY_POT_QUESTION;
-		aScaryPot->mGridX = aGrid->mX;
-		aScaryPot->mGridY = aGrid->mY;
 		aGrid->mWeight = 0;
-		aScaryPot->mRenderOrder = mBoard->MakeRenderOrder(RENDER_LAYER_PLANT, aGrid->mY, 0);
-		aScaryPot->mZombieType = theZombieType; aScaryPot->mSeedType = theSeedType; aScaryPot->mScaryPotType = aPotType;
-		if (aPotType == SCARYPOT_SUN)
-		{
-			aScaryPot->mSunCount = Rand(3) + 1;
-		}
+		ScaryPotterAddPotAt(theScaryPotType, theZombieType, theSeedType, aGrid->mX, aGrid->mY);
 		--theCount;
 	}
+}
+
+// vx: place one pot at an exact grid cell
+void Challenge::ScaryPotterPlacePotAt(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theGridX, int theGridY, PvzpWeightedGridArray* theGridArray, int theGridArrayCount)
+{
+	for (int i = 0; i < theGridArrayCount; i++)
+	{
+		if (theGridArray[i].mX == theGridX && theGridArray[i].mY == theGridY)
+		{
+			theGridArray[i].mWeight = 0;
+			break;
+		}
+	}
+	ScaryPotterAddPotAt(theScaryPotType, theZombieType, theSeedType, theGridX, theGridY);
 }
 
 // GOTY @Patoke: 0x42B040
@@ -3879,6 +3900,25 @@ void Challenge::ScaryPotterPopulate()
 			ScaryPotterPlacePot(SCARYPOT_ZOMBIE, ZOMBIE_JACK_IN_THE_BOX, SEED_NONE, 1, aGridArray, aGridArrayCount);
 			ScaryPotterChangePotType(GRIDITEM_STATE_SCARY_POT_LEAF, 3);
 			break;
+		}
+	}
+	else if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= 59)
+	{
+		// vx: world 6 lineups come from scripts/vx_pots.py (VX::GetScaryPotLineup)
+		std::vector<VX::VxPotDef> aDefs;
+		if (VX::GetScaryPotLineup(mBoard->mLevel, aDefs))
+		{
+			for (const VX::VxPotDef& aDef : aDefs)
+			{
+				if (aDef.mCol >= 0 && aDef.mRow >= 0)
+				{
+					ScaryPotterPlacePotAt(static_cast<ScaryPotType>(aDef.mType), static_cast<ZombieType>(aDef.mZombie), static_cast<SeedType>(aDef.mSeed), aDef.mCol, aDef.mRow, aGridArray, aGridArrayCount);
+				}
+				else
+				{
+					ScaryPotterPlacePot(static_cast<ScaryPotType>(aDef.mType), static_cast<ZombieType>(aDef.mZombie), static_cast<SeedType>(aDef.mSeed), aDef.mCount, aGridArray, aGridArrayCount);
+				}
+			}
 		}
 	}
 	else
@@ -4169,6 +4209,8 @@ void Challenge::ScaryPotterOpenPot(GridItem* theScaryPot)
 	case SCARYPOT_ZOMBIE:
 		mBoard->AddZombieInRow(theScaryPot->mZombieType, theScaryPot->mGridY, 0)->mPosX = aXPos;
 		break;
+	case SCARYPOT_NONE:
+		break; // vx: empty pot, breaks with nothing
 	case SCARYPOT_SUN:
 	{
 		int aSunCount = ScaryPotterCountSunInPot(theScaryPot);

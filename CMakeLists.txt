@@ -281,10 +281,6 @@ if (WIN32)
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${Python3_RUNTIME_LIBRARY}" $<TARGET_FILE_DIR:pvz-portable>
 		)
 	endif()
-	# vx: keep player scripts (vb.py, demo scripts) next to the exe
-	add_custom_command(TARGET pvz-portable POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:pvz-portable>/scripts"
-	)
 
 	if(VX_SCRIPT AND Python3_LIBRARIES)
 		# vx: sync the pure-python stdlib next to the exe (python312/)
@@ -365,6 +361,34 @@ elseif (IOS)
 		set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets"
 			PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	endif()
+endif()
+
+
+# vx: sync player scripts (scripts/) and game python code (src/python/) into build/scripts/
+# on every build when any file changes (no relink needed); stale files are not deleted
+file(GLOB_RECURSE VATRIX_SCRIPT_FILES CONFIGURE_DEPENDS
+	"${PROJECT_SOURCE_DIR}/scripts/*"
+	"${PROJECT_SOURCE_DIR}/src/python/*")
+list(FILTER VATRIX_SCRIPT_FILES INCLUDE REGEX "\\.py$")
+if(WIN32 AND VATRIX_SCRIPT_FILES)
+	set(VATRIX_SCRIPT_SYNC_DEPS)
+	foreach(VATRIX_SCRIPT_FILE ${VATRIX_SCRIPT_FILES})
+		if(VATRIX_SCRIPT_FILE MATCHES "^${PROJECT_SOURCE_DIR}/scripts/")
+			file(RELATIVE_PATH VATRIX_SCRIPT_REL "${PROJECT_SOURCE_DIR}/scripts" "${VATRIX_SCRIPT_FILE}")
+		else()
+			file(RELATIVE_PATH VATRIX_SCRIPT_REL "${PROJECT_SOURCE_DIR}/src/python" "${VATRIX_SCRIPT_FILE}")
+		endif()
+		get_filename_component(VATRIX_SCRIPT_REL_DIR "${VATRIX_SCRIPT_REL}" DIRECTORY)
+		add_custom_command(
+			OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/scripts/${VATRIX_SCRIPT_REL}"
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/scripts/${VATRIX_SCRIPT_REL_DIR}"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${VATRIX_SCRIPT_FILE}"
+				"${CMAKE_CURRENT_BINARY_DIR}/scripts/${VATRIX_SCRIPT_REL}"
+			DEPENDS "${VATRIX_SCRIPT_FILE}")
+		list(APPEND VATRIX_SCRIPT_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/scripts/${VATRIX_SCRIPT_REL}")
+	endforeach()
+	add_custom_target(vatrix_scripts ALL DEPENDS ${VATRIX_SCRIPT_SYNC_DEPS})
 endif()
 
 # vx: copy every file under Properties/ into the build's properties dir at build time

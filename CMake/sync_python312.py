@@ -9,11 +9,12 @@ if not stdlib.is_dir():
     sys.exit("stdlib not found: " + str(stdlib))
 
 dst = out_dir / ("python" + stdlib.name[len("python"):].replace(".", ""))  # python3.12 -> python312
-excluded = {"lib-dynload", "__pycache__", "test", "idlelib", "turtledemo"}
+# vx: keep lib-dynload: csv/typing/os etc. need C extensions (_csv, _sre, ...)
+excluded = {"__pycache__", "test", "idlelib", "turtledemo"}
 copied = skipped = 0
 for p in sorted(stdlib.rglob("*")):
     rel = p.relative_to(stdlib)
-    if any(part in excluded for part in rel.parts) or p.suffix in (".pyd", ".dll"):
+    if any(part in excluded for part in rel.parts):
         continue
     target = dst / rel
     if p.is_dir():

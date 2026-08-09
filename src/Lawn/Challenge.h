@@ -169,6 +169,8 @@ public:
     void                    ZombiquariumUpdate();
     /*inline*/ void         ShovelAddWallnuts();
     void                    ScaryPotterPlacePot(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theCount, PvzpWeightedGridArray* theGridArray, int theGridArrayCount);
+    void                    ScaryPotterAddPotAt(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theGridX, int theGridY);
+    void                    ScaryPotterPlacePotAt(ScaryPotType theScaryPotType, ZombieType theZombieType, SeedType theSeedType, int theGridX, int theGridY, PvzpWeightedGridArray* theGridArray, int theGridArrayCount);
     void                    ScaryPotterStart();
     void                    ScaryPotterUpdate();
     void                    ScaryPotterOpenPot(GridItem* theScaryPot);

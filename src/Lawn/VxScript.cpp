@@ -3,11 +3,13 @@
 
 #include <Python.h>
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "VxScript.h"
@@ -22,11 +24,166 @@ namespace
 		int mCol;
 	};
 
+	// vx: generated from ConstEnums.h (gSeedNames)
+	constexpr std::pair<const char*, int> gSeedNames[] = {
+		{"PEASHOOTER", 0}, {"SUNFLOWER", 1}, {"CHERRYBOMB", 2}, {"WALLNUT", 3}, {"POTATOMINE", 4},
+		{"SNOWPEA", 5}, {"CHOMPER", 6}, {"REPEATER", 7}, {"PUFFSHROOM", 8}, {"SUNSHROOM", 9},
+		{"FUMESHROOM", 10}, {"GRAVEBUSTER", 11}, {"HYPNOSHROOM", 12}, {"SCAREDYSHROOM", 13},
+		{"ICESHROOM", 14}, {"DOOMSHROOM", 15}, {"LILYPAD", 16}, {"SQUASH", 17}, {"THREEPEATER", 18},
+		{"TANGLEKELP", 19}, {"JALAPENO", 20}, {"SPIKEWEED", 21}, {"TORCHWOOD", 22}, {"TALLNUT", 23},
+		{"SEASHROOM", 24}, {"PLANTERN", 25}, {"CACTUS", 26}, {"BLOVER", 27}, {"SPLITPEA", 28},
+		{"STARFRUIT", 29}, {"PUMPKINSHELL", 30}, {"MAGNETSHROOM", 31}, {"CABBAGEPULT", 32},
+		{"FLOWERPOT", 33}, {"KERNELPULT", 34}, {"INSTANT_COFFEE", 35}, {"GARLIC", 36}, {"UMBRELLA", 37},
+		{"MARIGOLD", 38}, {"MELONPULT", 39}, {"GATLINGPEA", 40}, {"TWINSUNFLOWER", 41},
+		{"GLOOMSHROOM", 42}, {"CATTAIL", 43}, {"WINTERMELON", 44}, {"GOLD_MAGNET", 45},
+		{"SPIKEROCK", 46}, {"COBCANNON", 47}, {"IMITATER", 48}, {"EXPLODE_O_NUT", 49},
+		{"GIANT_WALLNUT", 50}, {"SPROUT", 51}, {"LEFTPEATER", 52}, {"NUM_SEED_TYPES", 53},
+		{"BEGHOULED_BUTTON_SHUFFLE", 54}, {"BEGHOULED_BUTTON_CRATER", 55}, {"SLOT_MACHINE_SUN", 56},
+		{"SLOT_MACHINE_DIAMOND", 57}, {"ZOMBIQUARIUM_SNORKLE", 58}, {"ZOMBIQUARIUM_TROPHY", 59},
+		{"ZOMBIE_NORMAL", 60}, {"ZOMBIE_TRAFFIC_CONE", 61}, {"ZOMBIE_POLEVAULTER", 62},
+		{"ZOMBIE_PAIL", 63}, {"ZOMBIE_LADDER", 64}, {"ZOMBIE_DIGGER", 65}, {"ZOMBIE_BUNGEE", 66},
+		{"ZOMBIE_FOOTBALL", 67}, {"ZOMBIE_BALLOON", 68}, {"ZOMBIE_SCREEN_DOOR", 69}, {"ZOMBONI", 70},
+		{"ZOMBIE_POGO", 71}, {"ZOMBIE_DANCER", 72}, {"ZOMBIE_GARGANTUAR", 73}, {"ZOMBIE_IMP", 74},
+		{"NUM_SEEDS_IN_CHOOSER", 49},
+	};
+
+	// vx: generated from ConstEnums.h (gZombieNames)
+	constexpr std::pair<const char*, int> gZombieNames[] = {
+		{"NORMAL", 0}, {"FLAG", 1}, {"TRAFFIC_CONE", 2}, {"POLEVAULTER", 3}, {"PAIL", 4},
+		{"NEWSPAPER", 5}, {"DOOR", 6}, {"FOOTBALL", 7}, {"DANCER", 8}, {"BACKUP_DANCER", 9},
+		{"DUCKY_TUBE", 10}, {"SNORKEL", 11}, {"ZAMBONI", 12}, {"BOBSLED", 13}, {"DOLPHIN_RIDER", 14},
+		{"JACK_IN_THE_BOX", 15}, {"BALLOON", 16}, {"DIGGER", 17}, {"POGO", 18}, {"YETI", 19},
+		{"BUNGEE", 20}, {"LADDER", 21}, {"CATAPULT", 22}, {"GARGANTUAR", 23}, {"IMP", 24}, {"BOSS", 25},
+		{"PEA_HEAD", 26}, {"WALLNUT_HEAD", 27}, {"JALAPENO_HEAD", 28}, {"GATLING_HEAD", 29},
+		{"SQUASH_HEAD", 30}, {"TALLNUT_HEAD", 31}, {"REDEYE_GARGANTUAR", 32}, {"NUM_ZOMBIE_TYPES", 33},
+		{"CACHED_POLEVAULTER_WITH_POLE", 34},
+	};
+
+	bool VxLookupName(const char* theName, const std::pair<const char*, int>* theNames, size_t theNameCount, int& theValue)
+	{
+		const char* aName = theName;
+		if (strncmp(aName, "SEED_", 5) == 0)
+			aName += 5;
+		else if (strncmp(aName, "ZOMBIE_", 7) == 0)
+			aName += 7;
+		for (size_t i = 0; i < theNameCount; i++)
+		{
+			if (strcmp(theNames[i].first, aName) == 0)
+			{
+				theValue = theNames[i].second;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int VxDictInt(PyObject* theDict, const char* theKey, int theDefault)
+	{
+		PyObject* aValue = PyDict_GetItemString(theDict, theKey); // borrowed
+		if (aValue && PyLong_Check(aValue))
+			return static_cast<int>(PyLong_AsLong(aValue));
+		return theDefault;
+	}
+
+	bool VxDictName(PyObject* theDict, const char* theKey, const std::pair<const char*, int>* theNames, size_t theNameCount, int& theValue)
+	{
+		PyObject* aValue = PyDict_GetItemString(theDict, theKey); // borrowed
+		if (aValue && PyLong_Check(aValue))
+		{
+			theValue = static_cast<int>(PyLong_AsLong(aValue));
+			return true;
+		}
+		if (aValue && PyUnicode_Check(aValue))
+		{
+			const char* aName = PyUnicode_AsUTF8(aValue);
+			if (aName)
+				return VxLookupName(aName, theNames, theNameCount, theValue);
+		}
+		return false;
+	}
+
+
 	std::mutex gQueueMutex;
 	std::vector<BreakCmd> gQueue;
 	std::thread gScriptThread;
 	std::filesystem::path gScriptsDir;
+	std::vector<std::filesystem::path> gScriptDirs; // sys.path entries for game python code
+	std::filesystem::path gDataDir;                 // Properties dir (adventure_info.csv etc.)
+	int gScriptLevel = 0;
+	int gScriptGameMode = 0;
 	bool gPythonReady = false;
+	// vx: import vx_init_lvl and call <theFuncName>(theLevel); caller holds the GIL and owns the result
+	// vx: resolve script/data dirs; dev builds (running from <repo>/build) use the live source dirs,
+	// so editing scripts/ or Properties/ takes effect without rebuilding
+	void VxResolveDirs()
+	{
+		std::filesystem::path aCwd = std::filesystem::current_path();
+		std::filesystem::path aLiveRoot = aCwd.parent_path();
+		bool aDevMode = std::filesystem::is_directory(aCwd / "scripts") && std::filesystem::is_directory(aLiveRoot / "scripts");
+		gScriptDirs.clear();
+		if (aDevMode)
+		{
+			gScriptDirs.push_back(aLiveRoot / "scripts");
+			gScriptDirs.push_back(aLiveRoot / "src" / "python");
+			gDataDir = aLiveRoot / "Properties";
+		}
+		else
+		{
+			gScriptDirs.push_back(aCwd / "scripts");
+			gDataDir = aCwd / "Properties";
+		}
+		gScriptsDir = gScriptDirs.front();
+	}
+
+	void VxAddScriptDirsToPath()
+	{
+		for (const std::filesystem::path& aDir : gScriptDirs)
+		{
+			std::wstring aDirWide = aDir.wstring();
+			PyObject* aDirObj = PyUnicode_FromWideChar(aDirWide.c_str(), static_cast<Py_ssize_t>(aDirWide.size()));
+			if (!aDirObj)
+				continue;
+			PyObject* aPath = PySys_GetObject("path"); // borrowed
+			if (aPath && PyList_Check(aPath) && PySequence_Contains(aPath, aDirObj) <= 0)
+				PyList_Insert(aPath, 0, aDirObj);
+			Py_DECREF(aDirObj);
+		}
+	}
+
+	void VxSetupPythonPath()
+	{
+		VxAddScriptDirsToPath();
+		std::wstring aScriptsWide = gScriptsDir.wstring();
+		std::wstring aDataWide = gDataDir.wstring();
+		PySys_SetObject("vx_scripts_dir", PyUnicode_FromWideChar(aScriptsWide.c_str(), static_cast<Py_ssize_t>(aScriptsWide.size())));
+		PySys_SetObject("vx_data_dir", PyUnicode_FromWideChar(aDataWide.c_str(), static_cast<Py_ssize_t>(aDataWide.size())));
+	}
+
+	PyObject* VxCallLevelFunc(const char* theFuncName, int theLevel)
+	{
+		if (gScriptDirs.empty())
+			VxResolveDirs();
+		VxSetupPythonPath();
+		PyObject* aModule = PyImport_ImportModule("vx_init_lvl");
+		if (!aModule)
+		{
+			PyErr_Clear();
+			return nullptr;
+		}
+		PyObject* aResult = nullptr;
+		PyObject* aFunc = PyObject_GetAttrString(aModule, theFuncName);
+		if (aFunc && PyCallable_Check(aFunc))
+		{
+			PyObject* aArgs = Py_BuildValue("(i)", theLevel);
+			aResult = PyObject_CallObject(aFunc, aArgs);
+			Py_XDECREF(aArgs);
+		}
+		Py_XDECREF(aFunc);
+		Py_XDECREF(aModule);
+		return aResult;
+	}
+
+
 
 	// vx: one-shot driver; per-script namespaces, tracebacks appended to vx_script.log
 	const char* gScriptDriver = R"PY(
@@ -51,14 +208,13 @@ def run_script(path):
             traceback.print_exc(file=log)
             log.flush()
 
-# vx: bundled non-script files in scripts/ are not run as player scripts
-SKIP = {"vb.py", "pvzp-v4-converter.py"}
-try:
-    files = sorted(f for f in os.listdir(d) if f.endswith(".py") and f not in SKIP)
-except OSError:
-    files = []
-for f in files:
-    run_script(os.path.join(d, f))
+# vx: run only this level's script, e.g. script_adventure_6_1.py
+mode = getattr(sys, "vx_game_mode", "")
+area = getattr(sys, "vx_area", 0)
+sub = getattr(sys, "vx_sub", 0)
+path = os.path.join(d, "script_%s_%d_%d.py" % (mode, area, sub))
+if os.path.exists(path):
+    run_script(path)
 if log is not None:
     log.close()
 )PY";
@@ -75,14 +231,21 @@ if log is not None:
 		if (!gPythonReady)
 			return;
 		PyGILState_STATE aGILState = PyGILState_Ensure();
-		std::wstring aDirWide = gScriptsDir.wstring();
-		PyObject* aDirObj = PyUnicode_FromWideChar(aDirWide.c_str(), static_cast<Py_ssize_t>(aDirWide.size()));
-		if (aDirObj)
+		VxSetupPythonPath();
+		PySys_SetObject("vx_game_mode", PyUnicode_FromString(gScriptGameMode == static_cast<int>(GameMode::GAMEMODE_ADVENTURE) ? "adventure" : ""));
+		if (gScriptGameMode == static_cast<int>(GameMode::GAMEMODE_ADVENTURE))
 		{
-			PySys_SetObject("vx_scripts_dir", aDirObj);
-			Py_DECREF(aDirObj);
-			PyRun_SimpleString(gScriptDriver);
+			int aArea = (gScriptLevel - 1) / 10 + 1;
+			int aSub = (gScriptLevel - 1) % 10 + 1;
+			PySys_SetObject("vx_area", PyLong_FromLong(aArea));
+			PySys_SetObject("vx_sub", PyLong_FromLong(aSub));
 		}
+		else
+		{
+			PySys_SetObject("vx_area", PyLong_FromLong(0));
+			PySys_SetObject("vx_sub", PyLong_FromLong(0));
+		}
+		PyRun_SimpleString(gScriptDriver);
 		PyGILState_Release(aGILState);
 	}
 
@@ -147,6 +310,11 @@ namespace VX
 		if (std::filesystem::is_directory(aStdlibPath))
 		{
 			PyWideStringList_Append(&aConfig.module_search_paths, aStdlibPath.c_str());
+			std::wstring aDynloadPath = aStdlibPath + L"\\lib-dynload";
+			if (std::filesystem::is_directory(aDynloadPath))
+			{
+				PyWideStringList_Append(&aConfig.module_search_paths, aDynloadPath.c_str());
+			}
 			aConfig.module_search_paths_set = 1;
 		}
 		PyStatus aStatus = Py_InitializeFromConfig(&aConfig);
@@ -171,11 +339,12 @@ namespace VX
 		gPythonReady = false;
 	}
 
-	void StartScripts()
+	void StartScripts(int theLevel, int theGameMode)
 	{
 		if (!gPythonReady || gScriptThread.joinable())
 			return; // python not up, or a worker is still running; Board dtor normally stops it
-		gScriptsDir = std::filesystem::current_path() / "scripts";
+		gScriptLevel = theLevel;
+		gScriptGameMode = theGameMode;
 		gScriptThread = std::thread(ScriptThreadMain);
 	}
 
@@ -189,6 +358,161 @@ namespace VX
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
 			gQueue.clear();
 		}
+	}
+
+	bool GetScaryPotLineup(int theLevel, std::vector<VxPotDef>& theOut)
+	{
+		if (!gPythonReady)
+			return false;
+		PyGILState_STATE aGILState = PyGILState_Ensure();
+
+		bool aOk = false;
+		PyObject* aResult = VxCallLevelFunc("generate", theLevel);
+		if (aResult == nullptr)
+		{
+			ScriptLog("[vb] vx_init_lvl.generate failed for level " + std::to_string(theLevel));
+		}
+		PyErr_Clear();
+
+		if (aResult && PyList_Check(aResult))
+		{
+			Py_ssize_t aLength = PyList_Size(aResult);
+			for (Py_ssize_t i = 0; i < aLength; i++)
+			{
+				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
+				if (!aItem || !PyDict_Check(aItem))
+					continue;
+				VxPotDef aDef;
+				aDef.mRow = VxDictInt(aItem, "row", -1);
+				aDef.mCol = VxDictInt(aItem, "col", -1);
+				aDef.mCount = VxDictInt(aItem, "count", 1);
+				aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_SEED);
+				aDef.mZombie = static_cast<int>(ZombieType::ZOMBIE_INVALID);
+				aDef.mSeed = static_cast<int>(SeedType::SEED_NONE);
+				const char* aTypeName = nullptr;
+				PyObject* aTypeObj = PyDict_GetItemString(aItem, "type"); // borrowed
+				if (aTypeObj && PyUnicode_Check(aTypeObj))
+					aTypeName = PyUnicode_AsUTF8(aTypeObj);
+				if (aTypeName && strcmp(aTypeName, "zombie") == 0)
+					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_ZOMBIE);
+				else if (aTypeName && strcmp(aTypeName, "sun") == 0)
+					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_SUN);
+				else if (aTypeName && strcmp(aTypeName, "empty") == 0)
+					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_NONE);
+
+				if (aDef.mType == static_cast<int>(ScaryPotType::SCARYPOT_ZOMBIE))
+				{
+					int aZombie = -1;
+					if (!VxDictName(aItem, "zombie", gZombieNames, sizeof(gZombieNames) / sizeof(gZombieNames[0]), aZombie))
+					{
+						ScriptLog("[vb] vx_pots: bad zombie in item " + std::to_string(i));
+						continue;
+					}
+					aDef.mZombie = aZombie;
+				}
+				else if (aDef.mType == static_cast<int>(ScaryPotType::SCARYPOT_SEED))
+				{
+					int aSeed = -1;
+					if (!VxDictName(aItem, "seed", gSeedNames, sizeof(gSeedNames) / sizeof(gSeedNames[0]), aSeed))
+					{
+						ScriptLog("[vb] vx_pots: bad seed in item " + std::to_string(i));
+						continue;
+					}
+					aDef.mSeed = aSeed;
+				}
+				theOut.push_back(aDef);
+			}
+			aOk = true;
+		}
+		else if (aResult)
+		{
+			ScriptLog("[vb] vx_pots.generate must return a list");
+		}
+		Py_XDECREF(aResult);
+		PyGILState_Release(aGILState);
+		return aOk;
+	}
+
+	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut)
+	{
+		if (!gPythonReady)
+			return false;
+		PyGILState_STATE aGILState = PyGILState_Ensure();
+
+		bool aOk = false;
+		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel);
+		// vx: unconfigured levels are normal (get_scene returns []), so failures stay silent here
+		PyErr_Clear();
+
+		if (aResult && PyList_Check(aResult))
+		{
+			Py_ssize_t aLength = PyList_Size(aResult);
+			for (Py_ssize_t i = 0; i < aLength; i++)
+			{
+				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
+				if (!aItem || !PyDict_Check(aItem))
+					continue;
+				VxSceneDef aDef;
+				aDef.mRow = VxDictInt(aItem, "row", -1);
+				aDef.mCol = VxDictInt(aItem, "col", -1);
+				aDef.mIsPlant = true;
+				const char* aTypeName = nullptr;
+				PyObject* aTypeObj = PyDict_GetItemString(aItem, "type"); // borrowed
+				if (aTypeObj && PyUnicode_Check(aTypeObj))
+					aTypeName = PyUnicode_AsUTF8(aTypeObj);
+				if (aTypeName && strcmp(aTypeName, "zombie") == 0)
+					aDef.mIsPlant = false;
+				if (aDef.mIsPlant)
+				{
+					int aSeed = -1;
+					if (!VxDictName(aItem, "seed", gSeedNames, sizeof(gSeedNames) / sizeof(gSeedNames[0]), aSeed))
+						continue;
+					aDef.mSeed = aSeed;
+				}
+				else
+				{
+					int aZombie = -1;
+					if (!VxDictName(aItem, "zombie", gZombieNames, sizeof(gZombieNames) / sizeof(gZombieNames[0]), aZombie))
+						continue;
+					aDef.mZombie = aZombie;
+				}
+				theOut.push_back(aDef);
+			}
+			aOk = true;
+		}
+		Py_XDECREF(aResult);
+		PyGILState_Release(aGILState);
+		return aOk;
+	}
+
+	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots)
+	{
+		if (!gPythonReady)
+			return false;
+		PyGILState_STATE aGILState = PyGILState_Ensure();
+
+		bool aOk = false;
+		PyObject* aResult = VxCallLevelFunc("get_slot", theLevel);
+		PyErr_Clear();
+		if (aResult && PyDict_Check(aResult))
+		{
+			theSun = VxDictInt(aResult, "sun", -1);
+			PyObject* aSlotsObj = PyDict_GetItemString(aResult, "slots"); // borrowed
+			if (aSlotsObj && PyList_Check(aSlotsObj))
+			{
+				Py_ssize_t aLength = PyList_Size(aSlotsObj);
+				for (Py_ssize_t i = 0; i < aLength; i++)
+				{
+					PyObject* aItem = PyList_GetItem(aSlotsObj, i); // borrowed
+					if (aItem && PyLong_Check(aItem))
+						theSlots.push_back(static_cast<int>(PyLong_AsLong(aItem)));
+				}
+			}
+			aOk = true;
+		}
+		Py_XDECREF(aResult);
+		PyGILState_Release(aGILState);
+		return aOk;
 	}
 
 	void ProcessBoardQueue(Board* theBoard)
@@ -219,8 +543,11 @@ namespace VX
 {
 	void Init() {}
 	void Shutdown() {}
-	void StartScripts() {}
+	void StartScripts(int, int) {}
 	void StopScripts() {}
 	void ProcessBoardQueue(Board*) {}
+	bool GetScaryPotLineup(int, std::vector<VxPotDef>&) { return false; }
+	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
+	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
 }
 #endif // VX_SCRIPT

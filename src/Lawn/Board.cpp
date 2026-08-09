@@ -240,8 +240,6 @@ Board::Board(LawnApp* theApp)
 		mStoreButton->SetLabel("[GET_FULL_VERSION_BUTTON]");
 	}
 
-	// vx: run player python scripts for this level
-	VX::StartScripts();
 }
 
 Board::~Board()
@@ -1628,6 +1626,30 @@ void Board::InitLevel()
 	}
 	// 关卡玩法相关的初始化
 	mChallenge->InitLevel();
+
+	// vx: apply the CSV scene layout (pre-placed plants/zombies) from vx_init_lvl.get_scene
+	if (mApp->IsAdventureMode())
+	{
+		std::vector<VX::VxSceneDef> aScene;
+		if (VX::GetSceneLayout(mLevel, aScene))
+		{
+			for (const VX::VxSceneDef& aDef : aScene)
+			{
+				if (aDef.mIsPlant)
+				{
+					NewPlant(aDef.mCol, aDef.mRow, static_cast<SeedType>(aDef.mSeed), SeedType::SEED_NONE);
+				}
+				else
+				{
+					Zombie* aZombie = AddZombieInRow(static_cast<ZombieType>(aDef.mZombie), aDef.mRow, -1);
+					if (aZombie)
+					{
+						aZombie->mPosX = GridToPixelX(aDef.mCol, aDef.mRow);
+					}
+				}
+			}
+		}
+	}
 }
 
 Reanimation* Board::CreateRakeReanim(float theRakeX, float theRakeY, int theRenderOrder)
@@ -1734,9 +1756,34 @@ bool Board::ChooseSeedsOnCurrentLevel()
 // GOTY @Patoke: 0x40E6A0
 void Board::StartLevel()
 {
+	// vx: run player scripts once the level actually starts (after the intro / Crazy Dave dialog)
+	VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
 	mCoinBankFadeCount = 0;
 	mApp->mLastLevelStats->Reset();
 	mChallenge->StartLevel();
+
+	// vx: apply the CSV slot setup (starting sun + seed bank) from vx_init_lvl.get_slot
+	if (mApp->IsAdventureMode())
+	{
+		int aSun = -1;
+		std::vector<int> aSlots;
+		if (VX::GetSlotSetup(mLevel, aSun, aSlots) && aSun >= 0)
+		{
+			mSunMoney = aSun;
+			if (!aSlots.empty())
+			{
+				// vx: update width and positions manually (UpdateWidth() would reset mNumPackets via GetNumSeedsInBank)
+				mSeedBank->mNumPackets = static_cast<int>(aSlots.size());
+				mSeedBank->mWidth = IMAGE_SEEDBANK->GetWidth() + GetSeedBankExtraWidth();
+				for (int i = 0; i < mSeedBank->mNumPackets && i < SEEDBANK_MAX; i++)
+				{
+					mSeedBank->mSeedPackets[i].mX = GetSeedPacketPositionX(i);
+					mSeedBank->mSeedPackets[i].SetPacketType(static_cast<SeedType>(aSlots[i]));
+				}
+				mSeedBank->RefreshAllPackets();
+			}
+		}
+	}
 
 	// @Patoke: implemented, i think it's intentional to cause an underflow here?
 	unsigned int aSurvivalStage = mApp->mGameMode - GAMEMODE_SURVIVAL_ENDLESS_STAGE_1;
@@ -5209,6 +5256,9 @@ bool Board::IsFinalScaryPotterStage()
 
 	if (mApp->IsAdventureMode())
 	{
+		// vx: world 6 pot levels are single-batch (no stage progression)
+		if (mLevel >= 51 && mLevel <= 59)
+			return true;
 		return mChallenge->mSurvivalStage == 2;
 	}
 	
