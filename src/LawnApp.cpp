@@ -184,8 +184,6 @@ LawnApp::LawnApp()
 	mProfileMgr = new ProfileMgr();
 	mRegisterResourcesLoaded = false;
 	mCheatKeys = false;
-	// vx: every launch starts in boss mode (Vatrix mod)
-	mStartBossOnLaunch = true;
 	mCrazyDaveReanimID = ReanimationID::REANIMATIONID_NULL;
 	mCrazyDaveState = CrazyDaveState::CRAZY_DAVE_OFF;
 	mCrazyDaveBlinkCounter = 0;
@@ -550,8 +548,6 @@ void LawnApp::NewGame()
 // GOTY @Patoke: 0x452B80
 void LawnApp::ShowGameSelector()
 {
-	// vx: boss-launch applies only to the first game (Vatrix mod)
-	mStartBossOnLaunch = false;
 	KillBoard();
 	//UpdateRegisterInfo();
 	if (mGameSelector)
@@ -629,8 +625,6 @@ void LawnApp::KillCreditScreen()
 // GOTY @Patoke: 0x452EC0
 void LawnApp::ShowChallengeScreen(ChallengePage thePage)
 {
-	// vx: boss-launch applies only to the first game (Vatrix mod)
-	mStartBossOnLaunch = false;
 	mGameScene = GameScenes::SCENE_CHALLENGE;
 	mChallengeScreen = new ChallengeScreen(this, thePage);
 	mChallengeScreen->Resize(0, 0, mWidth, mHeight);
@@ -1539,15 +1533,17 @@ void LawnApp::CheckForGameEnd()
 
 	bool aUnlockedNewChallenge = UpdatePlayerProfileForFinishingLevel();
 
-	// vx: ends with a note award instead of jumping to the challenge screen
-	bool aIsBossOnLaunch = mBoard->mIsBossOnLaunch;
-
 	if (IsAdventureMode())
 	{
 		int aLevel = mBoard->mLevel;
 		KillBoard();
 
-		if (IsFirstTimeAdventureMode() && aLevel < 50)
+		// vx: adventure 5-10 ends with the custom boss note award
+		if (aLevel == 50)
+		{
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, true);
+		}
+		else if (IsFirstTimeAdventureMode() && aLevel < FINAL_LEVEL)
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
 		}
@@ -1562,7 +1558,7 @@ void LawnApp::CheckForGameEnd()
 				ShowAwardScreen(AwardType::AWARD_CREDITS_ZOMBIENOTE, true);
 			}
 		}
-		else if (aLevel == 9 || aLevel == 19 || aLevel == 29 || aLevel == 39 || aLevel == 49)
+		else if (aLevel == 9 || aLevel == 19 || aLevel == 29 || aLevel == 39 || aLevel == 49 || aLevel == 59)
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
 		}
@@ -1622,11 +1618,7 @@ void LawnApp::CheckForGameEnd()
 	{
 		KillBoard();
 
-		if (aIsBossOnLaunch)
-		{
-			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, true);
-		}
-		else if (aUnlockedNewChallenge && HasFinishedAdventure())
+		if (aUnlockedNewChallenge && HasFinishedAdventure())
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
 		}
@@ -1880,27 +1872,6 @@ void LawnApp::FastLoad(GameMode theGameMode)
 
 void LawnApp::LoadingThreadCompleted()
 {
-}
-
-// vx: Vatrix mod: skip main menu, open GAMEMODE_CHALLENGE_FINAL_BOSS
-void LawnApp::StartBossFromTitle()
-{
-	if (mTitleScreen)
-	{
-		mWidgetManager->RemoveWidget(mTitleScreen);
-		SafeDeleteWidget(mTitleScreen);
-		mTitleScreen = nullptr;
-	}
-
-	mResourceManager->DeleteImage("IMAGE_TITLESCREEN");
-
-	if (mPlayerInfo == nullptr)
-	{
-		mPlayerInfo = mProfileMgr->AddProfile("Player 1");
-		mProfileMgr->Save();
-	}
-
-	PreNewGame(GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS, false);
 }
 
 // GOTY @Patoke: 0x456150
@@ -2302,7 +2273,8 @@ bool LawnApp::IsScaryPotterLevel()
 	if (mGameMode >= GameMode::GAMEMODE_SCARY_POTTER_1 && mGameMode <= GameMode::GAMEMODE_SCARY_POTTER_ENDLESS)
 		return true;
 
-	return IsAdventureMode() && mBoard && mBoard->mLevel == 35;
+	// vx: world 6 (6-1..6-4, 6-6..6-9) is Scary Potter
+	return IsAdventureMode() && mBoard && (mBoard->mLevel == 35 || (mBoard->mLevel >= 51 && mBoard->mLevel <= 59 && mBoard->mLevel != 55));
 }
 
 bool LawnApp::IsStormyNightLevel()

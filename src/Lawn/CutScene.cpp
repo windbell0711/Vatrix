@@ -373,7 +373,7 @@ void CutScene::PreloadResources()
 		}
 	}
 
-	if (mApp->IsFirstTimeAdventureMode() && mBoard->mLevel <= 50)
+	if (mApp->IsFirstTimeAdventureMode() && mBoard->mLevel <= FINAL_LEVEL)
 	{
 		Plant::PreloadPlantResources(mApp->GetAwardSeedForLevel(mBoard->mLevel));
 	}
@@ -843,11 +843,7 @@ void CutScene::StartLevelIntro()
 	}
 	else if (mApp->IsFinalBossLevel() && mApp->IsAdventureMode() && !isRestart)
 	{
-		mCrazyDaveDialogStart = 2300;
-	}
-	else if (mBoard->mIsBossOnLaunch)
-	{
-		// vx: 0-0 intro dialogue; lines live in Properties/VatrixStrings.txt
+		// vx: adventure 5-10 uses the custom boss dialogue (Properties/VatrixStrings.txt)
 		mCrazyDaveDialogStart = 9000;
 	}
 	else if (mApp->mGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM)

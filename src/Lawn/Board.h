@@ -196,8 +196,6 @@ public:
 	AdviceType						mHelpIndex;
 	bool							mFinalBossKilled;
 	bool							mShowShovel;
-	// vx: per-level marker for the launch-to-boss game (Vatrix mod)
-	bool							mIsBossOnLaunch;
 	int32_t							mCoinBankFadeCount;
 	DebugTextMode					mDebugTextMode;
 	bool							mLevelComplete;

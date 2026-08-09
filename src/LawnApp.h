@@ -89,8 +89,6 @@ public:
 	std::string						mMod;
 	bool							mRegisterResourcesLoaded;
 	bool							mCheatKeys;
-	// vx: launch-to-boss switch (Vatrix mod)
-	bool							mStartBossOnLaunch;
 	GameMode						mGameMode;
 	GameScenes						mGameScene;
 	bool							mLoadingZombiesThreadCompleted;
@@ -156,8 +154,6 @@ public:
 	void							ReadFromRegistry() override;
 	void							LoadingThreadProc() override;
 	virtual void					LoadingCompleted();
-	// vx: start boss level from title (Vatrix mod)
-	void							StartBossFromTitle();
 	void							LoadingThreadCompleted() override;
 	void							URLOpenFailed(const std::string& theURL) override;
 	void							URLOpenSucceeded(const std::string& theURL) override;

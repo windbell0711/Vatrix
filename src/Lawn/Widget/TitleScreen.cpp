@@ -528,8 +528,7 @@ void TitleScreen::ButtonDepress(int theId)
 	switch (theId)
 	{
 	case TitleScreen::TitleScreen_Start:
-		// vx: start goes straight to the boss level (Vatrix mod)
-		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
+		mApp->LoadingCompleted();
 		break;
 
 	case TitleScreen::TitleScreen_Register:
@@ -544,8 +543,7 @@ void TitleScreen::MouseDown(int x, int y, int theClickCount)
 	if (mLoadingThreadComplete)
 	{
 		mApp->PlaySample(Sexy::SOUND_BUTTONCLICK);
-		// vx: start goes straight to the boss level (Vatrix mod)
-		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
+		mApp->LoadingCompleted();
 	}
 }
 
@@ -554,8 +552,7 @@ void TitleScreen::KeyDown(KeyCode theKey)
 	if (mLoadingThreadComplete)
 	{
 		mApp->PlaySample(Sexy::SOUND_BUTTONCLICK);
-		// vx: start goes straight to the boss level (Vatrix mod)
-		if (mApp->mStartBossOnLaunch) mApp->StartBossFromTitle(); else mApp->LoadingCompleted();
+		mApp->LoadingCompleted();
 	}
 
 	if (mApp->mCheatKeys && mApp->mPlayerInfo)

@@ -70,6 +70,7 @@ int gZombieWaves[NUM_LEVELS] = {
 	10, 20, 20, 30, 20, 20, 30, 20, 30, 30,
 	10, 20, 10, 20, 20, 10, 20, 10, 20, 20,
 	10, 20, 20, 30, 20, 20, 30, 20, 30, 30,
+	20, 30, 20, 30, 30, 20, 30, 20, 30, 30,
 };
 
 ZombieAllowedLevels gZombieAllowedLevels[NUM_ZOMBIE_TYPES] = {

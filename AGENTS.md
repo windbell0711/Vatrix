@@ -53,12 +53,12 @@ When user requests you to "commit" or "提交", please follow the following step
 - `src/PvzpLib/`: internal helper library
 - `src/Resources.cpp`, `src/GameConstants.h`, `src/ConstEnums.h`: resources and enums
 
-## Mod: launch straight into the boss level (Level 0-0)
-- `LawnApp::mStartBossOnLaunch`: initialized `true` in the constructor (every launch); reset to `false` when entering the challenge screen / main menu (`ShowChallengeScreen` / `ShowGameSelector`).
-- `LawnApp::StartBossFromTitle()`: after clicking "Start" on the title screen, skips the main menu and opens a new game with `GAMEMODE_CHALLENGE_FINAL_BOSS`; auto-creates a `Player 1` profile when none exists.
-- `Board::mIsBossOnLaunch`: captured from `mStartBossOnLaunch` in the Board constructor; lives for the whole level and distinguishes the launch-straight-into-boss path from manually selecting the same mini-game from the challenge screen.
-- "Level 0-0" is shown only when `mIsBossOnLaunch`: in the `CutScene::StartLevelIntro` intro banner and the yellow level-name plaque in `Board::DrawLevel`. Manual selection keeps the original challenge name.
-- `NewOptionsDialog`: hides the "Restart Level" and "Main Menu" buttons while `mIsBossOnLaunch` (both ESC and the in-game menu button open this dialog).
+## Mod: boss level & world 6
+- No boss-on-launch: the title screen goes straight to the main menu (`LoadingCompleted` -> `ShowGameSelector`). The old launch-boss code (`mStartBossOnLaunch`, `StartBossFromTitle`, `Board::mIsBossOnLaunch`) has been removed.
+- Adventure level 50 (5-10) is the final boss (`LawnApp::IsFinalBossLevel`): conveyor-belt loadout, `BACKGROUND_6_BOSS`, custom Crazy Dave dialogue (index 9000 in `properties/VatrixStrings.txt`, `CutScene::StartLevelIntro`), and the level-end paper-note award (`Zombie::DropLoot` coin `COIN_NOTE` at level 50 + `ShowAwardScreen(AWARD_FORLEVEL, false, true)` in `CheckForGameEnd`). Beating it advances the save to level 51.
+- Adventure has 6 areas (`ADVENTURE_AREAS = 6`, `GameConstants.h`), `FINAL_LEVEL = 60`: world 6 levels 6-1..6-9 (51..59) exist; 6-1..6-4 and 6-6..6-9 are Scary Potter (`IsScaryPotterLevel` also covers level 35), 6-5 is a normal level, 6-10 (60) is the current world-final placeholder.
+- `GameSelector::KeyDown` debug hotkeys (`PVZ_DEBUG` only): `0` enters adventure 5-10, `1`-`9` enter 6-1..6-9 (sets the save level, then starts `GAMEMODE_ADVENTURE`).
+- `ChallengeScreen::MoreTrophiesNeeded` returns 0 and `GameSelector` mode buttons are force-unlocked: all mini-game / puzzle / survival levels are always available.
 
 ## Conventions
 - Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code. Comments in file `src/Lawn/SpawnLogic.cpp` can omit the vx prefix.

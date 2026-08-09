@@ -122,8 +122,6 @@ Board::Board(LawnApp* theApp)
 	mShakeAmountY = 0;
 	mPaused = false;
 	mLevelAwardSpawned = false;
-	// vx: capture launch-to-boss for this level (Vatrix mod)
-	mIsBossOnLaunch = mApp->mStartBossOnLaunch && mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS;
 	mFlagRaiseCounter = 0;
 	mIceTrapCounter = 0;
 	mLevelComplete = false;
@@ -641,7 +639,7 @@ void Board::PickZombieWaves()
 		}
 		else
 		{
-			mNumWaves = gZombieWaves[std::clamp(mLevel - 1, 0, 49)];
+			mNumWaves = gZombieWaves[std::clamp(mLevel - 1, 0, NUM_LEVELS - 1)];
 			if (!mApp->IsFirstTimeAdventureMode() && !mApp->IsMiniBossLevel())
 			{
 				mNumWaves = mNumWaves < 10 ? 20 : mNumWaves + 10;
@@ -948,6 +946,10 @@ void Board::PickBackground()
 		else if (mLevel <= 4 * LEVELS_PER_AREA)
 		{
 			mBackground = BackgroundType::BACKGROUND_4_FOG;
+		}
+		else if (mApp->IsFinalBossLevel())
+		{
+			mBackground = BackgroundType::BACKGROUND_6_BOSS;
 		}
 		else if (mLevel < FINAL_LEVEL)
 		{
@@ -1933,7 +1935,7 @@ void Board::FadeOutLevel()
 	if (aNeedSoundEffect)
 	{
 		mApp->mMusic->StopAllMusic();
-		if (mApp->IsAdventureMode() && mLevel == 50)
+		if (mApp->IsAdventureMode() && (mLevel == 50 || mLevel == FINAL_LEVEL))
 		{
 			mApp->PlayFoley(FoleyType::FOLEY_FINAL_FANFARE);
 		}

@@ -7227,12 +7227,6 @@ bool Zombie::TrySpawnLevelAward()
     }
 
     CoinType aCoinType;
-    // vx: gives a paper note instead of the money bag/trophy
-    if (mBoard->mIsBossOnLaunch)
-    {
-        aCoinType = CoinType::COIN_NOTE;
-    }
-    else
     if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
     {
         aCoinType = CoinType::COIN_NONE;
@@ -7246,7 +7240,8 @@ bool Zombie::TrySpawnLevelAward()
         }
         else if (mBoard->mLevel == 50)
         {
-            aCoinType = mApp->HasFinishedAdventure() ? CoinType::COIN_AWARD_MONEY_BAG : CoinType::COIN_AWARD_SILVER_SUNFLOWER;
+            // vx: adventure 5-10 drops the custom paper note
+            aCoinType = CoinType::COIN_NOTE;
         }
         else if (mApp->HasFinishedAdventure())
         {

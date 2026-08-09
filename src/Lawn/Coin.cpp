@@ -793,7 +793,7 @@ Color Coin::GetColor()
 
 SeedType Coin::GetFinalSeedPacketType()
 {
-    if (mApp->IsFirstTimeAdventureMode() && mBoard && mBoard->mLevel <= 50)
+    if (mApp->IsFirstTimeAdventureMode() && mBoard && mBoard->mLevel <= FINAL_LEVEL)
     {
         return mApp->GetAwardSeedForLevel(mBoard->mLevel);
     }
@@ -1191,7 +1191,7 @@ void Coin::Collect()
                 FanOutCoins(CoinType::COIN_GOLD, 2);
             }
         }
-        else if (mApp->IsAdventureMode() && mBoard->mLevel == 50)
+        else if (mApp->IsAdventureMode() && (mBoard->mLevel == 50 || mBoard->mLevel == FINAL_LEVEL))
         {
             FanOutCoins(CoinType::COIN_DIAMOND, 3);
         }

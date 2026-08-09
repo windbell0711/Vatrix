@@ -996,6 +996,17 @@ void GameSelector::OrderInManagerChanged()
 // GOTY @Patoke: 0x44EB11
 void GameSelector::KeyDown(KeyCode theKey)
 {
+#ifdef PVZ_DEBUG
+	// vx: debug level-jump hotkeys: 0 -> adventure 5-10, 1-9 -> 6-1..6-9
+	if (mApp->mPlayerInfo && theKey >= KeyCode::KEYCODE_ASCIIBEGIN && theKey <= KeyCode::KEYCODE_ASCIIBEGIN + 9)
+	{
+		int aLevel = 50 + (theKey - KeyCode::KEYCODE_ASCIIBEGIN); // 0 -> 50, 1-9 -> 51-59
+		mApp->mPlayerInfo->SetLevel(aLevel);
+		mApp->KillGameSelector();
+		mApp->PreNewGame(GameMode::GAMEMODE_ADVENTURE, false);
+		return;
+	}
+#endif
 	if (theKey == KeyCode::KEYCODE_ESCAPE)
 	{
 		mApp->ConfirmQuit();

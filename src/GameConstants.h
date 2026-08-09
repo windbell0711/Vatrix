@@ -48,7 +48,7 @@ constexpr const int SEED_PACKET_HEIGHT = 70;
 // ============================================================
 // About levels
 // ============================================================
-constexpr const int ADVENTURE_AREAS = 5;
+constexpr const int ADVENTURE_AREAS = 6;
 constexpr const int LEVELS_PER_AREA = 10;
 constexpr const int NUM_LEVELS = ADVENTURE_AREAS * LEVELS_PER_AREA;
 constexpr const int FINAL_LEVEL = NUM_LEVELS;
