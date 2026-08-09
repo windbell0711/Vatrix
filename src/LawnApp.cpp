@@ -24,6 +24,7 @@
 #include "Resources.h"
 #include "Lawn/LawnCommon.h"
 #include "Lawn/Board.h"
+#include "Lawn/VxScript.h"
 #include "Lawn/Plant.h"
 #include "Lawn/Zombie.h"
 #include "Lawn/Cutscene.h"
@@ -328,6 +329,7 @@ void LawnApp::Shutdown()
 	{
 		mLoadingFailed = true;
 		SexyAppBase::Shutdown();
+		VX::Shutdown(); // vx: finalize python scripting
 		return;
 	}
 
@@ -335,6 +337,7 @@ void LawnApp::Shutdown()
 	{
 		SexyAppBase::Shutdown();
 	}
+	VX::Shutdown(); // vx: finalize python scripting
 }
 
 void LawnApp::ShutdownHook()
@@ -1387,6 +1390,9 @@ void LawnApp::Init()
 	PvzpTrace("loading: 'loaderbar' %d ms", aDuration);
 #endif
 	mTimer.Start();
+
+	// vx: initialize the python scripting runtime
+	VX::Init();
 }
 
 bool LawnApp::ChangeDirHook(const char* /*theIntendedPath*/)

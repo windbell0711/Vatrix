@@ -541,6 +541,11 @@ void GameSelector::SyncProfile(bool theShowLoading)
 			mPuzzleLocked = true;
 			mSurvivalLocked = true;
 		}
+
+		// vx: all game modes unlocked for testing
+		mMinigamesLocked = false;
+		mPuzzleLocked = false;
+		mSurvivalLocked = false;
 	}
 
 	if (mApp->HasFinishedAdventure() && !mApp->IsTrialStageLocked())

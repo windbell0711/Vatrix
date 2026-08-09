@@ -24,6 +24,7 @@
 #include <SDL.h>
 #include "ZenGarden.h"
 #include "BoardInclude.h"
+#include "VxScript.h"
 #include "SpawnLogic.h"
 #include "LawnCommon.h"
 #include "System/Music.h"
@@ -240,6 +241,9 @@ Board::Board(LawnApp* theApp)
 		mStoreButton->mBtnNoDraw = true;
 		mStoreButton->SetLabel("[GET_FULL_VERSION_BUTTON]");
 	}
+
+	// vx: run player python scripts for this level
+	VX::StartScripts();
 }
 
 Board::~Board()
@@ -274,6 +278,8 @@ Board::~Board()
 	*/
 	delete mCutScene;
 	delete mChallenge;
+	// vx: stop the player script worker before board state goes away
+	VX::StopScripts();
 }
 
 void BoardInitForPlayer()
@@ -5846,6 +5852,9 @@ void Board::Update()
 
 	if (mTimeStopCounter > 0)
 		return;
+
+	// vx: apply vase-break commands queued by player scripts
+	VX::ProcessBoardQueue(this);
 
 	mEffectCounter++;
 	if (StageHasPool() && !mIceTrapCounter && mApp->mGameScene != GameScenes::SCENE_ZOMBIES_WON && !mCutScene->IsSurvivalRepick())
