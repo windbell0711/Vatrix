@@ -158,11 +158,13 @@ LawnApp::LawnApp()
 	mSfxVolume = 0.5525;
 	mAutoStartLoadingThread = false;
 	mDebugKeysEnabled = false;
-	mProdName = "io.github.wszqkzqk.pvz-portable";
+	// vx: Vatrix product name (logs only; save paths no longer derive from it)
+	mProdName = "vatrix";
 	mProductVersion = PVZP_VERSION;
 	mBuildNum = PVZP_BUILD_NUMBER;
 	mCommitDate = PVZP_COMMIT_DATE;
-	std::string aTitleName = "PvZ Portable";
+	// vx: window title shows Vatrix branding; version follows PVZP_VERSION
+	std::string aTitleName = "Vatrix v" PVZP_VERSION;
 	mTitle = aTitleName;
 	mCustomCursorsEnabled = false;
 	mPlayerInfo = nullptr;

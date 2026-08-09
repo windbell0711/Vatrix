@@ -38,11 +38,6 @@ sha256sums=('SKIP'
             'b9dd103e31c17f867dad75af2bd901682f76e8a461e64a00b2538df2f2c584a8'
             'c06a50aedf4698d7ad1368bc69fbcdbf2f00925688353bbf4b3ef4c288d5f36b')
 
-pkgver() {
-    cd "${pkgname}"
-    git describe --tags --abbrev=12 | sed 's/^v//;s/-/./g'
-}
-
 build() {
     cmake -G Ninja -B build -S "${pkgname}" \
         -DCMAKE_BUILD_TYPE='Release' \

@@ -120,7 +120,7 @@ void SexyApp::InitPropertiesHook()
 	bool checkSig = !IsScreenSaver();
 	LoadProperties("properties/partner.xml", false, checkSig);
 
-	mProdName = GetString("ProdName", mProdName);
+	// vx: keep the Vatrix product name; player-supplied partner.xml must not override it
 #if !defined(__IPHONEOS__) && (!defined(__ANDROID__) || defined(__TERMUX__)) && !defined(__SWITCH__) && !defined(__EMSCRIPTEN__)
 	mIsWindowed = GetBoolean("DefaultWindowed", mIsWindowed);	
 #endif

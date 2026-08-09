@@ -3505,11 +3505,12 @@ void SexyAppBase::Init()
 	}
 #elif !defined(__SWITCH__)
 	{
-		char* aPrefPath = SDL_GetPrefPath("io.github.wszqkzqk", "PvZPortable"); // Avoid conflict with official Plants vs. Zombies
-		if (aPrefPath)
+		// vx: portable saves: userdata/ and registry.regemu live next to the exe, not %APPDATA%
+		char* aBasePath = SDL_GetBasePath();
+		if (aBasePath)
 		{
-			SetAppDataFolder(aPrefPath);
-			SDL_free(aPrefPath);
+			SetAppDataFolder(aBasePath);
+			SDL_free(aBasePath);
 		}
 	}
 #endif

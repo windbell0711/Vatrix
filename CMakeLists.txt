@@ -257,6 +257,8 @@ if (WIN32)
 
 	target_link_libraries(pvz-portable PRIVATE ws2_32 user32 gdi32 winmm imm32 shlwapi)
 	target_compile_definitions(pvz-portable PRIVATE WINDOWS)
+	# vx: packaged exe is named Vatrix.exe
+	set_target_properties(pvz-portable PROPERTIES OUTPUT_NAME "Vatrix")
 
 	if(NOT CONSOLE)
 		if(MSVC)
