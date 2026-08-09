@@ -39,7 +39,7 @@
 #include "AchievementsScreen.h"
 
 // GOTY @Patoke: 0x4063E0
-AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements, bool theIsBossNote)
+AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements, int theNoteId)
 {
 	mApp = theApp;
 	mClip = false;
@@ -47,7 +47,8 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 	mAchievementAnimTime = 0;
 	mAwardType = theAwardType;
 	mShowingAchievements = theShowingAchievements;
-	mIsBossNoteAward = theIsBossNote;
+	mIsBossNoteAward = theNoteId != 0;
+	mNoteId = theNoteId;
 
 	mLoadedResourceNames.push_back("DelayLoad_AwardScreen");
 
@@ -107,7 +108,7 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNote");
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNote1");
 		// vx: custom note content image (falls back to the built-in placeholder if missing)
-		mNoteCustomImage = mApp->GetImage("Properties/VX_HINT_1.png");
+		mNoteCustomImage = mApp->GetImage(mNoteId == 2 ? "Properties/VX_HINT_2.png" : "Properties/VX_HINT_1.png");
 	}
 	else if (mApp->IsAdventureMode())
 	{
@@ -230,7 +231,7 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mMenuButton->mBtnNoDraw = true;
 		mMenuButton->mDisabled = true;
 	}
-	else if (aLevel == 15)
+	else if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
 		mStartButton->SetLabel("[VIEW_ALMANAC_BUTTON]");
 	else if (aLevel == 25 || aLevel == 35 || aLevel == 45)
 		mStartButton->SetLabel("[CONTINUE_BUTTON]");
@@ -388,7 +389,7 @@ void AwardScreen::Draw(Graphics* g)
 			g->DrawImage(Sexy::IMAGE_ZOMBIE_NOTE1, 131, 132);
 			PvzpDrawString(g, "[FOUND_NOTE]", BOARD_WIDTH / 2, 70, Sexy::FONT_DWARVENTODCRAFT24, Color(255, 200, 0, 255), DS_ALIGN_CENTER);
 		}
-		else if (aLevel == 15)
+		else if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
 		{
 			DrawBottom(g, "[FOUND_SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC_DESCRIPTION]");
 			g->DrawImage(Sexy::IMAGE_ALMANAC, BOARD_WIDTH / 2 - Sexy::IMAGE_ALMANAC->mWidth / 2, 160);
@@ -555,7 +556,7 @@ void AwardScreen::StartButtonPressed()
 		}
 		else
 		{
-			if (aLevel == 15)
+			if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
 			{
 				mApp->DoAlmanacDialog()->WaitForResult();
 			}

@@ -581,10 +581,10 @@ void LawnApp::KillGameSelector()
 }
 
 // GOTY @Patoke: 0x452CB0
-void LawnApp::ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, bool theIsBossNote)
+void LawnApp::ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, int theNoteId)
 {
 	mGameScene = GameScenes::SCENE_AWARD;
-	mAwardScreen = new AwardScreen(this, theAwardType, theShowAchievements, theIsBossNote);
+	mAwardScreen = new AwardScreen(this, theAwardType, theShowAchievements, theNoteId);
 	mAwardScreen->Resize(0, 0, mWidth, mHeight);
 	mWidgetManager->AddWidget(mAwardScreen);
 	mWidgetManager->BringToBack(mAwardScreen);
@@ -1538,10 +1538,14 @@ void LawnApp::CheckForGameEnd()
 		int aLevel = mBoard->mLevel;
 		KillBoard();
 
-		// vx: adventure 5-10 ends with the custom boss note award
-		if (aLevel == 50)
+		// vx: adventure 5-10/6-1 end with custom paper note awards, 6-2 with the almanac
+		if (aLevel == 50 || aLevel == 51)
 		{
-			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, true);
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, aLevel == 50 ? 1 : 2);
+		}
+		else if (aLevel == 52)
+		{
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false);
 		}
 		else if (IsFirstTimeAdventureMode() && aLevel < FINAL_LEVEL)
 		{

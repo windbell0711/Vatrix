@@ -185,7 +185,7 @@ public:
 	void							PreNewGame(GameMode theGameMode, bool theLookForSavedGame);
 	void							ShowGameSelector();
 	void							KillGameSelector();
-	void							ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, bool theIsBossNote = false); // vx: boss-note arg
+	void							ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, int theNoteId = 0); // vx: note id
 	void							KillAwardScreen();
 	void							ShowSeedChooserScreen();
 	void							KillSeedChooserScreen();

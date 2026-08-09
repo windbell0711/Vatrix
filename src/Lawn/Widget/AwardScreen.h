@@ -60,12 +60,13 @@ public:
 	int									mAchievementAnimTime;	//+GOTY @Patoke: 0xBC
 	bool								mShowingAchievements;	//+GOTY @Patoke: 0xD8
 	bool								mIsBossNoteAward;		// vx: 0-0 note award
-	Sexy::Image*					mNoteCustomImage = nullptr;	// vx: custom note PNG (Properties/VX_HINT_1.png)
+	int									mNoteId = 0;			// vx: custom note image index (VX_HINT_<id>.png)
+	Sexy::Image*					mNoteCustomImage = nullptr;	// vx: custom note PNG (Properties/VX_HINT_<id>.png)
 	std::vector<AchievementScreenItem>	mAchievementItems;		//+GOTY @Patoke: 0xC0
 
 public:
 	// @Patoke: added argument
-	AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements = false, bool theIsBossNote = false);
+	AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowingAchievements = false, int theNoteId = 0); // vx: note id
 	~AwardScreen() override;
 
 	/*inline*/ bool		IsPaperNote();

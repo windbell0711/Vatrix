@@ -7232,16 +7232,21 @@ bool Zombie::TrySpawnLevelAward()
         aCoinType = CoinType::COIN_NONE;
         mBoard->mChallenge->PuzzlePhaseComplete(mBoard->PixelToGridXKeepOnBoard(mPosX + 75, mPosY), mRow);
     }
-    else if (mApp->IsAdventureMode() && mBoard->mLevel <= 50)
+    else if (mApp->IsAdventureMode() && mBoard->mLevel <= 52)
     {
         if (mBoard->mLevel == 9 || mBoard->mLevel == 19 || mBoard->mLevel == 29 || mBoard->mLevel == 39 || mBoard->mLevel == 49)
         {
             aCoinType = CoinType::COIN_NOTE;
         }
-        else if (mBoard->mLevel == 50)
+        else if (mBoard->mLevel == 50 || mBoard->mLevel == 51)
         {
-            // vx: adventure 5-10 drops the custom paper note
+            // vx: adventure 5-10 / 6-1 drop the custom paper note
             aCoinType = CoinType::COIN_NOTE;
+        }
+        else if (mBoard->mLevel == 52)
+        {
+            // vx: adventure 6-2 awards the almanac
+            aCoinType = CoinType::COIN_ALMANAC;
         }
         else if (mApp->HasFinishedAdventure())
         {
