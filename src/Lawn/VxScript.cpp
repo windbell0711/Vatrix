@@ -18,10 +18,19 @@
 
 namespace
 {
-	struct BreakCmd
+	enum class VxCmdType
 	{
+		BreakPot,
+		Plant,
+		Shovel,
+	};
+
+	struct VxCmd
+	{
+		VxCmdType mType;
 		int mRow;
 		int mCol;
+		int mArg;
 	};
 
 	// vx: generated from ConstEnums.h (gSeedNames)
@@ -104,7 +113,7 @@ namespace
 
 
 	std::mutex gQueueMutex;
-	std::vector<BreakCmd> gQueue;
+	std::vector<VxCmd> gQueue;
 	std::thread gScriptThread;
 	std::filesystem::path gScriptsDir;
 	std::vector<std::filesystem::path> gScriptDirs; // sys.path entries for game python code
@@ -197,12 +206,18 @@ except OSError:
     log = None
 
 def run_script(path):
-    ns = {}
+    ns = {"__file__": path, "__name__": "__main__"}
     try:
         with open(path, "rb") as f:
             src = f.read()
         exec(compile(src, path, "exec"), ns)
     except BaseException:
+        # vx: show the error on the console too (dev builds have CONSOLE=ON)
+        try:
+            print("=== %s ===" % path)
+            traceback.print_exc()
+        except Exception:
+            pass
         if log is not None:
             log.write("=== %s ===\n" % path)
             traceback.print_exc(file=log)
@@ -262,13 +277,52 @@ if log is not None:
 		}
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
-			gQueue.push_back({aRow, aCol});
+			gQueue.push_back({VxCmdType::BreakPot, aRow, aCol, 0});
+		}
+		Py_RETURN_NONE;
+	}
+
+	PyObject* VbPlt(PyObject*, PyObject* theArgs)
+	{
+		int aRow = 0;
+		int aCol = 0;
+		int aSlot = 0;
+		if (!PyArg_ParseTuple(theArgs, "iii", &aRow, &aCol, &aSlot))
+			return nullptr;
+		if (aRow < 0 || aCol < 0 || aSlot < 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "row/col/card_id must be >= 0");
+			return nullptr;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gQueueMutex);
+			gQueue.push_back({VxCmdType::Plant, aRow, aCol, aSlot});
+		}
+		Py_RETURN_NONE;
+	}
+
+	PyObject* VbRmv(PyObject*, PyObject* theArgs)
+	{
+		int aRow = 0;
+		int aCol = 0;
+		if (!PyArg_ParseTuple(theArgs, "ii", &aRow, &aCol))
+			return nullptr;
+		if (aRow < 0 || aCol < 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "row and col must be >= 0");
+			return nullptr;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gQueueMutex);
+			gQueue.push_back({VxCmdType::Shovel, aRow, aCol, 0});
 		}
 		Py_RETURN_NONE;
 	}
 
 	PyMethodDef gVbMethods[] = {
 		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
+		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
+		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
 		{nullptr, nullptr, 0, nullptr},
 	};
 
@@ -517,20 +571,33 @@ namespace VX
 
 	void ProcessBoardQueue(Board* theBoard)
 	{
-		std::vector<BreakCmd> aCommands;
+		std::vector<VxCmd> aCommands;
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
 			aCommands.swap(gQueue);
 		}
-		for (const BreakCmd& aCommand : aCommands)
+		for (const VxCmd& aCommand : aCommands)
 		{
-			GridItem* aPot = theBoard->GetScaryPotAt(aCommand.mCol, aCommand.mRow);
-			if (!aPot)
+			switch (aCommand.mType)
 			{
-				ScriptLog("[vb] no pot at (" + std::to_string(aCommand.mRow) + ", " + std::to_string(aCommand.mCol) + ")");
-				continue;
+			case VxCmdType::BreakPot:
+			{
+				GridItem* aPot = theBoard->GetScaryPotAt(aCommand.mCol, aCommand.mRow);
+				if (!aPot)
+				{
+					ScriptLog("[vb] no pot at (" + std::to_string(aCommand.mRow) + ", " + std::to_string(aCommand.mCol) + ")");
+					break;
+				}
+				theBoard->mChallenge->ScaryPotterOpenPot(aPot);
+				break;
 			}
-			theBoard->mChallenge->ScaryPotterOpenPot(aPot);
+			case VxCmdType::Plant:
+				theBoard->VxPlantFromBank(aCommand.mArg, aCommand.mCol, aCommand.mRow);
+				break;
+			case VxCmdType::Shovel:
+				theBoard->VxShovelAt(aCommand.mCol, aCommand.mRow);
+				break;
+			}
 		}
 	}
 }

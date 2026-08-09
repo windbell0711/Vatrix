@@ -263,6 +263,9 @@ public:
 	/*inline*/ void					SaveGame(const std::string& theFileName);
 	bool							LoadGame(const std::string& theFileName);
 	void							InitLevel();
+	// vx: script-driven planting / shoveling
+	void							VxPlantFromBank(int theSlot, int theGridX, int theGridY);
+	void							VxShovelAt(int theGridX, int theGridY);
 	void							DisplayAdvice(std::string_view theAdvice, MessageStyle theMessageStyle, AdviceType theHelpIndex);
 	void							StartLevel();
 	Plant*							AddPlant(int theGridX, int theGridY, SeedType theSeedType, SeedType theImitaterType = SeedType::SEED_NONE);

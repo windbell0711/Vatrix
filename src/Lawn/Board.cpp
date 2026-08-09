@@ -1811,6 +1811,40 @@ void Board::StartLevel()
 	mApp->mMusic->StartGameMusic();
 }
 
+// vx: plant the card at bank slot theSlot at grid cell (theGridX, theGridY)
+void Board::VxPlantFromBank(int theSlot, int theGridX, int theGridY)
+{
+	if (theSlot < 0 || theSlot >= mSeedBank->mNumPackets)
+		return;
+	SeedPacket* aPacket = &mSeedBank->mSeedPackets[theSlot];
+	SeedType aSeedType = aPacket->mPacketType;
+	if (aSeedType == SeedType::SEED_NONE || aPacket->mRefreshing || !aPacket->mActive)
+		return; // empty slot or card still refreshing
+	if (HasConveyorBeltSeedBank())
+		return;
+	if (CanPlantAt(theGridX, theGridY, aSeedType) != PlantingReason::PLANTING_OK)
+		return;
+	if (!mApp->mEasyPlantingCheat && !TakeSunMoney(GetCurrentPlantCost(aSeedType, SeedType::SEED_NONE)))
+		return; // not enough sun
+	AddPlant(theGridX, theGridY, aSeedType, aPacket->mImitaterType);
+	aPacket->WasPlanted();
+}
+
+// vx: shovel the plant at grid cell (theGridX, theGridY)
+void Board::VxShovelAt(int theGridX, int theGridY)
+{
+	Plant* aPlant = GetTopPlantAt(theGridX, theGridY, PlantPriority::TOPPLANT_ONLY_NORMAL_POSITION);
+	if (!aPlant)
+		return;
+	mApp->PlayFoley(FoleyType::FOLEY_USE_SHOVEL);
+	mPlantsShoveled++;
+	aPlant->Die();
+	if (aPlant->mSeedType == SeedType::SEED_CATTAIL && GetTopPlantAt(aPlant->mPlantCol, aPlant->mRow, PlantPriority::TOPPLANT_ONLY_PUMPKIN))
+	{
+		NewPlant(aPlant->mPlantCol, aPlant->mRow, SeedType::SEED_LILYPAD, SeedType::SEED_NONE);
+	}
+}
+
 LawnMower* Board::GetBottomLawnMower()
 {
 	LawnMower* aBottomMower = nullptr;

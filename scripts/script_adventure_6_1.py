@@ -1,7 +1,8 @@
-import vb, time
+import vb
 
 print("Hello, V!")
-time.sleep(1)
-vb.brk(3,7,2)
-vb.brk(3,8,2)
+vb.slp(1)
+vb.brk(3,7)
+vb.slp(1)
+vb.brk(3,8)
 print("Break done.")

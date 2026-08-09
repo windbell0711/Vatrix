@@ -816,7 +816,8 @@ void CutScene::StartLevelIntro()
 	{
 		mCrazyDaveDialogStart = 801;
 	}
-	else if (mApp->IsScaryPotterLevel() && mApp->IsAdventureMode())
+	// vx: add restriction
+	else if (mApp->IsScaryPotterLevel() && mApp->IsAdventureMode() && aLevel < 50)
 	{
 		mCrazyDaveDialogStart = 2500;
 	}
