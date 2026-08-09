@@ -323,25 +323,21 @@ elseif (IOS)
 	endif()
 endif()
 
-# vx: sync the mod string table into the build's properties dir so dialogue edits apply without manual copying
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
-	add_custom_command(
-		OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt"
-		COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/properties"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			"${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt"
-			"${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt"
-		DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VatrixStrings.txt")
-	set(VATRIX_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/properties/VatrixStrings.txt")
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png")
+# vx: copy every file under Properties/ into the build's properties dir at build time
+# (dialogue strings, custom images, etc.; add files freely, no CMake edits needed)
+file(GLOB VATRIX_PROPERTY_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/*")
+if(WIN32 AND VATRIX_PROPERTY_FILES)
+	set(VATRIX_SYNC_DEPS)
+	foreach(VATRIX_PROPERTY_FILE ${VATRIX_PROPERTY_FILES})
+		get_filename_component(VATRIX_PROPERTY_NAME "${VATRIX_PROPERTY_FILE}" NAME)
 		add_custom_command(
-			OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png"
+			OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/properties/${VATRIX_PROPERTY_NAME}"
 			COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/properties"
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different
-				"${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png"
-				"${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png"
-			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Properties/VX_HINT_1.png")
-		list(APPEND VATRIX_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/properties/VX_HINT_1.png")
-	endif()
-	add_custom_target(vatrix_strings ALL DEPENDS ${VATRIX_SYNC_DEPS})
+				"${VATRIX_PROPERTY_FILE}"
+				"${CMAKE_CURRENT_BINARY_DIR}/properties/${VATRIX_PROPERTY_NAME}"
+			DEPENDS "${VATRIX_PROPERTY_FILE}")
+		list(APPEND VATRIX_SYNC_DEPS "${CMAKE_CURRENT_BINARY_DIR}/properties/${VATRIX_PROPERTY_NAME}")
+	endforeach()
+	add_custom_target(vatrix_properties ALL DEPENDS ${VATRIX_SYNC_DEPS})
 endif()
