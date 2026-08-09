@@ -4,3 +4,5 @@
 [CRAZY_DAVE_9003] Here's the collision,
 [CRAZY_DAVE_9004] and integration...
 [CRAZY_DAVE_9005] ... or substitution.
+
+[CRAZY_DAVE_9100] Oh, you've got a note?

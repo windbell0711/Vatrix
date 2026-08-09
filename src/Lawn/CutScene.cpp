@@ -761,8 +761,17 @@ void CutScene::StartLevelIntro()
 	{
 		isRestart = true;
 	}
+	
+	// vx: handle dave dialogue
+	if (aLevel == 50 && mApp->IsAdventureMode()) {
+		mCrazyDaveDialogStart = 9000;
+	}
+	else if (aLevel == 51 && mApp->IsAdventureMode())
+	{
+		mCrazyDaveDialogStart = 9100;
+	}
 
-	if (mApp->IsFirstTimeAdventureMode() && aLevel == 11)
+	else if (mApp->IsFirstTimeAdventureMode() && aLevel == 11)
 	{
 		mCrazyDaveDialogStart = 201;
 	}
