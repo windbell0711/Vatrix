@@ -1,6 +1,5 @@
 # vx: Vatrix scripting API
 import _vb
-import time
 from . import consts
 from dataclasses import dataclass
 
@@ -24,13 +23,13 @@ def brk(row: int, col: int, delay=0.0):
     if delay < 0:
         raise ValueError("delay must be >= 0")
     _vb.brk(row-1, col-1)
-    time.sleep(delay)
+    _vb.slp(delay)
 
 def slp(delay: float):
     """Sleep for delay seconds; the game keeps running (script thread blocks)."""
     if delay < 0:
         raise ValueError("delay must be >= 0")
-    time.sleep(delay)
+    _vb.slp(delay)
 
 def plt(row: int, col: int, card_id=0):
     """Plant the card at seed bank slot card_id (0-based) at (row, col) (1-based)."""

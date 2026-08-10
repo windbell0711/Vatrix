@@ -249,4 +249,13 @@ public:
 
 }
 
+// vx: hooks the in-game code editor installs; kept null when VX_SCRIPT is off
+// gVxEditorDockedFn -> true while the right-side editor strip is open (docks the 4:3 view to the left)
+// gVxRenderImGuiFn   -> renders the ImGui frame right before the buffer swap
+namespace VX
+{
+	extern bool (*gVxEditorDockedFn)();
+	extern void (*gVxRenderImGuiFn)();
+}
+
 #endif // __GLINTERFACE_H__

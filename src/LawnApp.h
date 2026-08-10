@@ -120,6 +120,10 @@ public:
 	int								mPlayTimeActiveSession;
 	int								mPlayTimeInactiveSession;
 	BoardResult						mBoardResult;
+	// vx: deferred world-6 Run/Reset/Submit (1=trial, 2=submit, 3=reset); consumed in UpdateFrames
+	int								mVxPendingRestart = 0;
+	// vx: pop the code editor open after the pending restart (left-click Run / panel Run)
+	bool							mVxPendingEditorOpen = false;
 	bool							mSawYeti;
 	TypingCheck*					mKonamiCheck;
 	TypingCheck*					mMustacheCheck;

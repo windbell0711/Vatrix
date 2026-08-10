@@ -48,6 +48,19 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
 	src/Lawn/System/*.cpp
 )
 
+# vx: in-game code editor (Dear ImGui + ImGuiColorTextEdit); desktop Windows + MinGW only
+if(VX_SCRIPT AND WIN32 AND NOT MSVC)
+	list(APPEND SOURCES
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_draw.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_tables.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_widgets.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_impl_sdl2.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_impl_opengl3.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/ImGuiColorTextEdit/TextEditor.cpp
+	)
+endif()
+
 set(LOW_MEMORY OFF CACHE BOOL "Enable low memory mode")
 if(NINTENDO_SWITCH)
 	set(VORBIS_LIB vorbisfile vorbis)
@@ -129,16 +142,27 @@ else()
 	find_package(SDL2 REQUIRED)
 endif()
 
-# vx: optional Python scripting (_vb module); needs a MinGW-compatible Python dev install
+# vx: optional Python scripting (_vb module). Preferred: self-contained NuGet python fetched by
+# scripts/fetch_python.ps1 into third_party/python/; falls back to a system Python 3.12 dev install.
 option(VX_SCRIPT "Enable Python scripting support (_vb module)" ON)
+set(VX_PYTHON_TOOLS "${PROJECT_SOURCE_DIR}/third_party/python/tools" CACHE PATH "Fetched NuGet python tools dir (scripts/fetch_python.ps1)")
 if(VX_SCRIPT)
-	if(WIN32)
-		set(Python3_ROOT_DIR "D:/msys64/ucrt64" CACHE PATH "Python3 root (MSYS2 UCRT64)")
-	endif()
-	find_package(Python3 3.12 COMPONENTS Development)
-	if(NOT Python3_FOUND)
-		message(WARNING "VX_SCRIPT: Python3 development files not found, scripting disabled")
-		set(VX_SCRIPT OFF)
+	if(WIN32 AND EXISTS "${VX_PYTHON_TOOLS}/python312.dll" AND EXISTS "${VX_PYTHON_TOOLS}/libpython312.a")
+		# vx: fetched NuGet python: import lib for MinGW + headers + full stdlib next to the exe
+		set(VX_PYTHON_IMPLIB "${VX_PYTHON_TOOLS}/libpython312.a")
+		set(VX_PYTHON_INCLUDE "${VX_PYTHON_TOOLS}/include")
+		set(VX_PYTHON_EXECUTABLE "${VX_PYTHON_TOOLS}/python.exe")
+		set(VX_PYTHON_RUNTIME_DLL "${VX_PYTHON_TOOLS}/python312.dll")
+		message(STATUS "VX_SCRIPT: using fetched NuGet python (${VX_PYTHON_TOOLS})")
+	else()
+		if(WIN32)
+			set(Python3_ROOT_DIR "D:/msys64/ucrt64" CACHE PATH "Python3 root (MSYS2 UCRT64)")
+		endif()
+		find_package(Python3 3.12 COMPONENTS Development)
+		if(NOT Python3_FOUND)
+			message(WARNING "VX_SCRIPT: no fetched python and Python3 development files not found; scripting disabled (run scripts/fetch_python.ps1 or install Python 3.12)")
+			set(VX_SCRIPT OFF)
+		endif()
 	endif()
 endif()
 
@@ -199,6 +223,20 @@ target_include_directories(pvz-portable PRIVATE
 	${PROJECT_SOURCE_DIR}/src/SexyAppFramework/sound/SDL-Mixer-X/include
 	${SDL2_INCLUDE_DIRS}
 )
+if(VX_SCRIPT)
+	# vx: imgui + ImGuiColorTextEdit headers (GLES2/gl2.h shim resolves to the bundled glad)
+	target_include_directories(pvz-portable PRIVATE
+		${PROJECT_SOURCE_DIR}/src/ThirdParty/imgui
+		${PROJECT_SOURCE_DIR}/src/ThirdParty/ImGuiColorTextEdit
+	)
+	if(WIN32 AND NOT MSVC)
+		# vx: compile the GLES2 flavour of the opengl3 backend; glad supplies the function pointers
+		set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/ThirdParty/imgui/imgui_impl_opengl3.cpp PROPERTIES
+			COMPILE_DEFINITIONS "IMGUI_IMPL_OPENGL_ES2"
+			COMPILE_OPTIONS "-include;glad/gles2.h"
+		)
+	endif()
+endif()
 target_compile_definitions(pvz-portable PRIVATE
 	$<$<BOOL:${PVZ_DEBUG}>:PVZ_DEBUG>
 	$<$<BOOL:${DO_FIX_BUGS}>:DO_FIX_BUGS>
@@ -252,8 +290,14 @@ else()
 		SDL2::SDL2main
 		${SDL2_LINK_TARGET}
 		Threads::Threads
-		$<$<BOOL:${VX_SCRIPT}>:Python3::Python>
 	)
+	if(VX_SCRIPT AND VX_PYTHON_IMPLIB)
+		# vx: fetched NuGet python (MinGW import lib + headers)
+		target_link_libraries(pvz-portable PRIVATE "${VX_PYTHON_IMPLIB}")
+		target_include_directories(pvz-portable PRIVATE "${VX_PYTHON_INCLUDE}")
+	elseif(VX_SCRIPT AND Python3_FOUND)
+		target_link_libraries(pvz-portable PRIVATE Python3::Python)
+	endif()
 endif()
 
 if (WIN32)
@@ -275,25 +319,40 @@ if (WIN32)
 	# vx: packaged exe is named Vatrix.exe
 	set_target_properties(pvz-portable PROPERTIES OUTPUT_NAME "Vatrix")
 
-	if(VX_SCRIPT AND Python3_RUNTIME_LIBRARY)
-		# vx: keep libpython3.12.dll next to the exe for local runs
+	if(VX_SCRIPT AND VX_PYTHON_RUNTIME_DLL)
+		# vx: copy the fetched python runtime (python312.dll + vcruntime) next to the exe
+		foreach(_VX_RT_DLL python312.dll vcruntime140.dll vcruntime140_1.dll)
+			if(EXISTS "${VX_PYTHON_TOOLS}/${_VX_RT_DLL}")
+				add_custom_command(TARGET pvz-portable POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${VX_PYTHON_TOOLS}/${_VX_RT_DLL}" $<TARGET_FILE_DIR:pvz-portable>
+				)
+			endif()
+		endforeach()
+		if(EXISTS "${VX_PYTHON_EXECUTABLE}")
+			# vx: sync the stdlib (Lib/ + DLLs/) into <exe>/python312/
+			add_custom_command(TARGET pvz-portable POST_BUILD
+				COMMAND "${VX_PYTHON_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/CMake/sync_python312.py" "$<TARGET_FILE_DIR:pvz-portable>" "${VX_PYTHON_TOOLS}"
+				VERBATIM
+			)
+		endif()
+	elseif(VX_SCRIPT AND Python3_RUNTIME_LIBRARY)
+		# vx: fallback: keep libpython3.12.dll next to the exe for local runs
 		add_custom_command(TARGET pvz-portable POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${Python3_RUNTIME_LIBRARY}" $<TARGET_FILE_DIR:pvz-portable>
 		)
-	endif()
-
-	if(VX_SCRIPT AND Python3_LIBRARIES)
-		# vx: sync the pure-python stdlib next to the exe (python312/)
-		get_filename_component(_VX_PY_ROOT "${Python3_LIBRARIES}" DIRECTORY)
-		get_filename_component(_VX_PY_ROOT "${_VX_PY_ROOT}" DIRECTORY)
-		set(_VX_PY_STDLIB "${_VX_PY_ROOT}/lib/python3.12")
-		if(EXISTS "${_VX_PY_STDLIB}/os.py")
-			find_program(VX_PYTHON_EXECUTABLE python3.12 PATHS "${_VX_PY_ROOT}/bin" NO_DEFAULT_PATH)
-			if(VX_PYTHON_EXECUTABLE)
-				add_custom_command(TARGET pvz-portable POST_BUILD
-					COMMAND "${VX_PYTHON_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/CMake/sync_python312.py" "$<TARGET_FILE_DIR:pvz-portable>" "${_VX_PY_STDLIB}"
-					VERBATIM
-				)
+		if(VX_SCRIPT AND Python3_LIBRARIES)
+			# vx: sync the pure-python stdlib next to the exe (python312/)
+			get_filename_component(_VX_PY_ROOT "${Python3_LIBRARIES}" DIRECTORY)
+			get_filename_component(_VX_PY_ROOT "${_VX_PY_ROOT}" DIRECTORY)
+			set(_VX_PY_STDLIB "${_VX_PY_ROOT}/lib/python3.12")
+			if(EXISTS "${_VX_PY_STDLIB}/os.py")
+				find_program(VX_PYTHON_FALLBACK_EXECUTABLE python3.12 PATHS "${_VX_PY_ROOT}/bin" NO_DEFAULT_PATH)
+				if(VX_PYTHON_FALLBACK_EXECUTABLE)
+					add_custom_command(TARGET pvz-portable POST_BUILD
+						COMMAND "${VX_PYTHON_FALLBACK_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/CMake/sync_python312.py" "$<TARGET_FILE_DIR:pvz-portable>" "${_VX_PY_STDLIB}"
+						VERBATIM
+					)
+				endif()
 			endif()
 		endif()
 	endif()

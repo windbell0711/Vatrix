@@ -25,6 +25,7 @@
 #include "Lawn/LawnCommon.h"
 #include "Lawn/Board.h"
 #include "Lawn/VxScript.h"
+#include "Lawn/VxEditor.h"
 #include "Lawn/Plant.h"
 #include "Lawn/Zombie.h"
 #include "Lawn/Cutscene.h"
@@ -328,6 +329,7 @@ void LawnApp::Shutdown()
 		mLoadingFailed = true;
 		SexyAppBase::Shutdown();
 		VX::Shutdown(); // vx: finalize python scripting
+		VX::VxEditorShutdown();
 		return;
 	}
 
@@ -336,6 +338,7 @@ void LawnApp::Shutdown()
 		SexyAppBase::Shutdown();
 	}
 	VX::Shutdown(); // vx: finalize python scripting
+	VX::VxEditorShutdown();
 }
 
 void LawnApp::ShutdownHook()
@@ -1387,6 +1390,8 @@ void LawnApp::Init()
 
 	// vx: initialize the python scripting runtime
 	VX::Init();
+	// vx: install the code editor hooks (SDL event watch + ImGui frame render)
+	VX::VxEditorInit();
 }
 
 bool LawnApp::ChangeDirHook(const char* /*theIntendedPath*/)
@@ -1531,7 +1536,9 @@ void LawnApp::CheckForGameEnd()
 	if (mBoard == nullptr || !mBoard->mLevelComplete)
 		return;
 
-	bool aUnlockedNewChallenge = UpdatePlayerProfileForFinishingLevel();
+	// vx: world-6 trial runs (Run button) never advance the save or grant rewards
+	bool aVxTrialRun = IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL && VX::IsTrialRun();
+	bool aUnlockedNewChallenge = aVxTrialRun ? false : UpdatePlayerProfileForFinishingLevel();
 
 	if (IsAdventureMode())
 	{
@@ -1539,7 +1546,11 @@ void LawnApp::CheckForGameEnd()
 		KillBoard();
 
 		// vx: adventure 5-10/6-1 end with custom paper note awards, 6-2 with the almanac
-		if (aLevel == 50 || aLevel == 51)
+		if (aVxTrialRun)
+		{
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
+		}
+		else if (aLevel == 50 || aLevel == 51)
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, aLevel == 50 ? 1 : 2);
 		}
@@ -1695,6 +1706,21 @@ void LawnApp::UpdateFrames()
 	if ((!mActive || mMinimized) && mBoard)
 	{
 		mBoard->ResetFPSStats();
+	}
+
+	// vx: world-6 Run/Reset/Submit are executed here (outside the widget update) so the
+	// board can be rebuilt safely; 1=trial, 2=submit, 3=reset
+	if (mVxPendingRestart && mBoard)
+	{
+		int aKind = mVxPendingRestart;
+		mVxPendingRestart = 0;
+		if (aKind == 3)
+			VX::ClearRunFlags();
+		else
+			VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
+		PreNewGame(mGameMode, false);
+		// vx: mVxPendingEditorOpen is left set on purpose: the old board is destroyed lazily
+		// (SafeDeleteWidget), and its dtor reads the flag to keep the editor open across the restart
 	}
 
 #ifdef PVZ_DEBUG

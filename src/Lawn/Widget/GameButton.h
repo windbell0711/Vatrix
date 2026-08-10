@@ -132,6 +132,6 @@ public:
 
 LawnStoneButton*			MakeButton(int theId, ButtonListener* theListener, std::string_view theText);
 NewLawnButton*				MakeNewButton(int theId, ButtonListener* theListener, std::string_view theText, _Font* theFont, Image* theImageNormal, Image* theImageOver, Image* theImageDown);
-void						DrawStoneButton(Graphics* g, int x, int y, int theWidth, int theHeight, bool isDown, bool isHighLighted, const std::string& theLabel);
+void						DrawStoneButton(Graphics* g, int x, int y, int theWidth, int theHeight, bool isDown, bool isHighLighted, const std::string& theLabel, int theLabelOffsetY = 0);
 
 #endif

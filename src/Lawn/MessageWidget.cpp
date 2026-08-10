@@ -20,6 +20,7 @@
  */
 
 #include "Board.h"
+#include "../GameConstants.h" // vx: FINAL_LEVEL for the world-6 hint offset
 #include "Challenge.h"
 #include "../LawnApp.h"
 #include "../Resources.h"
@@ -413,6 +414,11 @@ void MessageWidget::Draw(Graphics* g)
 	case MessageStyle::MESSAGE_STYLE_HINT_FAST:
 	case MessageStyle::MESSAGE_STYLE_HINT_STAY:
 		aPosY = 527;
+		// vx: keep the hint banner clear of the script control bar in adventure 6-1..6-10
+		if (mApp->IsAdventureMode() && mApp->mBoard && mApp->mBoard->mLevel >= 51 && mApp->mBoard->mLevel <= FINAL_LEVEL)
+		{
+			aPosY -= 20;
+		}
 		aRectHeight = 55;
 		aTextOffsetY = -4;
 		aColor = Color(253, 245, 173);

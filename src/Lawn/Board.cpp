@@ -25,6 +25,7 @@
 #include "ZenGarden.h"
 #include "BoardInclude.h"
 #include "VxScript.h"
+#include "VxEditor.h"
 #include "SpawnLogic.h"
 #include "LawnCommon.h"
 #include "System/Music.h"
@@ -201,6 +202,14 @@ Board::Board(LawnApp* theApp)
 	mMenuButton = new GameButton(0);
 	mMenuButton->mDrawStoneButton = true;
 	mStoreButton = nullptr;
+	// vx: script control bar is created in StartLevel for adventure 6-1..6-10
+	for (GameButton*& aBtn : mScriptButtons)
+	{
+		aBtn = nullptr;
+	}
+	mScriptCollapseButton = nullptr;
+	mScriptControlsVisible = true;
+	mScriptStartTick = 0;
 	mIgnoreMouseUp = false;
 
 	if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_ZEN_GARDEN || mApp->mGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM)
@@ -256,6 +265,12 @@ Board::~Board()
 	{
 		delete mStoreButton;
 	}
+	// vx: delete script control bar
+	for (GameButton* aBtn : mScriptButtons)
+	{
+		delete aBtn;
+	}
+	delete mScriptCollapseButton;
 	mZombies.DataArrayDispose();
 	mPlants.DataArrayDispose();
 	mProjectiles.DataArrayDispose();
@@ -274,6 +289,19 @@ Board::~Board()
 	*/
 	delete mCutScene;
 	delete mChallenge;
+	// vx: during a Run restart the editor keeps its open state; the flag is consumed here.
+	// The board is destroyed lazily (SafeDeleteWidget), so this dtor may run after the
+	// LawnApp::UpdateFrames dispatch already returned - that is exactly why the flag is
+	// cleared here instead of in the dispatch.
+	if (mApp->mVxPendingEditorOpen)
+	{
+		mApp->mVxPendingEditorOpen = false;
+	}
+	else
+	{
+		// vx: close the code editor (restores the 800x600 window) before board state goes away
+		VX::VxEditorClose();
+	}
 	// vx: stop the player script worker before board state goes away
 	VX::StopScripts();
 }
@@ -1757,7 +1785,22 @@ bool Board::ChooseSeedsOnCurrentLevel()
 void Board::StartLevel()
 {
 	// vx: run player scripts once the level actually starts (after the intro / Crazy Dave dialog)
-	VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
+	if (VX::ConsumePendingScriptRun())
+	{
+		// vx: world 6 Run/Submit: the script starts on the freshly restarted level
+		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
+		mScriptStartTick = SDL_GetTicks();
+	}
+	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
+	{
+		// vx: world 6 waits for the player to press Run/Submit; other levels keep auto-running
+		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
+	}
+	else
+	{
+		// vx: a fresh world-6 level is not a submit run until the player presses Submit
+		VX::ClearRunFlags();
+	}
 	mCoinBankFadeCount = 0;
 	mApp->mLastLevelStats->Reset();
 	mChallenge->StartLevel();
@@ -1807,6 +1850,29 @@ void Board::StartLevel()
 		mApp->mGameMode == GameMode::GAMEMODE_INTRO || 
 		mApp->IsFinalBossLevel())
 		return;
+
+	// vx: script control bar for adventure 6-1..6-10 (New/Run/Reset/Submit)
+	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
+	{
+		const char* aLabels[4] = { "Open", "Reset", "Run", "Submit" };
+		// vx: ids keep their action semantics (101=Run, 102=Reset); only the on-screen order changes
+		const int aButtonIds[4] = { 100, 102, 101, 103 };
+		for (int i = 0; i < 4; i++)
+		{
+			mScriptButtons[i] = new GameButton(aButtonIds[i]);
+			mScriptButtons[i]->mDrawStoneButton = true;
+			mScriptButtons[i]->mTextOffsetY = 2; // vx: nudge the stone-button label down for true centering
+			mScriptButtons[i]->SetLabel(aLabels[i]);
+			mScriptButtons[i]->mParentWidget = this;
+			mScriptButtons[i]->Resize(142 + i * 132, 556, 120, 36);
+		}
+		mScriptCollapseButton = new GameButton(200);
+		mScriptCollapseButton->mDrawStoneButton = true;
+		mScriptCollapseButton->SetLabel("UI");
+		mScriptCollapseButton->mParentWidget = this;
+		mScriptCollapseButton->Resize(598, -10, 64, 46);
+		mScriptControlsVisible = true;
+	}
 
 	mApp->mMusic->StartGameMusic();
 }
@@ -4303,6 +4369,24 @@ bool Board::MouseHitTest(int x, int y, HitResult* theHitResult)
 		return false;
 	}
 
+	// vx: script control bar hover -> hand cursor
+	if (CanInteractWithBoardButtons() && mScriptCollapseButton && mScriptCollapseButton->IsMouseOver())
+	{
+		theHitResult->mObjectType = GameObjectType::OBJECT_TYPE_MENU_BUTTON;
+		return true;
+	}
+	if (CanInteractWithBoardButtons() && mScriptControlsVisible)
+	{
+		for (GameButton* aBtn : mScriptButtons)
+		{
+			if (aBtn && aBtn->IsMouseOver())
+			{
+				theHitResult->mObjectType = GameObjectType::OBJECT_TYPE_MENU_BUTTON;
+				return true;
+			}
+		}
+	}
+
 	if (mMenuButton->IsMouseOver() && CanInteractWithBoardButtons())
 	{
 		theHitResult->mObjectType = GameObjectType::OBJECT_TYPE_MENU_BUTTON;
@@ -4551,6 +4635,9 @@ void Board::PickUpTool(GameObjectType theObjectType)
 
 void Board::MouseDown(int x, int y, int theClickCount)
 {
+	// vx: the code editor consumes mouse input while its panel is focused
+	if (VX::VxEditorWantsMouse())
+		return;
 	UpdateMousePosition();
 	Widget::MouseDown(x, y, theClickCount);
 	mIgnoreMouseUp = !CanInteractWithBoardButtons();
@@ -4769,6 +4856,9 @@ bool Board::CanInteractWithBoardButtons()
 
 void Board::MouseUp(int x, int y, int theClickCount)
 {
+	// vx: the code editor consumes mouse input while its panel is focused
+	if (VX::VxEditorWantsMouse())
+		return;
 	Widget::MouseUp(x, y, theClickCount);
 	if (mIgnoreMouseUp)
 	{
@@ -4824,6 +4914,48 @@ void Board::MouseUp(int x, int y, int theClickCount)
 			else if (mApp->mGameMode == GameMode::GAMEMODE_UPSELL)
 			{
 				mApp->DoBackToMain();
+			}
+		}
+	}
+
+	// vx: script control bar clicks (left or right button): Open/Run/Reset/Submit
+	if (CanInteractWithBoardButtons())
+	{
+		if (mScriptCollapseButton && mScriptCollapseButton->IsMouseOver())
+		{
+			mScriptCollapseButton->mIsOver = false;
+			mScriptCollapseButton->mIsDown = false;
+			mScriptControlsVisible = !mScriptControlsVisible;
+		}
+		else if (mScriptControlsVisible)
+		{
+			for (GameButton* aBtn : mScriptButtons)
+			{
+				if (aBtn && aBtn->IsMouseOver())
+				{
+					aBtn->mIsOver = false;
+					aBtn->mIsDown = false;
+					switch (aBtn->mId)
+					{
+					case 100: // Open (existing script; seeds a template on first use)
+						VX::VxEditorOpenScript(mLevel, mApp->mWindow);
+						break;
+					case 101: // Run (trial: win does not advance the save)
+						VX::VxEditorSave();
+						mApp->mVxPendingRestart = 1;
+						// vx: Run keeps the editor in its current open/closed state
+						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
+						break;
+					case 102: // Reset (replay the level, same seed)
+						mApp->mVxPendingRestart = 3;
+						break;
+					case 103: // Submit (official: win advances the save and awards)
+						VX::VxEditorSave();
+						mApp->mVxPendingRestart = 2;
+						break;
+					}
+					break;
+				}
 			}
 		}
 	}
@@ -5924,6 +6056,42 @@ void Board::Update()
 		mMenuButton->mDisabled = aDisabled;
 	}
 	mMenuButton->Update();
+	// vx: script control bar updates
+	if (mScriptCollapseButton)
+	{
+		mScriptCollapseButton->mDisabled = aDisabled;
+		mScriptCollapseButton->Update();
+	}
+	if (mScriptControlsVisible)
+	{
+		for (GameButton* aBtn : mScriptButtons)
+		{
+			if (!aBtn)
+				continue;
+			aBtn->mDisabled = aDisabled;
+			aBtn->Update();
+		}
+	}
+	// vx: editor panel actions (Run/Close) + 60s script watchdog for world 6
+	switch (VX::VxEditorTakePendingAction())
+	{
+	case VX::VxEditorAction::RunTrial:
+		// vx: deferred to LawnApp::UpdateFrames so the board can be rebuilt safely
+		mApp->mVxPendingRestart = 1;
+		mApp->mVxPendingEditorOpen = true; // panel Run = left-click semantics, keep the editor open
+		break;
+	case VX::VxEditorAction::Close:
+		VX::VxEditorClose();
+		break;
+	case VX::VxEditorAction::None:
+		break;
+	}
+	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL && VX::IsScriptRunning()
+		&& SDL_GetTicks() - mScriptStartTick > 60000)
+	{
+		VX::InterruptScript();
+		// ponytail: 60s cap; a script that ignores the interrupt is abandoned by StopScripts
+	}
 	if (mStoreButton)
 	{
 		mStoreButton->mDisabled = aDisabled;
@@ -7404,6 +7572,11 @@ void Board::DrawTopRightUI(Graphics* g)
 		g->SetColor(GetFlashingColor(mMainCounter, 75));
 	}
 	mMenuButton->Draw(g);
+	// vx: collapse button for the script control bar
+	if (mScriptCollapseButton)
+	{
+		mScriptCollapseButton->Draw(g);
+	}
 	g->SetColorizeImages(false);
 
 	if (mStoreButton && mApp->mGameMode != GameMode::GAMEMODE_CHALLENGE_LAST_STAND)
@@ -7465,6 +7638,18 @@ void Board::DrawUIBottom(Graphics* g)
 	if (!StageHasFog())
 	{
 		DrawTopRightUI(g);
+	}
+
+	// vx: script control bar (bottom center)
+	if (mScriptControlsVisible)
+	{
+		for (GameButton* aBtn : mScriptButtons)
+		{
+			if (aBtn)
+			{
+				aBtn->Draw(g);
+			}
+		}
 	}
 }
 
@@ -7906,6 +8091,9 @@ void Board::DoTypingCheck(KeyCode theKey)
 
 void Board::KeyDown(KeyCode theKey)
 {
+	// vx: the code editor consumes keyboard input while its panel is focused
+	if (VX::VxEditorWantsKeyboard())
+		return;
 	DoTypingCheck(theKey);
 
 	if (mApp->mGameScene == GameScenes::SCENE_LEVEL_INTRO && 

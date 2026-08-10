@@ -465,3 +465,8 @@ build-*/
 
 # Game recordings
 *.dmo
+
+# vx: fetched NuGet python (see scripts/fetch_python.ps1)
+/third_party/
+# vx: player library dir (auto-created at runtime)
+/userlibs/

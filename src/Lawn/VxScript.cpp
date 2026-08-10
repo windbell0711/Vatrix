@@ -4,8 +4,10 @@
 #include <Python.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -126,6 +128,22 @@ namespace
 	int gScriptLevel = 0;
 	int gScriptGameMode = 0;
 	bool gPythonReady = false;
+	// vx: worker thread OS id, used to interrupt a hanging script (PyThreadState_SetAsyncExc takes the id)
+	std::atomic<unsigned long> gScriptThreadId{0};
+	bool gScriptEnded = false;
+	std::mutex gScriptEndedMutex;
+	std::condition_variable gScriptEndedCv;
+	// vx: cooperative sleep for vb.slp: the script thread waits on this cv (GIL released),
+	// and StopScripts/interrupt wake it via the stop flag - deterministic, any delay length
+	std::mutex gSleepMutex;
+	std::condition_variable gSleepCv;
+	bool gSleepStop = false;
+	// vx: player-driven world-6 runs (Run = trial, Submit = official)
+	std::mutex gRunMutex;
+	bool gPendingRun = false;
+	int gPendingRunLevel = 0;
+	int gPendingRunMode = 0;
+	bool gTrialRun = false;
 
 	// vx: blocking script query (vb.get_zombies / get_plants / get_cards):
 	// script thread asks, main thread answers in ProcessBoardQueue
@@ -183,6 +201,21 @@ namespace
 	void VxSetupPythonPath()
 	{
 		VxAddScriptDirsToPath();
+		// vx: userlibs/ next to the scripts dir (repo/userlibs in dev, <exe>/userlibs in release);
+		// keep it after the game script dirs so game code wins, before the stdlib
+		std::filesystem::path aUserlibs = gScriptsDir.parent_path() / "userlibs";
+		std::error_code anEc;
+		if (!std::filesystem::is_directory(aUserlibs, anEc))
+			std::filesystem::create_directories(aUserlibs, anEc);
+		std::wstring aUserlibsWide = aUserlibs.wstring();
+		PyObject* aUserlibsObj = PyUnicode_FromWideChar(aUserlibsWide.c_str(), static_cast<Py_ssize_t>(aUserlibsWide.size()));
+		if (aUserlibsObj)
+		{
+			PyObject* aPath = PySys_GetObject("path"); // borrowed
+			if (aPath && PyList_Check(aPath) && PySequence_Contains(aPath, aUserlibsObj) <= 0)
+				PyList_Insert(aPath, static_cast<Py_ssize_t>(gScriptDirs.size()), aUserlibsObj);
+			Py_DECREF(aUserlibsObj);
+		}
 		std::wstring aScriptsWide = gScriptsDir.wstring();
 		std::wstring aDataWide = gDataDir.wstring();
 		PySys_SetObject("vx_scripts_dir", PyUnicode_FromWideChar(aScriptsWide.c_str(), static_cast<Py_ssize_t>(aScriptsWide.size())));
@@ -267,6 +300,7 @@ if log is not None:
 		if (!gPythonReady)
 			return;
 		PyGILState_STATE aGILState = PyGILState_Ensure();
+		gScriptThreadId.store(PyThread_get_thread_ident());
 		VxSetupPythonPath();
 		PySys_SetObject("vx_game_mode", PyUnicode_FromString(gScriptGameMode == static_cast<int>(GameMode::GAMEMODE_ADVENTURE) ? "adventure" : ""));
 		if (gScriptGameMode == static_cast<int>(GameMode::GAMEMODE_ADVENTURE))
@@ -282,6 +316,12 @@ if log is not None:
 			PySys_SetObject("vx_sub", PyLong_FromLong(0));
 		}
 		PyRun_SimpleString(gScriptDriver);
+		{
+			std::lock_guard<std::mutex> aLock(gScriptEndedMutex);
+			gScriptEnded = true;
+		}
+		gScriptEndedCv.notify_all();
+		gScriptThreadId.store(0);
 		PyGILState_Release(aGILState);
 	}
 
@@ -299,6 +339,36 @@ if log is not None:
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
 			gQueue.push_back({VxCmdType::BreakPot, aRow, aCol, 0});
+		}
+		Py_RETURN_NONE;
+	}
+
+	// vx: cooperative sleep - the script thread waits on a cv with the GIL released; a stop
+	// request wakes it immediately instead of relying on PyThreadState_SetAsyncExc (which only
+	// interrupts the eval loop, not arbitrary waits)
+	PyObject* VbSlp(PyObject*, PyObject* theArgs)
+	{
+		double aDelay = 0.0;
+		if (!PyArg_ParseTuple(theArgs, "d", &aDelay))
+			return nullptr;
+		if (aDelay < 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "delay must be >= 0");
+			return nullptr;
+		}
+		{
+			std::unique_lock<std::mutex> aLock(gSleepMutex);
+			if (aDelay > 0 && !gSleepStop)
+			{
+				Py_BEGIN_ALLOW_THREADS
+				gSleepCv.wait_for(aLock, std::chrono::duration<double>(aDelay), [] { return gSleepStop; });
+				Py_END_ALLOW_THREADS
+			}
+			if (gSleepStop)
+			{
+				PyErr_SetString(PyExc_KeyboardInterrupt, "script stopped");
+				return nullptr;
+			}
 		}
 		Py_RETURN_NONE;
 	}
@@ -425,6 +495,7 @@ if log is not None:
 
 	PyMethodDef gVbMethods[] = {
 		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
+		{"slp", VbSlp, METH_VARARGS, "Sleep for delay seconds; interruptible by StopScripts."},
 		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
 		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
 		{"plc", VbPlc, METH_VARARGS, "Queue a plant from a dropped card (coin id) at (row, col)."},
@@ -507,17 +578,57 @@ namespace VX
 	{
 		if (!gPythonReady || gScriptThread.joinable())
 			return; // python not up, or a worker is still running; Board dtor normally stops it
+		{
+			std::lock_guard<std::mutex> aLock(gSleepMutex);
+			gSleepStop = false;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gScriptEndedMutex);
+			gScriptEnded = false;
+		}
 		gScriptLevel = theLevel;
 		gScriptGameMode = theGameMode;
 		gScriptThread = std::thread(ScriptThreadMain);
 	}
 
+	// vx: wake any vb.slp() wait so the script thread can raise KeyboardInterrupt by itself
+	void VxRequestScriptStop()
+	{
+		{
+			std::lock_guard<std::mutex> aLock(gSleepMutex);
+			gSleepStop = true;
+		}
+		gSleepCv.notify_all();
+	}
+
 	void StopScripts()
 	{
-		if (!gScriptThread.joinable())
-			return;
-		gScriptThread.join();
-		// ponytail: join waits out any script sleep; add an interruptible wait if someone writes 9999s sleeps
+		if (gScriptThread.joinable())
+		{
+			VxRequestScriptStop();
+			// vx: interrupt a hanging script (3.12 time.sleep is async-exc interruptible)
+			unsigned long aThreadId = gScriptThreadId.load();
+			if (aThreadId)
+			{
+				// vx: PyThreadState_SetAsyncExc is a C API call and requires the GIL
+				PyGILState_STATE aGilState = PyGILState_Ensure();
+				PyThreadState_SetAsyncExc(aThreadId, PyExc_KeyboardInterrupt);
+				PyGILState_Release(aGilState);
+			}
+			std::unique_lock<std::mutex> aLock(gScriptEndedMutex);
+			if (!gScriptEndedCv.wait_for(aLock, std::chrono::seconds(3), [] { return gScriptEnded; }))
+			{
+				// ponytail: script did not stop (C-extension busy loop); abandon the thread
+				// instead of freezing the game - the process exits eventually anyway
+				gScriptThread.detach();
+				ScriptLog("[vb] script did not stop within 3s; thread abandoned, restart the game");
+				gPythonReady = false;
+			}
+			else
+			{
+				gScriptThread.join();
+			}
+		}
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
 			gQueue.clear();
@@ -817,7 +928,79 @@ namespace VX
 				theBoard->VxShovelPlantID(aCommand.mArg);
 				break;
 			}
+			}
 		}
+	}
+
+namespace VX
+{
+	// vx: player-driven world-6 runs (Run = trial, Submit = official)
+	void RequestScriptRun(int theLevel, int theGameMode, bool theSubmit)
+	{
+		std::lock_guard<std::mutex> aLock(gRunMutex);
+		gPendingRun = true;
+		gPendingRunLevel = theLevel;
+		gPendingRunMode = theGameMode;
+		gTrialRun = !theSubmit;
+	}
+
+	bool ConsumePendingScriptRun()
+	{
+		std::lock_guard<std::mutex> aLock(gRunMutex);
+		if (!gPendingRun)
+			return false;
+		gPendingRun = false;
+		gPendingRunLevel = 0;
+		gPendingRunMode = 0;
+		return true;
+	}
+
+	bool IsTrialRun()
+	{
+		return gTrialRun;
+	}
+
+	void ClearRunFlags()
+	{
+		std::lock_guard<std::mutex> aLock(gRunMutex);
+		gPendingRun = false;
+		gTrialRun = true; // vx: without a Submit run, a world-6 win must not advance the save
+	}
+
+	bool IsScriptRunning()
+	{
+		return gScriptThread.joinable();
+	}
+
+	void InterruptScript()
+	{
+		VxRequestScriptStop();
+		unsigned long aThreadId = gScriptThreadId.load();
+		if (aThreadId)
+		{
+			// vx: PyThreadState_SetAsyncExc is a C API call and requires the GIL
+			PyGILState_STATE aGilState = PyGILState_Ensure();
+			PyThreadState_SetAsyncExc(aThreadId, PyExc_KeyboardInterrupt);
+			PyGILState_Release(aGilState);
+		}
+	}
+
+	std::wstring GetScriptsDir()
+	{
+		if (gScriptsDir.empty())
+			VxResolveDirs();
+		return gScriptsDir.wstring();
+	}
+
+	std::wstring GetLevelScriptPath(int theLevel)
+	{
+		if (gScriptsDir.empty())
+			VxResolveDirs();
+		int aArea = (theLevel - 1) / 10 + 1;
+		int aSub = (theLevel - 1) % 10 + 1;
+		char aName[128];
+		snprintf(aName, sizeof(aName), "script_adventure_%d_%d.py", aArea, aSub);
+		return (gScriptsDir / aName).wstring();
 	}
 }
 
@@ -835,5 +1018,13 @@ namespace VX
 	bool GetScaryPotLineup(int, int, std::vector<VxPotDef>&) { return false; }
 	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
+	void RequestScriptRun(int, int, bool) {}
+	bool ConsumePendingScriptRun() { return false; }
+	bool IsTrialRun() { return false; }
+	void ClearRunFlags() {}
+	bool IsScriptRunning() { return false; }
+	void InterruptScript() {}
+	std::wstring GetScriptsDir() { return std::wstring(); }
+	std::wstring GetLevelScriptPath(int) { return std::wstring(); }
 }
 #endif // VX_SCRIPT

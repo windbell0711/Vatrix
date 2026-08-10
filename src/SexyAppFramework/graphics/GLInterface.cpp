@@ -45,6 +45,13 @@
 
 using namespace Sexy;
 
+// vx: hook pointers the code editor installs (see GLInterface.h); null unless VX_SCRIPT
+namespace VX
+{
+	bool (*gVxEditorDockedFn)();
+	void (*gVxRenderImGuiFn)();
+}
+
 bool gDesktopGLFallback = false;
 
 static inline uint32_t ArgbToRgba(uint32_t argb) noexcept
@@ -1143,6 +1150,15 @@ void GLInterface::UpdateViewport()
 		vy = (height - vh) / 2;
 	}
 
+	// vx: with the right-side code editor open, dock the 4:3 view to the left edge
+	// and leave the rest of the window to the ImGui editor strip
+	if (VX::gVxEditorDockedFn && VX::gVxEditorDockedFn())
+	{
+		vx = 0;
+		if (vw > 800)
+			vw = 800;
+	}
+
 	glViewport(vx, vy, vw, vh);
 	mPresentationRect = Rect(vx, vy, vw, vh);
 }
@@ -1239,6 +1255,9 @@ bool GLInterface::PreDraw()
 void GLInterface::Flush()
 {
 	gNumVertices = 0;
+	// vx: draw the ImGui frame (code editor) on top of the game, before the swap
+	if (VX::gVxRenderImGuiFn)
+		VX::gVxRenderImGuiFn();
 #ifdef __SWITCH__
 	eglSwapBuffers(mApp->mWindow, mApp->mSurface);
 #else

@@ -139,6 +139,11 @@ public:
 	SeedBank*						mSeedBank;
 	GameButton*						mMenuButton;
 	GameButton*						mStoreButton;
+	// vx: world-6 script control bar (adventure 6-1..6-10 only)
+	GameButton*						mScriptButtons[4];
+	GameButton*						mScriptCollapseButton;
+	bool							mScriptControlsVisible;
+	int								mScriptStartTick; // vx: script start time for the 60s watchdog
 	bool							mIgnoreMouseUp;
 	ToolTipWidget*					mToolTip;
 	//_Font*							mDebugFont;
