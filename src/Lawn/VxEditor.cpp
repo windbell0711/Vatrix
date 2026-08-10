@@ -31,9 +31,12 @@ namespace
 	bool gConflictPending = false;
 	VX::VxEditorAction gPendingAction = VX::VxEditorAction::None;
 	int gEditorLevel = 0;
+	Uint32 gLastSaveTick = 0;
 
-	// vx: single point for the editor panel rect; v2 floating-window layout hooks in here
-	constexpr float kVxEditorWidth = 250.0f;
+	// vx: three window/editor width levels; the game view stays a fixed 800px strip
+	constexpr int kVxWidthLevels = 3;
+	constexpr int kVxWindowWidths[kVxWidthLevels] = { 1000, 1100, 1200 };
+	int gVxWidthLevel = 0;
 
 	std::string VxReadFile(const std::filesystem::path& thePath)
 	{
@@ -45,7 +48,12 @@ namespace
 	{
 		std::error_code anEc;
 		auto aMtime = std::filesystem::last_write_time(gScriptPath, anEc);
-		gTextEditor.SetText(VxReadFile(gScriptPath));
+		// vx: SetText turns the file's trailing newline into a phantom empty line that GetText
+		// re-serializes as an extra blank line on save; drop it so open+save round-trips losslessly
+		std::string aText = VxReadFile(gScriptPath);
+		if (!aText.empty() && aText.back() == '\n')
+			aText.pop_back();
+		gTextEditor.SetText(aText);
 		if (!anEc)
 			gFileMtime = aMtime;
 		gBufferDirty = false;
@@ -69,6 +77,7 @@ namespace
 			aStream << gTextEditor.GetText();
 		}
 		gBufferDirty = false;
+		gLastSaveTick = SDL_GetTicks();
 		gFileMtime = std::filesystem::last_write_time(gScriptPath, anEc);
 		return true;
 	}
@@ -80,7 +89,7 @@ namespace
 		Uint32 aFlags = SDL_GetWindowFlags(gGameWindow);
 		if (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP))
 			return;
-		SDL_SetWindowSize(gGameWindow, theEditorOpen ? 1050 : 800, 600);
+		SDL_SetWindowSize(gGameWindow, theEditorOpen ? kVxWindowWidths[gVxWidthLevel] : 800, 600);
 	}
 
 	// vx: Python language definition for ImGuiColorTextEdit (upstream has no Python preset)
@@ -99,12 +108,19 @@ namespace
 			"True", "try", "while", "with", "yield",
 		};
 		for (const char* aName : { "print", "len", "range", "int", "float", "str", "list", "dict",
-				"bool", "open", "__file__", "__name__", "vb", "time", "brk", "slp", "plt", "rmv",
-				"get_zombies", "get_plants", "get_cards", "get_vases" })
+				"bool", "open", "__file__", "__name__", "time" })
 		{
 			TextEditor::Identifier anId;
-			anId.mDeclaration = "Vatrix builtin";
+			anId.mDeclaration = "Python builtin";
 			aDef.mIdentifiers.emplace(aName, anId);
+		}
+		// vx: Vatrix script commands get a dedicated yellow highlight (PreprocIdentifier slot)
+		for (const char* aName : { "vb", "brk", "slp", "plt", "rmv", "get_zombies", "get_plants",
+				"get_cards", "get_vases" })
+		{
+			TextEditor::Identifier anId;
+			anId.mDeclaration = "Vatrix command";
+			aDef.mPreprocIdentifiers.emplace(aName, anId);
 		}
 		aDef.mTokenRegexStrings = {
 			{R"([a-zA-Z_][a-zA-Z0-9_]*)", TextEditor::PaletteIndex::Identifier},
@@ -120,6 +136,22 @@ namespace
 		aDef.mCaseSensitive = true;
 		aDef.mAutoIndentation = true;
 		gTextEditor.SetLanguageDefinition(aDef);
+		// vx: brighter-than-stock palette for readability on dark backgrounds
+		TextEditor::Palette aPalette = TextEditor::GetDarkPalette();
+		aPalette[(int)TextEditor::PaletteIndex::Default] = 0xffd0d0d0;
+		aPalette[(int)TextEditor::PaletteIndex::Keyword] = 0xffe8b06a;
+		aPalette[(int)TextEditor::PaletteIndex::String] = 0xff9090ff;
+		aPalette[(int)TextEditor::PaletteIndex::CharLiteral] = 0xff90c0ff;
+		aPalette[(int)TextEditor::PaletteIndex::Identifier] = 0xffe0e0e0;
+		aPalette[(int)TextEditor::PaletteIndex::KnownIdentifier] = 0xffc8e878;
+		aPalette[(int)TextEditor::PaletteIndex::Preprocessor] = 0xff80c0c0;
+		aPalette[(int)TextEditor::PaletteIndex::PreprocIdentifier] = 0xffe8e848;
+		aPalette[(int)TextEditor::PaletteIndex::Comment] = 0xff66aa66;
+		aPalette[(int)TextEditor::PaletteIndex::MultiLineComment] = 0xff88bb88;
+		aPalette[(int)TextEditor::PaletteIndex::LineNumber] = 0xffb0b060;
+		gTextEditor.SetPalette(aPalette);
+		// vx: no whitespace markers, spaces and tabs stay blank
+		gTextEditor.SetShowWhitespaces(false);
 	}
 
 	bool VxImGuiInit()
@@ -168,26 +200,30 @@ namespace
 	void VxBuildEditorUI()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		// vx: v2 floating-window layout hooks in here; v1 docks a 250px strip on the right
-		ImVec2 aPanelOrigin = ImVec2(io.DisplaySize.x - kVxEditorWidth, 0.0f);
+		// vx: autosave dirty buffers every 2s (the manual Save button is gone)
+		if (gBufferDirty && SDL_GetTicks() - gLastSaveTick > 2000)
+			VxSaveBuffer(false);
+
+		// vx: the game view is docked to a fixed 800px strip; the panel fills the rest
+		float aEditorWidth = io.DisplaySize.x - 800.0f;
+		if (aEditorWidth < 100.0f)
+			aEditorWidth = 100.0f;
+		ImVec2 aPanelOrigin = ImVec2(io.DisplaySize.x - aEditorWidth, 0.0f);
 		ImGui::SetNextWindowPos(aPanelOrigin);
-		ImGui::SetNextWindowSize(ImVec2(kVxEditorWidth, io.DisplaySize.y));
+		ImGui::SetNextWindowSize(ImVec2(aEditorWidth, io.DisplaySize.y));
 		ImGuiWindowFlags aFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
 			| ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus;
 		ImGui::Begin("VxEditor", nullptr, aFlags);
 
-		if (ImGui::Button("Save"))
-			VxSaveBuffer(false);
-		ImGui::SameLine();
-		if (ImGui::Button("Run"))
-		{
-			// vx: a pending external-change conflict keeps the panel open until resolved
-			if (VxSaveBuffer(false))
-				gPendingAction = VX::VxEditorAction::RunTrial;
-		}
-		ImGui::SameLine();
+		// vx: Run lives on the bottom-left script bar; Save is replaced by autosave
 		if (ImGui::Button("Close"))
 			gPendingAction = VX::VxEditorAction::Close;
+		ImGui::SameLine();
+		if (ImGui::Button(gVxWidthLevel == 0 ? "Width 1/3" : gVxWidthLevel == 1 ? "Width 2/3" : "Width 3/3"))
+		{
+			gVxWidthLevel = (gVxWidthLevel + 1) % kVxWidthLevels;
+			VxSetEditorWindowSize(true);
+		}
 		ImGui::Separator();
 
 		gTextEditor.Render("VxPythonEditor");

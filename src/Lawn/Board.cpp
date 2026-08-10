@@ -4955,6 +4955,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 						}
 						break;
 					case 102: // Reset (replay the level, same seed)
+						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 3;
 						break;
 					case 103: // Submit (official: win advances the save and awards)

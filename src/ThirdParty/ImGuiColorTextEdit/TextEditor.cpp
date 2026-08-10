@@ -2334,7 +2334,9 @@ void TextEditor::ColorizeInternal()
 						{
 							withinSingleLineComment = true;
 						}
-						else if (!withinSingleLineComment && currentIndex + startStr.size() <= line.size() &&
+						// vx: guard empty mCommentStart: the Python definition has no block comments,
+						// upstream treated "" as a match everywhere, tinting every line as a comment
+						else if (startStr.size() > 0 && !withinSingleLineComment && currentIndex + startStr.size() <= line.size() &&
 							equals(startStr.begin(), startStr.end(), from, from + startStr.size(), pred))
 						{
 							commentStartLine = currentLine;
