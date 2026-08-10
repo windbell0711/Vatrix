@@ -7227,7 +7227,13 @@ bool Zombie::TrySpawnLevelAward()
     }
 
     CoinType aCoinType;
-    if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
+    // vx: world 6 wins never drop the level-clear note; a gold coin and "You win" instead
+    if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL)
+    {
+        aCoinType = CoinType::COIN_GOLD;
+        mBoard->DisplayAdvice("You win", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+    }
+    else if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
     {
         aCoinType = CoinType::COIN_NONE;
         mBoard->mChallenge->PuzzlePhaseComplete(mBoard->PixelToGridXKeepOnBoard(mPosX + 75, mPosY), mRow);

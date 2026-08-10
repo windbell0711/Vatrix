@@ -210,6 +210,8 @@ Board::Board(LawnApp* theApp)
 	mScriptCollapseButton = nullptr;
 	mScriptControlsVisible = true;
 	mScriptStartTick = 0;
+	mScriptSubmitRun = false;
+	mScriptLosePaused = false;
 	mIgnoreMouseUp = false;
 
 	if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_ZEN_GARDEN || mApp->mGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM)
@@ -1793,6 +1795,8 @@ void Board::StartLevel()
 		// vx: world 6 Run/Submit: the script starts on the freshly restarted level
 		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
 		mScriptStartTick = SDL_GetTicks();
+		// vx: a Submit run locks manual input for the whole run; a trial run stays playable
+		mScriptSubmitRun = !VX::IsTrialRun();
 	}
 	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
 	{
@@ -4638,6 +4642,10 @@ void Board::PickUpTool(GameObjectType theObjectType)
 
 void Board::MouseDown(int x, int y, int theClickCount)
 {
+	// vx: a Submit run is a locked run: the player may not intervene by clicking
+	// (a world-6 lose pause releases the lock so the player can still restart)
+	if (mScriptSubmitRun && !mScriptLosePaused)
+		return;
 	// vx: the code editor consumes mouse input while its panel is focused
 	if (VX::VxEditorWantsMouse())
 		return;
@@ -4843,7 +4851,11 @@ bool Board::CanInteractWithBoardButtons()
 	if (mBoardFadeOutCounter >= 0)
 		return false;
 
-	if (mPaused || mApp->GetDialogCount() > 0)
+	if (mApp->GetDialogCount() > 0)
+		return false;
+
+	// vx: a world-6 lose pause keeps the buttons clickable so the player can restart
+	if (mPaused && !mScriptLosePaused)
 		return false;
 
 	if (mCursorObject->mCursorType != CursorType::CURSOR_TYPE_NORMAL && 
@@ -4859,6 +4871,10 @@ bool Board::CanInteractWithBoardButtons()
 
 void Board::MouseUp(int x, int y, int theClickCount)
 {
+	// vx: a Submit run is a locked run: the player may not intervene by clicking
+	// (a world-6 lose pause releases the lock so the player can still restart)
+	if (mScriptSubmitRun && !mScriptLosePaused)
+		return;
 	// vx: the code editor consumes mouse input while its panel is focused
 	if (VX::VxEditorWantsMouse())
 		return;
@@ -5381,6 +5397,22 @@ void Board::ZombiesWon(Zombie* theZombie)
 {
 	if (mApp->mGameScene == GameScenes::SCENE_ZOMBIES_WON)
 		return;
+
+	// vx: world 6: no death cinematic; drop a silver coin from the entering zombie,
+	// then pause and show "You lose" so the player can inspect the board and retry
+	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
+	{
+		mApp->mBoardResult = BoardResult::BOARDRESULT_LOST;
+		if (theZombie)
+		{
+			Rect aZombieRect = theZombie->GetZombieRect();
+			AddCoin(aZombieRect.mX + aZombieRect.mWidth / 2, aZombieRect.mY + aZombieRect.mHeight / 4, CoinType::COIN_SILVER, CoinMotion::COIN_MOTION_COIN);
+		}
+		mScriptLosePaused = true; // vx: keep the buttons clickable so the player can restart
+		Pause(true);
+		DisplayAdvice("You lose", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+		return;
+	}
 
 	ClearAdvice(AdviceType::ADVICE_NONE);
 	mApp->mBoardResult = BoardResult::BOARDRESULT_LOST;
@@ -8147,6 +8179,23 @@ static void PvzpCrash()
 
 void Board::KeyChar(char theChar)
 {
+	// vx: the code editor consumes keyboard input while its panel is focused
+	if (VX::VxEditorWantsKeyboard())
+		return;
+
+	// vx: letter hotkeys now require Ctrl (Ctrl+letter arrives as a control code 1..26,
+	// remap it back to the letter; Ctrl+C keeps the crash-test code); bare lowercase
+	// letters trigger nothing, so typing in the code editor can't fire hotkeys
+	if (theChar >= 1 && theChar <= 26)
+	{
+		if (theChar != '\3')
+			theChar = static_cast<char>('a' + theChar - 1);
+	}
+	else if (theChar >= 'a' && theChar <= 'z')
+	{
+		return;
+	}
+
 	// vx: kill-all-zombies hotkey, works in release too (boss excluded; use 'd' for the boss)
 	if (theChar == 'k')
 	{

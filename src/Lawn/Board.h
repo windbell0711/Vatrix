@@ -144,6 +144,8 @@ public:
 	GameButton*						mScriptCollapseButton;
 	bool							mScriptControlsVisible;
 	int								mScriptStartTick; // vx: script start time for the 60s watchdog
+	bool							mScriptSubmitRun; // vx: true during a Submit run: manual input is locked
+	bool							mScriptLosePaused; // vx: world-6 lose pause keeps the buttons clickable
 	bool							mIgnoreMouseUp;
 	ToolTipWidget*					mToolTip;
 	//_Font*							mDebugFont;

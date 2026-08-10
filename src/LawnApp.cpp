@@ -1548,7 +1548,8 @@ void LawnApp::CheckForGameEnd()
 		// vx: adventure 5-10/6-1 end with custom paper note awards, 6-2 with the almanac
 		if (aVxTrialRun)
 		{
-			ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
+			// vx: a trial run (Run button) win gives no level-clear reward; replay the level
+			PreNewGame(mGameMode, false);
 		}
 		else if (aLevel == 50 || aLevel == 51)
 		{
