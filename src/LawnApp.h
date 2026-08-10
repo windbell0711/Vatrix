@@ -122,6 +122,8 @@ public:
 	BoardResult						mBoardResult;
 	// vx: deferred world-6 Run/Reset/Submit (1=trial, 2=submit, 3=reset); consumed in UpdateFrames
 	int								mVxPendingRestart = 0;
+	// vx: 6-1 tutorial advice step carried over a vx restart (consumed by the new Board)
+	AdviceType						mVxKeepHelpIndex = AdviceType::ADVICE_NONE;
 	// vx: pop the code editor open after the pending restart (left-click Run / panel Run)
 	bool							mVxPendingEditorOpen = false;
 	bool							mSawYeti;

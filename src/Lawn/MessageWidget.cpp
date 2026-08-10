@@ -375,6 +375,8 @@ void MessageWidget::Draw(Graphics* g)
 	int aPosX = BOARD_WIDTH / 2;
 	int aPosY = 596;
 	int aTextOffsetY = 0;
+	// vx: world-6 advice lifts above the script control bar (HINT +20 more, TALL +30)
+	bool aVxWorld6Hint = mApp->IsAdventureMode() && mApp->mBoard && mApp->mBoard->mLevel >= 51 && mApp->mBoard->mLevel <= FINAL_LEVEL;
 	int aRectHeight = 0;
 	int aMinAlpha = 255;
 	Color aColor(250, 250, 0, 255);
@@ -404,6 +406,11 @@ void MessageWidget::Draw(Graphics* g)
 	case MessageStyle::MESSAGE_STYLE_HINT_TALL_LONG:
 	case MessageStyle::MESSAGE_STYLE_ACHIEVEMENT: // @Patoke: implemented
 		aPosY = 476;
+		// vx: world-6 tall hints sit above the script control bar
+		if (aVxWorld6Hint && (mMessageStyle == MessageStyle::MESSAGE_STYLE_HINT_TALL_FAST || mMessageStyle == MessageStyle::MESSAGE_STYLE_HINT_TALL_UNLOCKMESSAGE || mMessageStyle == MessageStyle::MESSAGE_STYLE_HINT_TALL_LONG))
+		{
+			aPosY -= 30;
+		}
 		aRectHeight = 100;
 		aTextOffsetY = -4;
 		aColor = Color(253, 245, 173);
@@ -415,9 +422,9 @@ void MessageWidget::Draw(Graphics* g)
 	case MessageStyle::MESSAGE_STYLE_HINT_STAY:
 		aPosY = 527;
 		// vx: keep the hint banner clear of the script control bar in adventure 6-1..6-10
-		if (mApp->IsAdventureMode() && mApp->mBoard && mApp->mBoard->mLevel >= 51 && mApp->mBoard->mLevel <= FINAL_LEVEL)
+		if (aVxWorld6Hint)
 		{
-			aPosY -= 20;
+			aPosY -= 40;
 		}
 		aRectHeight = 55;
 		aTextOffsetY = -4;

@@ -1447,6 +1447,9 @@ void Board::InitLevel()
 	mEnableGraveStones = false;
 	mSodPosition = 0;
 	mPrevBoardResult = mApp->mBoardResult;
+	// vx: continue the 6-1 tutorial advice across a vx restart
+	mHelpIndex = mApp->mVxKeepHelpIndex;
+	mApp->mVxKeepHelpIndex = AdviceType::ADVICE_NONE;
 	
 	GameMode aGameMode = mApp->mGameMode;
 	if (aGameMode != GameMode::GAMEMODE_TREE_OF_WISDOM && aGameMode != GameMode::GAMEMODE_CHALLENGE_ZEN_GARDEN)
@@ -4918,8 +4921,8 @@ void Board::MouseUp(int x, int y, int theClickCount)
 		}
 	}
 
-	// vx: script control bar clicks (left or right button): Open/Run/Reset/Submit
-	if (CanInteractWithBoardButtons())
+	// vx: script control bar clicks: Open/Run/Reset/Submit
+	if (CanInteractWithBoardButtons() && theClickCount > 0)
 	{
 		if (mScriptCollapseButton && mScriptCollapseButton->IsMouseOver())
 		{
@@ -4939,12 +4942,17 @@ void Board::MouseUp(int x, int y, int theClickCount)
 					{
 					case 100: // Open (existing script; seeds a template on first use)
 						VX::VxEditorOpenScript(mLevel, mApp->mWindow);
+						if (mHelpIndex == ADVICE_6_1_START || mHelpIndex == ADVICE_6_1_DESTROY_POT) {
+							DisplayAdvice("[ADVICE_6_1_BUTTON_OPEN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_OPEN);
+						}
 						break;
 					case 101: // Run (trial: win does not advance the save)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 1;
-						// vx: Run keeps the editor in its current open/closed state
 						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
+						if (mHelpIndex == ADVICE_6_1_BUTTON_OPEN) {
+							DisplayAdvice("[ADVICE_6_1_BUTTON_RUN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_RUN);
+						}
 						break;
 					case 102: // Reset (replay the level, same seed)
 						mApp->mVxPendingRestart = 3;

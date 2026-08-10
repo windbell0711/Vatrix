@@ -374,11 +374,11 @@ BossFireballDecision PickBossFireball(Board* theBoard)
 		}
 	}
 	if (aJalapenoCount == 0)
-		aDecision.mIsFireBall = true;
+		aDecision.mIsFireBall = false;
 	else if (aIceShroomCount == 0)
 		aDecision.mIsFireBall = true;
 	else if (aIceShroomCount == 1)
-		aDecision.mIsFireBall = (RandRangeInt(0, 4) == 0);
+		aDecision.mIsFireBall = (RandRangeInt(0, 2) != 0);
 	else
 		aDecision.mIsFireBall = false;
 	

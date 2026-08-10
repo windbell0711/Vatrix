@@ -6,3 +6,16 @@
 [CRAZY_DAVE_9005] ... or substitution.
 
 [CRAZY_DAVE_9100] Oh, you've got a note?
+[CRAZY_DAVE_9101] It seems that he began to teach zombies to code.
+[CRAZY_DAVE_9102] The war is approaching.
+[CRAZY_DAVE_9103] And the enemy may organize their attack way more diffrently.
+[CRAZY_DAVE_9104] And he named the technology 'Vatrix'.
+[CRAZY_DAVE_9105] Apologize that I may have nothing to help when the war breaks out,
+[CRAZY_DAVE_9106] So I'll now give you this engine, and hope you bring back the trophy.
+[CRAZY_DAVE_9107] Good luck.
+
+[ADVICE_6_1_START] You're now at the Vatrix console. Try Clicking 'Open'.
+[ADVICE_6_1_DESTROY_POT] Don't break the vases yourself! Click 'Reset'.
+[ADVICE_6_1_BUTTON_OPEN] Good job! Click 'Run' to inject the code into the game.
+[ADVICE_6_1_BUTTON_RUN] Now you see script brk(3,7) running. Click 'Reset' to stop.
+[ADVICE_6_1_END] This is the end of tutorial. Click 'Open' and try to complement the code to break all vases and win the game!

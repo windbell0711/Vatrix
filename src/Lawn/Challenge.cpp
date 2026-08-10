@@ -4085,7 +4085,31 @@ void Challenge::ScaryPotterStart()
 {
 	if (mApp->IsAdventureMode())
 	{
-		mBoard->DisplayAdvice("[ADVICE_USE_SHOVEL_ON_POTS]", MESSAGE_STYLE_HINT_STAY, ADVICE_USE_SHOVEL_ON_POTS);
+		// vx: a carried-over tutorial step continues; otherwise give the start hint
+		switch (mBoard->mHelpIndex)
+		{
+		case ADVICE_6_1_START:
+		case ADVICE_6_1_DESTROY_POT:
+			mBoard->DisplayAdvice("[ADVICE_6_1_START]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_START);
+			break;
+		case ADVICE_6_1_BUTTON_OPEN:
+			mBoard->DisplayAdvice("[ADVICE_6_1_BUTTON_OPEN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_OPEN);
+			break;
+		case ADVICE_6_1_BUTTON_RUN:
+			mBoard->DisplayAdvice("[ADVICE_6_1_BUTTON_RUN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_RUN_2);
+			break;
+		case ADVICE_6_1_BUTTON_RUN_2:
+			mBoard->DisplayAdvice("[ADVICE_6_1_END]", MESSAGE_STYLE_HINT_TALL_LONG, ADVICE_6_1_END);
+			break;
+		case ADVICE_6_1_END:
+			break;
+		default:
+			if (mBoard->mLevel == 51)
+				mBoard->DisplayAdvice("[ADVICE_6_1_START]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_START);
+			else if (mBoard->mLevel < 50)
+				mBoard->DisplayAdvice("[ADVICE_USE_SHOVEL_ON_POTS]", MESSAGE_STYLE_HINT_STAY, ADVICE_USE_SHOVEL_ON_POTS);
+			break;
+		}
 	}
 }
 
@@ -4231,6 +4255,13 @@ void Challenge::ScaryPotterOpenPot(GridItem* theScaryPot)
 	{
 		mBoard->DisplayAdvice("[ADVICE_DESTROY_POTS_TO_FINISH_LEVEL]", MESSAGE_STYLE_HINT_FAST, ADVICE_DESTORY_POTS_TO_FINISIH_LEVEL);
 	}
+
+	// vx: 6-1 tutorial advice step
+	if (mBoard->mHelpIndex == ADVICE_6_1_START)
+	{
+		mBoard->DisplayAdvice("[ADVICE_6_1_DESTROY_POT]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_DESTROY_POT);
+	}
+	
 	if (ScaryPotterIsCompleted())
 	{
 		if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())

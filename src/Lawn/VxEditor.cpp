@@ -35,16 +35,6 @@ namespace
 	// vx: single point for the editor panel rect; v2 floating-window layout hooks in here
 	constexpr float kVxEditorWidth = 250.0f;
 
-	// vx: player-facing template written by the "New" button
-	const char* kVxEditorTemplate = R"PY(# 6-X level script template
-import vb
-
-# Break a vase: vb.brk(row, col)   (1-based)
-# Plant a card:  vb.plt(row, col, card_id)
-# Wait:          vb.slp(seconds)
-vb.brk(3, 7)
-)PY";
-
 	std::string VxReadFile(const std::filesystem::path& thePath)
 	{
 		std::ifstream aStream(thePath, std::ios::binary);
@@ -295,11 +285,15 @@ namespace VX
 	void VxEditorOpenScript(int theLevel, void* theWindow)
 	{
 		std::filesystem::path aPath = VX::GetLevelScriptPath(theLevel);
-		// vx: Open instead of New: only seed a fresh template when the level script does not exist yet
+		// vx: seed a missing level script from templates/<same name> first, else an empty file
 		if (!aPath.empty() && !std::filesystem::exists(aPath))
 		{
-			std::ofstream aStream(aPath, std::ios::binary | std::ios::trunc);
-			aStream << kVxEditorTemplate;
+			std::filesystem::path aTemplate = aPath.parent_path() / "templates" / aPath.filename();
+			std::error_code anEc;
+			if (!std::filesystem::exists(aTemplate, anEc))
+				std::ofstream(aPath, std::ios::binary | std::ios::trunc); // no template -> empty file
+			else
+				std::filesystem::copy_file(aTemplate, aPath, std::filesystem::copy_options::overwrite_existing, anEc);
 		}
 		// vx: when the editor is already open (Open clicked again), reload the file
 		if (gEditorOpen)
