@@ -200,8 +200,9 @@ namespace
 	void VxBuildEditorUI()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		// vx: autosave dirty buffers every 2s (the manual Save button is gone)
-		if (gBufferDirty && SDL_GetTicks() - gLastSaveTick > 2000)
+		// vx: autosave dirty buffers every 2s (the manual Save button is gone);
+		// a locked Submit run keeps the submitted code frozen on disk
+		if (gBufferDirty && !VX::IsRunLocked() && SDL_GetTicks() - gLastSaveTick > 2000)
 			VxSaveBuffer(false);
 
 		// vx: the game view is docked to a fixed 800px strip; the panel fills the rest

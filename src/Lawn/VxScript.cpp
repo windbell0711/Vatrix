@@ -144,6 +144,8 @@ namespace
 	int gPendingRunLevel = 0;
 	int gPendingRunMode = 0;
 	bool gTrialRun = false;
+	// vx: true while a locked Submit run is active: the editor autosave is suspended
+	bool gRunLocked = false;
 
 	// vx: blocking script query (vb.get_zombies / get_plants / get_cards):
 	// script thread asks, main thread answers in ProcessBoardQueue
@@ -967,6 +969,16 @@ namespace VX
 		gTrialRun = true; // vx: without a Submit run, a world-6 win must not advance the save
 	}
 
+	void SetRunLocked(bool theLocked)
+	{
+		gRunLocked = theLocked;
+	}
+
+	bool IsRunLocked()
+	{
+		return gRunLocked;
+	}
+
 	bool IsScriptRunning()
 	{
 		return gScriptThread.joinable();
@@ -1022,6 +1034,8 @@ namespace VX
 	bool ConsumePendingScriptRun() { return false; }
 	bool IsTrialRun() { return false; }
 	void ClearRunFlags() {}
+	void SetRunLocked(bool) {}
+	bool IsRunLocked() { return false; }
 	bool IsScriptRunning() { return false; }
 	void InterruptScript() {}
 	std::wstring GetScriptsDir() { return std::wstring(); }

@@ -146,6 +146,10 @@ public:
 	int								mScriptStartTick; // vx: script start time for the 60s watchdog
 	bool							mScriptSubmitRun; // vx: true during a Submit run: manual input is locked
 	bool							mScriptLosePaused; // vx: world-6 lose pause keeps the buttons clickable
+	Image*						mVxResBankImage = nullptr; // vx: submit-run banner (Properties/VX_RESBANK.png)
+	int							mVxResBankX = 0; // vx: banner X while flying in from the right edge
+	int							mVxResBankY = 0; // vx: banner Y (fixed, 100px above the bottom edge)
+	bool						mVxResBankCollapsed = false; // vx: banner toggled to a 100px stub on click
 	bool							mIgnoreMouseUp;
 	ToolTipWidget*					mToolTip;
 	//_Font*							mDebugFont;

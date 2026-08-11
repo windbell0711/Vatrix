@@ -44,6 +44,9 @@ namespace VX
 	bool ConsumePendingScriptRun();
 	bool IsTrialRun();
 	void ClearRunFlags();
+	// vx: locked Submit runs freeze the script on disk (editor autosave suspended)
+	void SetRunLocked(bool theLocked);
+	bool IsRunLocked();
 	bool IsScriptRunning();
 	void InterruptScript();
 	std::wstring GetScriptsDir();

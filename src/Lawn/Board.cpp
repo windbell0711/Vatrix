@@ -22,6 +22,7 @@
 #include <time.h>
 #include <algorithm>
 #include <SDL.h>
+#include "graphics/GLImage.h"
 #include "ZenGarden.h"
 #include "BoardInclude.h"
 #include "VxScript.h"
@@ -259,6 +260,7 @@ Board::~Board()
 	delete mCursorObject;
 	delete mCursorPreview;
 	delete mSeedBank;
+	delete mVxResBankImage;
 	if (mMenuButton)
 	{
 		delete mMenuButton;
@@ -1797,6 +1799,13 @@ void Board::StartLevel()
 		mScriptStartTick = SDL_GetTicks();
 		// vx: a Submit run locks manual input for the whole run; a trial run stays playable
 		mScriptSubmitRun = !VX::IsTrialRun();
+		// vx: a Submit run flies the RESBANK banner in from the bottom-right corner
+		if (mScriptSubmitRun)
+		{
+			mVxResBankImage = mApp->GetImage("Properties/VX_RESBANK.png");
+			mVxResBankX = BOARD_WIDTH; // vx: start offscreen at the right edge
+			mVxResBankY = BOARD_HEIGHT - mVxResBankImage->GetHeight() - 100; // vx: rest 100px above the bottom edge
+		}
 	}
 	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
 	{
@@ -1808,6 +1817,8 @@ void Board::StartLevel()
 		// vx: a fresh world-6 level is not a submit run until the player presses Submit
 		VX::ClearRunFlags();
 	}
+	// vx: every board start mirrors the locked-run state (suspends editor autosave while locked)
+	VX::SetRunLocked(mScriptSubmitRun);
 	mCoinBankFadeCount = 0;
 	mApp->mLastLevelStats->Reset();
 	mChallenge->StartLevel();
@@ -4871,22 +4882,34 @@ bool Board::CanInteractWithBoardButtons()
 
 void Board::MouseUp(int x, int y, int theClickCount)
 {
-	// vx: a Submit run is a locked run: the player may not intervene by clicking
-	// (a world-6 lose pause releases the lock so the player can still restart)
-	if (mScriptSubmitRun && !mScriptLosePaused)
-		return;
 	// vx: the code editor consumes mouse input while its panel is focused
 	if (VX::VxEditorWantsMouse())
 		return;
-	Widget::MouseUp(x, y, theClickCount);
-	if (mIgnoreMouseUp)
+
+	// vx: left-click on the submit banner toggles it between full and a 100px stub
+	if (mVxResBankImage && theClickCount > 0)
 	{
-		mIgnoreMouseUp = false;
-		return;
+		Rect aBannerRect(mVxResBankX, mVxResBankY, mVxResBankImage->GetWidth(), mVxResBankImage->GetHeight());
+		if (aBannerRect.Contains(x, y))
+			mVxResBankCollapsed = !mVxResBankCollapsed;
 	}
 
-	if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_BEGHOULED && mChallenge->MouseUp(x, y) && theClickCount > 0)
-		return;
+	// vx: a Submit run is a locked run: gameplay clicks are blocked, but the UI
+	// buttons stay usable except Run/Submit (Menu/Open/Reset/UI work); a world-6
+	// lose pause releases the lock so the player can still restart
+	bool aLockedRun = mScriptSubmitRun && !mScriptLosePaused;
+	if (!aLockedRun)
+	{
+		Widget::MouseUp(x, y, theClickCount);
+		if (mIgnoreMouseUp)
+		{
+			mIgnoreMouseUp = false;
+			return;
+		}
+
+		if (mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_BEGHOULED && mChallenge->MouseUp(x, y) && theClickCount > 0)
+			return;
+	}
 
 	if (CanInteractWithBoardButtons() && theClickCount > 0)
 	{
@@ -4952,6 +4975,9 @@ void Board::MouseUp(int x, int y, int theClickCount)
 			{
 				if (aBtn && aBtn->IsMouseOver())
 				{
+					// vx: a locked Submit run blocks Run and Submit
+					if (aLockedRun && (aBtn->mId == 101 || aBtn->mId == 103))
+						break;
 					aBtn->mIsOver = false;
 					aBtn->mIsDown = false;
 					switch (aBtn->mId)
@@ -4977,6 +5003,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 					case 103: // Submit (official: win advances the save and awards)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 2;
+						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
 						break;
 					}
 					break;
@@ -6173,6 +6200,19 @@ void Board::Update()
 	{
 		mCoinBankFadeCount--;
 	}
+	// vx: the submit banner slides in from the right edge, or between full and the 80px stub on click
+	if (mVxResBankImage)
+	{
+		int aTargetX = mVxResBankCollapsed ? BOARD_WIDTH - 80 : BOARD_WIDTH - mVxResBankImage->GetWidth();
+		if (mVxResBankX < aTargetX)
+		{
+			mVxResBankX = std::min(aTargetX, mVxResBankX + 8);
+		}
+		else if (mVxResBankX > aTargetX)
+		{
+			mVxResBankX = std::max(aTargetX, mVxResBankX - 8);
+		}
+	}
 	UpdateLayers();
 
 	if (mTimeStopCounter > 0)
@@ -6899,6 +6939,14 @@ void Board::DrawGameObjects(Graphics* g)
 			PVZP_ASSERT(false);
 			break;
 		}
+	}
+
+	// vx: draw the submit banner on top of the HUD
+	if (mVxResBankImage)
+	{
+		g->DrawImage(mVxResBankImage, mVxResBankX, mVxResBankY);
+		// vx: current level number at the banner bottom-left (moves with the banner)
+		PvzpDrawString(g, mApp->GetStageString(mLevel), mVxResBankX + 40, mVxResBankY + 80, Sexy::FONT_HOUSEOFTERROR16, Color(0, 0, 0), DrawStringJustification::DS_ALIGN_CENTER);
 	}
 
 	PvzpHesitationTrace("end draw");
