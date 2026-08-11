@@ -7227,13 +7227,13 @@ bool Zombie::TrySpawnLevelAward()
     }
 
     CoinType aCoinType;
-    // vx: world 6 wins never drop the level-clear note; a gold coin and "You win" instead
+    // vx: world 6 wins drop no loot; "You win" and an instant completion instead
     if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL)
     {
-        aCoinType = CoinType::COIN_GOLD;
+        aCoinType = CoinType::COIN_NONE;
         mBoard->DisplayAdvice("You win", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
-        // vx: the gold coin is not a level-award coin, so complete the level instantly
-        // (no fade-out: verification test points must restart fast, like ScaryPotter's clear-reset)
+        // vx: complete the level instantly (no fade-out: verification test points must
+        // restart fast, like ScaryPotter's clear-reset)
         mBoard->mLevelComplete = true;
     }
     else if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())

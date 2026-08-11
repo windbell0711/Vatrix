@@ -95,6 +95,9 @@ StyleCopReport.xml
 *.tmp_proj
 *_wpftmp.csproj
 *.log
+# vx: player-script runtime artifacts (captured print output, script errors)
+vx_script_output.txt
+vx_script_error.txt
 *.vspscc
 *.vssscc
 .builds

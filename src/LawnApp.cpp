@@ -1551,11 +1551,11 @@ void LawnApp::VxStartVerification()
 	}
 }
 
-// vx: Submit verification: record one test point (AC/WA) and advance to the next
-void LawnApp::VxRecordTestResult(bool theAC)
+// vx: Submit verification: record one test point (1=AC 2=WA 3=RE 4=CE) and advance to the next
+void LawnApp::VxRecordTestResult(int theResult)
 {
 	if (mVxTestIndex >= 0 && mVxTestIndex < mVxTestCount)
-		mVxTestResults[mVxTestIndex] = theAC ? 1 : 2;
+		mVxTestResults[mVxTestIndex] = theResult;
 	mVxTestIndex++;
 }
 
@@ -1575,7 +1575,7 @@ void LawnApp::CheckForGameEnd()
 	// vx: Submit verification: a won test point records AC and immediately restarts the next one
 	if (mVxVerifying)
 	{
-		VxRecordTestResult(true);
+		VxRecordTestResult(1); // vx: AC
 		bool aAllAC = true;
 		for (int i = 0; i < mVxTestCount; i++)
 		{

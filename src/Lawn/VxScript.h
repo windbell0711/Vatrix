@@ -39,6 +39,8 @@ namespace VX
 	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut);
 	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots);
 	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut);
+	// vx: last player-script error (kind 1=compile CE, 2=runtime RE); consumes the error file
+	bool GetScriptError(std::string& theText, int& theKind);
 
 	// vx: player-driven world-6 runs (Run = trial, Submit = official)
 	void RequestScriptRun(int theLevel, int theGameMode, bool theSubmit);
@@ -49,6 +51,8 @@ namespace VX
 	void SetRunLocked(bool theLocked);
 	bool IsRunLocked();
 	bool IsScriptRunning();
+	// vx: true once the current script driver has finished (error or not)
+	bool IsScriptDone();
 	void InterruptScript();
 	std::wstring GetScriptsDir();
 	std::wstring GetLevelScriptPath(int theLevel);

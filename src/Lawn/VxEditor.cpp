@@ -32,11 +32,23 @@ namespace
 	VX::VxEditorAction gPendingAction = VX::VxEditorAction::None;
 	int gEditorLevel = 0;
 	Uint32 gLastSaveTick = 0;
+	// vx: persistent output panel below the editor: streamed script prints + last error
+	std::string gVxOutputText;
+	std::string gVxErrorText;
+	bool gVxErrorCompile = false;
+	bool gVxPanelOpen = true;
+	std::uintmax_t gVxOutputSize = 0;
+	bool gVxOutputScrollToBottom = false;
 
 	// vx: three window/editor width levels; the game view stays a fixed 800px strip
 	constexpr int kVxWidthLevels = 3;
 	constexpr int kVxWindowWidths[kVxWidthLevels] = { 1000, 1100, 1200 };
 	int gVxWidthLevel = 0;
+
+	std::filesystem::path VxOutputPath()
+	{
+		return std::filesystem::path(VX::GetScriptsDir()) / "vx_script_output.txt";
+	}
 
 	std::string VxReadFile(const std::filesystem::path& thePath)
 	{
@@ -209,9 +221,11 @@ namespace
 		float aEditorWidth = io.DisplaySize.x - 800.0f;
 		if (aEditorWidth < 100.0f)
 			aEditorWidth = 100.0f;
+		const float kVxOutputHeight = 220.0f;
+		float aOutputHeight = gVxPanelOpen ? kVxOutputHeight : 0.0f;
 		ImVec2 aPanelOrigin = ImVec2(io.DisplaySize.x - aEditorWidth, 0.0f);
 		ImGui::SetNextWindowPos(aPanelOrigin);
-		ImGui::SetNextWindowSize(ImVec2(aEditorWidth, io.DisplaySize.y));
+		ImGui::SetNextWindowSize(ImVec2(aEditorWidth, io.DisplaySize.y - aOutputHeight));
 		ImGuiWindowFlags aFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
 			| ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus;
 		ImGui::Begin("VxEditor", nullptr, aFlags);
@@ -225,12 +239,64 @@ namespace
 			gVxWidthLevel = (gVxWidthLevel + 1) % kVxWidthLevels;
 			VxSetEditorWindowSize(true);
 		}
+		ImGui::SameLine();
+		// vx: the persistent output panel toggles open/closed from here
+		if (ImGui::Button(gVxPanelOpen ? "Collapse Output" : "Expand Output"))
+			gVxPanelOpen = !gVxPanelOpen;
 		ImGui::Separator();
 
 		gTextEditor.Render("VxPythonEditor");
 		if (gTextEditor.IsTextChanged())
 			gBufferDirty = true;
 		ImGui::End();
+
+		// vx: stream the player script's print output into the panel (line-buffered file)
+		{
+			std::error_code anEc;
+			std::uintmax_t aSize = std::filesystem::file_size(VxOutputPath(), anEc);
+			if (anEc) // no output yet or a fresh run cleared it
+			{
+				if (!gVxOutputText.empty())
+					gVxOutputText.clear();
+				gVxOutputSize = 0;
+			}
+			else if (aSize != gVxOutputSize)
+			{
+				gVxOutputSize = aSize;
+				std::ifstream aStream(VxOutputPath(), std::ios::binary);
+				gVxOutputText.assign(std::istreambuf_iterator<char>(aStream), std::istreambuf_iterator<char>());
+				gVxOutputScrollToBottom = true;
+			}
+		}
+
+		// vx: persistent output panel below the editor: prints + last error, auto-scrolls
+		if (gVxPanelOpen)
+		{
+			ImGui::SetNextWindowPos(ImVec2(aPanelOrigin.x, io.DisplaySize.y - kVxOutputHeight));
+			ImGui::SetNextWindowSize(ImVec2(aEditorWidth, kVxOutputHeight));
+			ImGui::Begin("VxScriptOutput", nullptr, aFlags);
+			if (gVxErrorText.empty())
+				ImGui::TextDisabled("Output");
+			else
+				ImGui::TextColored(gVxErrorCompile ? ImVec4(1.0f, 0.65f, 0.2f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+					gVxErrorCompile ? "Compile Error (CE)" : "Runtime Error (RE)");
+			ImGui::Separator();
+			ImGui::BeginChild("VxOutputScroll", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+			if (!gVxOutputText.empty())
+				ImGui::TextUnformatted(gVxOutputText.c_str());
+			if (!gVxErrorText.empty())
+			{
+				ImGui::TextWrapped("%s", gVxErrorText.c_str());
+				gVxOutputScrollToBottom = true;
+			}
+			if (gVxOutputScrollToBottom)
+			{
+				ImGui::SetScrollHereY(1.0f);
+				gVxOutputScrollToBottom = false;
+			}
+			ImGui::EndChild();
+			ImGui::End();
+		}
 
 		if (gConflictPending)
 		{
@@ -383,6 +449,18 @@ namespace VX
 		gPendingAction = VxEditorAction::None;
 		return aAction;
 	}
+
+	void VxEditorShowError(const std::string& theText, bool theCompileError)
+	{
+		gVxErrorText = theText;
+		gVxErrorCompile = theCompileError;
+		gVxOutputScrollToBottom = true;
+	}
+
+	void VxEditorClearError()
+	{
+		gVxErrorText.clear();
+	}
 }
 
 #else // !VX_SCRIPT
@@ -402,5 +480,7 @@ namespace VX
 	bool VxEditorWantsKeyboard() { return false; }
 	bool VxEditorSave() { return true; }
 	VxEditorAction VxEditorTakePendingAction() { return VxEditorAction::None; }
+	void VxEditorShowError(const std::string&, bool) {}
+	void VxEditorClearError() {}
 }
 #endif // VX_SCRIPT

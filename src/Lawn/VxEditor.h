@@ -23,6 +23,10 @@ namespace VX
 	bool VxEditorWantsKeyboard();
 	bool VxEditorSave();
 	VxEditorAction VxEditorTakePendingAction();
+	// vx: show a player-script error (compile/runtime) in the persistent output panel
+	void VxEditorShowError(const std::string& theText, bool theCompileError);
+	// vx: clear the error line (called when a fresh script run starts)
+	void VxEditorClearError();
 }
 
 #endif // __VXEDITOR_H__

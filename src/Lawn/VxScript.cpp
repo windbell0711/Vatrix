@@ -11,6 +11,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -250,34 +251,66 @@ namespace
 
 
 
-	// vx: one-shot driver; per-script namespaces, tracebacks appended to vx_script.log
+	// vx: one-shot driver; per-script namespaces, prints streamed to vx_script_output.txt,
+	// CE/RE written to vx_script_error.txt, tracebacks appended to vx_script.log
 	const char* gScriptDriver = R"PY(
-import sys, os, traceback
+import sys, os, traceback, contextlib
 d = sys.vx_scripts_dir
 sys.path.insert(0, d)
 log_path = os.path.join(d, "vx_script.log")
+err_path = os.path.join(d, "vx_script_error.txt")
+out_path = os.path.join(d, "vx_script_output.txt")
 try:
     log = open(log_path, "a", encoding="utf-8")
 except OSError:
     log = None
+try:
+    os.remove(err_path)
+except OSError:
+    pass
+try:
+    os.remove(out_path)
+except OSError:
+    pass
+
+def write_error(kind):
+    try:
+        with open(err_path, "w", encoding="utf-8") as ef:
+            ef.write(kind + "\n")
+            traceback.print_exc(file=ef)
+    except Exception:
+        pass
+    try:
+        print("=== %s ===" % path)
+        traceback.print_exc()
+    except Exception:
+        pass
+    if log is not None:
+        log.write("=== %s ===\n" % path)
+        traceback.print_exc(file=log)
+        log.flush()
 
 def run_script(path):
     ns = {"__file__": path, "__name__": "__main__"}
     try:
         with open(path, "rb") as f:
             src = f.read()
-        exec(compile(src, path, "exec"), ns)
+        code = compile(src, path, "exec")
     except BaseException:
-        # vx: show the error on the console too (dev builds have CONSOLE=ON)
-        try:
-            print("=== %s ===" % path)
-            traceback.print_exc()
-        except Exception:
-            pass
-        if log is not None:
-            log.write("=== %s ===\n" % path)
-            traceback.print_exc(file=log)
-            log.flush()
+        write_error("CE")  # compile/parse error
+        return
+    try:
+        out = open(out_path, "a", encoding="utf-8", buffering=1)
+    except OSError:
+        out = None
+    try:
+        with contextlib.redirect_stdout(out) if out is not None else contextlib.nullcontext():
+            exec(code, ns)
+    except BaseException:
+        write_error("RE")  # runtime error
+    finally:
+        if out is not None:
+            out.close()
 
 # vx: run only this level's script, e.g. script_adventure_6_1.py
 mode = getattr(sys, "vx_game_mode", "")
@@ -817,6 +850,25 @@ namespace VX
 		return aOk;
 	}
 
+	bool GetScriptError(std::string& theText, int& theKind)
+	{
+		if (gScriptsDir.empty())
+			VxResolveDirs();
+		std::ifstream aStream(gScriptsDir / "vx_script_error.txt");
+		if (!aStream)
+			return false;
+		std::string aKindLine;
+		if (!std::getline(aStream, aKindLine))
+			return false;
+		theKind = aKindLine == "CE" ? 1 : aKindLine == "RE" ? 2 : 0;
+		theText.assign(std::istreambuf_iterator<char>(aStream), std::istreambuf_iterator<char>());
+		aStream.close();
+		// vx: consume so each error is shown/recorded exactly once
+		std::error_code anEc;
+		std::filesystem::remove(gScriptsDir / "vx_script_error.txt", anEc);
+		return theKind != 0;
+	}
+
 	void ProcessBoardQueue(Board* theBoard)
 	{
 		// vx: answer a pending vb.get_zombies() query on the game thread
@@ -979,6 +1031,9 @@ namespace VX
 		gPendingRun = false;
 		gPendingRunLevel = 0;
 		gPendingRunMode = 0;
+		// vx: a fresh run must not inherit the previous run's error file
+		std::error_code anEc;
+		std::filesystem::remove(gScriptsDir / "vx_script_error.txt", anEc);
 		return true;
 	}
 
@@ -1007,6 +1062,12 @@ namespace VX
 	bool IsScriptRunning()
 	{
 		return gScriptThread.joinable();
+	}
+
+	bool IsScriptDone()
+	{
+		std::lock_guard<std::mutex> aLock(gScriptEndedMutex);
+		return gScriptEnded;
 	}
 
 	void InterruptScript()
@@ -1056,6 +1117,7 @@ namespace VX
 	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
 	bool GetRandomSeeds(int, std::vector<int>&) { return false; }
+	bool GetScriptError(std::string&, int&) { return false; }
 	void RequestScriptRun(int, int, bool) {}
 	bool ConsumePendingScriptRun() { return false; }
 	bool IsTrialRun() { return false; }
@@ -1063,6 +1125,7 @@ namespace VX
 	void SetRunLocked(bool) {}
 	bool IsRunLocked() { return false; }
 	bool IsScriptRunning() { return false; }
+	bool IsScriptDone() { return false; }
 	void InterruptScript() {}
 	std::wstring GetScriptsDir() { return std::wstring(); }
 	std::wstring GetLevelScriptPath(int) { return std::wstring(); }

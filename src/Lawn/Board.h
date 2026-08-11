@@ -152,6 +152,8 @@ public:
 	bool						mVxResBankCollapsed = false; // vx: banner toggled to a 100px stub on click
 	Image*						mVxResAcImage = nullptr; // vx: verification AC icon (Properties/VX_RES_AC.png)
 	Image*						mVxResWaImage = nullptr; // vx: verification WA icon (Properties/VX_RES_WA.png)
+	Image*						mVxResReImage = nullptr; // vx: verification RE icon (Properties/VX_RES_RE.png)
+	Image*						mVxResCeImage = nullptr; // vx: verification CE icon (Properties/VX_RES_CE.png)
 	bool							mIgnoreMouseUp;
 	ToolTipWidget*					mToolTip;
 	//_Font*							mDebugFont;

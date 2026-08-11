@@ -90,9 +90,13 @@ Board::Board(LawnApp* theApp)
 
 	mApp->mEffectSystem->EffectSystemFreeAll();
 	mBoardRandSeed = mApp->mAppRandSeed;
-	// vx: a Submit verification test point runs with its own seed
+	// vx: a Submit verification test point runs with its own seed; the global RNG is
+	// re-seeded per test point too, so speeds/spawn jitter are reproducible from the CSV seed
 	if (mApp->mVxVerifying)
+	{
 		mBoardRandSeed = mApp->mVxTestSeeds[mApp->mVxTestIndex];
+		SRand(mBoardRandSeed);
+	}
 	if (mApp->IsSurvivalMode())
 	{
 		mBoardRandSeed = Rand();
@@ -266,6 +270,8 @@ Board::~Board()
 	delete mVxResBankImage;
 	delete mVxResAcImage;
 	delete mVxResWaImage;
+	delete mVxResReImage;
+	delete mVxResCeImage;
 	if (mMenuButton)
 	{
 		delete mMenuButton;
@@ -1801,6 +1807,7 @@ void Board::StartLevel()
 	// vx: run player scripts once the level actually starts (after the intro / Crazy Dave dialog)
 	if (VX::ConsumePendingScriptRun())
 	{
+		VX::VxEditorClearError(); // vx: a fresh run hides the previous run's error panel
 		// vx: world 6 Run/Submit: the script starts on the freshly restarted level
 		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
 		mScriptStartTick = SDL_GetTicks();
@@ -1815,6 +1822,8 @@ void Board::StartLevel()
 			mVxResBankCollapsed = mApp->mVxResBankCollapsed;
 			mVxResAcImage = mApp->GetImage("Properties/VX_RES_AC.png");
 			mVxResWaImage = mApp->GetImage("Properties/VX_RES_WA.png");
+			mVxResReImage = mApp->GetImage("Properties/VX_RES_RE.png");
+			mVxResCeImage = mApp->GetImage("Properties/VX_RES_CE.png");
 		}
 	}
 	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
@@ -5009,6 +5018,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 					case 102: // Reset (replay the level, same seed)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 3;
+						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
 						break;
 					case 103: // Submit (official: 5-test verification, all AC then the save advances)
 						VX::VxEditorSave();
@@ -5436,14 +5446,14 @@ void Board::ZombiesWon(Zombie* theZombie)
 	if (mApp->mGameScene == GameScenes::SCENE_ZOMBIES_WON)
 		return;
 
-	// vx: world 6: no death cinematic; drop a silver coin from the entering zombie,
-	// then pause and show "You lose" so the player can inspect the board and retry
+	// vx: world 6: no death cinematic, no loot; pause and show "You lose"
+	// so the player can inspect the board and retry
 	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
 	{
 		// vx: Submit verification: a lost test point records WA; 5 done with any WA = fail
 		if (mApp->mVxVerifying)
 		{
-			mApp->VxRecordTestResult(false);
+			mApp->VxRecordTestResult(2); // vx: WA
 			if (mApp->mVxTestIndex < mApp->mVxTestCount)
 			{
 				mApp->mVxPendingRestart = 2; // vx: next test point, no pause
@@ -5457,11 +5467,6 @@ void Board::ZombiesWon(Zombie* theZombie)
 			return;
 		}
 		mApp->mBoardResult = BoardResult::BOARDRESULT_LOST;
-		if (theZombie)
-		{
-			Rect aZombieRect = theZombie->GetZombieRect();
-			AddCoin(aZombieRect.mX + aZombieRect.mWidth / 2, aZombieRect.mY + aZombieRect.mHeight / 4, CoinType::COIN_SILVER, CoinMotion::COIN_MOTION_COIN);
-		}
 		mScriptLosePaused = true; // vx: keep the buttons clickable so the player can restart
 		Pause(true);
 		DisplayAdvice("You lose", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
@@ -6186,6 +6191,28 @@ void Board::Update()
 	{
 		VX::InterruptScript();
 		// ponytail: 60s cap; a script that ignores the interrupt is abandoned by StopScripts
+	}
+	// vx: surface player-script errors (CE/RE) below the editor; a Submit test point that
+	// errors ends as RE/CE (3/4) and freezes, waiting for the player to press Reset
+	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL && VX::IsScriptDone())
+	{
+		std::string anError;
+		int aErrorKind = 0;
+		if (VX::GetScriptError(anError, aErrorKind) && aErrorKind != 0)
+		{
+			VX::VxEditorShowError(anError, aErrorKind == 1);
+			if (mApp->mVxVerifying)
+			{
+				mApp->VxRecordTestResult(aErrorKind == 1 ? 4 : 3); // vx: RE=3, CE=4
+				// vx: an errored test point freezes the run; the player presses Reset to leave
+				mApp->VxEndVerification();
+				mScriptLosePaused = true; // vx: keep the buttons clickable so the player can restart
+				Pause(true);
+				DisplayAdvice(aErrorKind == 1 ? "Compile error" : "Runtime error",
+					MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+				return;
+			}
+		}
 	}
 	if (mStoreButton)
 	{
@@ -6977,7 +7004,14 @@ void Board::DrawGameObjects(Graphics* g)
 		// vx: Submit verification results (AC/WA), scaled into the 5 banner slots
 		for (int i = 0; i < mApp->mVxTestCount; i++)
 		{
-			Sexy::Image* aIcon = mApp->mVxTestResults[i] == 1 ? mVxResAcImage : (mApp->mVxTestResults[i] == 2 ? mVxResWaImage : nullptr);
+			Sexy::Image* aIcon = nullptr; // vx: 1=AC 2=WA 3=RE 4=CE
+			switch (mApp->mVxTestResults[i])
+			{
+			case 1: aIcon = mVxResAcImage; break;
+			case 2: aIcon = mVxResWaImage; break;
+			case 3: aIcon = mVxResReImage; break;
+			case 4: aIcon = mVxResCeImage; break;
+			}
 			if (aIcon)
 			{
 				// vx: 0.4x of the 125x175 card, centered on each slot ring
@@ -9784,7 +9818,8 @@ void Board::DropLootPiece(int thePosX, int thePosY, int theDropFactor)
 
 bool Board::CanDropLoot()
 {
-	return !mCutScene->ShouldRunUpsellBoard() && (!mApp->IsFirstTimeAdventureMode() || mLevel >= 11);
+	// vx: a locked Submit run drops no coins or loot (deterministic verification)
+	return !mCutScene->ShouldRunUpsellBoard() && (!mApp->IsFirstTimeAdventureMode() || mLevel >= 11) && !mScriptSubmitRun;
 }
 
 bool Board::BungeeIsTargetingCell(int theGridX, int theGridY)

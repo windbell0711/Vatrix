@@ -3,6 +3,8 @@ import _vb
 from . import consts
 from dataclasses import dataclass
 
+# 硬性要求500ms后开始操作
+_vb.slp(0.5)
 
 @dataclass(frozen=True)
 class Zombie:

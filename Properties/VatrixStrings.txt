@@ -18,4 +18,4 @@
 [ADVICE_6_1_DESTROY_POT] Don't break the vases yourself! Click 'Reset'.
 [ADVICE_6_1_BUTTON_OPEN] Good job! Click 'Run' to inject the code into the game.
 [ADVICE_6_1_BUTTON_RUN] Now you see script brk(3,7) running. Click 'Reset' to stop.
-[ADVICE_6_1_END] This is the end of tutorial. Click 'Open' and try to complement the code to break all vases and win the game!
+[ADVICE_6_1_END] This is the end of tutorial. Try to complement the code in the editor to break all vases and win the game!

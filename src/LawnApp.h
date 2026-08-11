@@ -344,7 +344,7 @@ public:
 	bool							SaveFileExists();
 	// vx: Submit verification helpers
 	void						VxStartVerification();
-	void						VxRecordTestResult(bool theAC);
+	void						VxRecordTestResult(int theResult); // vx: 1=AC 2=WA 3=RE 4=CE
 	void						VxEndVerification();
 	/*inline*/ bool					CanDoPinataMode();
 	/*inline*/ bool					CanDoDanceMode();
