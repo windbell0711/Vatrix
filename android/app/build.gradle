@@ -12,7 +12,7 @@ configurations.all {
 def prebuilt = project.hasProperty('usePrebuiltLibs') && project.usePrebuiltLibs.toBoolean()
 
 // Vatrix version is fixed; bump manually on release. versionCode stays git-derived for Play Store monotonicity.
-def gitVersionName = '0.0.0'
+def gitVersionName = '0.1.0'
 
 def gitVersionCode = {
     try {
