@@ -1784,9 +1784,11 @@ void LawnApp::UpdateFrames()
 		mVxPendingRestart = 0;
 		// vx: every vx restart (Run/Submit/Reset) skips Dave's dialogue
 		mBoardResult = BoardResult::BOARDRESULT_RESTART;
-		// vx: carry the 6-1 tutorial advice step across the restart so it continues
+		// vx: carry the 6-1 tutorial advice step across the restart so it continues;
+		// later Submit test points (2nd..5th) restart silently without any advice
 		AdviceType aHelp = mBoard->mHelpIndex;
-		mVxKeepHelpIndex = (aHelp == ADVICE_6_1_START || aHelp == ADVICE_6_1_DESTROY_POT || aHelp == ADVICE_6_1_BUTTON_OPEN || aHelp == ADVICE_6_1_BUTTON_RUN || aHelp == ADVICE_6_1_BUTTON_RUN_2 || aHelp == ADVICE_6_1_END) ? aHelp : AdviceType::ADVICE_NONE;
+		bool aKeepTutorial = !(aKind == 2 && mVxVerifying && mVxTestIndex >= 1);
+		mVxKeepHelpIndex = (aKeepTutorial && (aHelp == ADVICE_6_1_START || aHelp == ADVICE_6_1_DESTROY_POT || aHelp == ADVICE_6_1_BUTTON_OPEN || aHelp == ADVICE_6_1_BUTTON_RUN || aHelp == ADVICE_6_1_BUTTON_RUN_2 || aHelp == ADVICE_6_1_END)) ? aHelp : AdviceType::ADVICE_NONE;
 		if (aKind == 3)
 		{
 			VX::ClearRunFlags();

@@ -4085,6 +4085,11 @@ void Challenge::ScaryPotterStart()
 {
 	if (mApp->IsAdventureMode())
 	{
+		// vx: later Submit test points (2nd..5th) restart silently, no advice at all
+		if (mApp->mVxVerifying && mApp->mVxTestIndex >= 1)
+		{
+			return;
+		}
 		// vx: a carried-over tutorial step continues; otherwise give the start hint
 		switch (mBoard->mHelpIndex)
 		{
@@ -4257,7 +4262,7 @@ void Challenge::ScaryPotterOpenPot(GridItem* theScaryPot)
 	}
 
 	// vx: 6-1 tutorial advice step
-	if (mBoard->mHelpIndex == ADVICE_6_1_START)
+	if (mBoard->mHelpIndex == ADVICE_6_1_START || mBoard->mHelpIndex == ADVICE_6_1_BUTTON_OPEN)
 	{
 		mBoard->DisplayAdvice("[ADVICE_6_1_DESTROY_POT]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_DESTROY_POT);
 	}
