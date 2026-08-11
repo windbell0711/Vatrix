@@ -49,7 +49,8 @@ private:
 		ALMANAC_BUTTON_CLOSE = 0,
 		ALMANAC_BUTTON_PLANT = 1,
 		ALMANAC_BUTTON_ZOMBIE = 2,
-		ALMANAC_BUTTON_INDEX = 3
+		ALMANAC_BUTTON_INDEX = 3,
+		ALMANAC_BUTTON_VATRIX = 4
 	};
 
 public:
@@ -58,6 +59,8 @@ public:
 	GameButton*					mIndexButton;
 	GameButton*					mPlantButton;
 	GameButton*					mZombieButton;
+	// vx: index-page button that opens the Vatrix site in the browser
+	GameButton*					mVatrixButton;
 	AlmanacPage					mOpenPage;
 	Reanimation*				mReanim[4];
 	SeedType					mSelectedSeed;
