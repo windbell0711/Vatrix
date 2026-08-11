@@ -1537,17 +1537,17 @@ void LawnApp::VxStartVerification()
 	mVxResBankX = BOARD_WIDTH; // vx: a fresh Submit press flies the banner in from the right edge again
 	mVxResBankCollapsed = false;
 	mVxTestIndex = 0;
+	// vx: seeds come ONLY from the level's random_seeds column in adventure_info.csv, so the same
+	// script always runs the same 5 test points (no dependence on the app's session seed)
+	std::vector<int> aSeeds;
+	if (mBoard)
+		VX::GetRandomSeeds(mBoard->mLevel, aSeeds);
 	for (int i = 0; i < mVxTestCount; i++)
 	{
 		mVxTestResults[i] = 0;
-		mVxTestSeeds[i] = mAppRandSeed + i * 7919; // vx: fallback when the CSV has no seeds
-	}
-	// vx: the 5 test seeds come from the level's random_seeds column in adventure_info.csv
-	std::vector<int> aSeeds;
-	if (mBoard && VX::GetRandomSeeds(mBoard->mLevel, aSeeds) && !aSeeds.empty())
-	{
-		for (int i = 0; i < mVxTestCount; i++)
-			mVxTestSeeds[i] = i < static_cast<int>(aSeeds.size()) ? aSeeds[i] : mAppRandSeed + i * 7919;
+		// vx: x = CSV seed (fixed fallback 1000+i when the column is missing); seed = 10^7 + (6367x + 1234) % 89999999
+		int x = i < static_cast<int>(aSeeds.size()) ? aSeeds[i] : 1000 + i;
+		mVxTestSeeds[i] = 10000000 + static_cast<int>((6367LL * x + 1234) % 89999999LL);
 	}
 }
 

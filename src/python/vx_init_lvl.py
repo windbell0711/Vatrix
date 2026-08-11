@@ -43,8 +43,8 @@ _ALIAS2CODE = {
 	"pap": 105, "dor": 106, "ftb": 107, "dan": 108, "dab": 109, "duk": 110, "snk": 111,
 	"zbn": 112, "zbt": 113, "dol": 114, "jac": 115, "bal": 116, "dig": 117, "pog": 118,
 	"yet": 119, "bun": 120, "lad": 121, "ctp": 122, "ggt": 123, "imp": 124, "bos": 125,
-	"pez": 126, "nuz": 127, "jaz": 128, "gaz": 129, "sqz": 130, "taz": 131, "gig": 132,
-	"ept": -1,
+	"pez": 126, "nuz": 127, "jaz": 128, "gaz": 129, "sqz": 130, "taz": 131, "red": 132,
+	"ept": -1, "empty": -1, "sun25": -25, "sun50": -50, "sun75": -75,  # vc: vase contents
 }
 
 
@@ -138,7 +138,7 @@ def parse_vase_rules(info: InfoInput) -> Optional[Dict[str, List[List[str]]]]:
     return None
 
 
-def get_random_seeds(level) -> list:
+def get_random_seeds(level, seed=0) -> list:  # vx: VX::GetRandomSeeds always passes (level, seed)
     """Game-facing entry: the Submit verification test seeds (random_seeds column)."""
     info = get_input(level)
     out = []
@@ -178,8 +178,8 @@ def generate(level, seed=0) -> list:
             code = _ALIAS2CODE.get(alias, -2)
             if code == -1:  # ept = empty pot
                 result.append({"row": row, "col": col, "type": "empty", "count": 1})
-            elif code < 0:
-                continue  # unknown alias: skip
+            elif code < 0:  # vc: sun25/sun50/sun75 = sun pot
+                result.append({"row": row, "col": col, "type": "sun", "count": 1})
             elif code < 100:
                 result.append({"row": row, "col": col, "type": "seed", "seed": code, "count": 1})
             else:

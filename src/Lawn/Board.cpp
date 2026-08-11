@@ -885,6 +885,8 @@ void Board::PickZombieWaves()
 
 int Board::GetLevelRandSeed()
 {
+	if (mApp->mVxVerifying)
+		return mBoardRandSeed; // vx: Submit verification must be identical across save profiles (no mId/level mixing)
 	int aRndSeed = mApp->mPlayerInfo->mId + mBoardRandSeed;
 	if (mApp->IsAdventureMode())
 	{

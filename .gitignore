@@ -412,6 +412,7 @@ main.unpak
 properties/*
 Properties/*
 !Properties/VatrixStrings.txt
+!Properties/adventure_info.csv
 !Properties/VX_*.png
 tools/res/
 tools/res-bak/
