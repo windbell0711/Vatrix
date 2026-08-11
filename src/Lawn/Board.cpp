@@ -1808,8 +1808,9 @@ void Board::StartLevel()
 		if (mScriptSubmitRun)
 		{
 			mVxResBankImage = mApp->GetImage("Properties/VX_RESBANK.png");
-			mVxResBankX = BOARD_WIDTH; // vx: start offscreen at the right edge
+			mVxResBankX = mApp->mVxResBankX; // vx: keep the banner state (carried by a test-point restart; BOARD_WIDTH on a fresh press)
 			mVxResBankY = BOARD_HEIGHT - mVxResBankImage->GetHeight() - 100; // vx: rest 100px above the bottom edge
+			mVxResBankCollapsed = mApp->mVxResBankCollapsed;
 			mVxResAcImage = mApp->GetImage("Properties/VX_RES_AC.png");
 			mVxResWaImage = mApp->GetImage("Properties/VX_RES_WA.png");
 		}

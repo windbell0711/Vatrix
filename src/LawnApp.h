@@ -126,6 +126,9 @@ public:
 	AdviceType						mVxKeepHelpIndex = AdviceType::ADVICE_NONE;
 	// vx: pop the code editor open after the pending restart (left-click Run / panel Run)
 	bool							mVxPendingEditorOpen = false;
+	// vx: resbank banner state carried over a Submit test-point restart (reset on a fresh Submit press)
+	int							mVxResBankX = 0;
+	bool						mVxResBankCollapsed = false;
 	// vx: Submit verification: 5 test points with different seeds; results fill the resbank
 	bool						mVxVerifying = false;
 	int							mVxTestIndex = 0;

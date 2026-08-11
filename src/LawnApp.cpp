@@ -1534,6 +1534,8 @@ bool LawnApp::UpdatePlayerProfileForFinishingLevel()
 void LawnApp::VxStartVerification()
 {
 	mVxVerifying = true;
+	mVxResBankX = BOARD_WIDTH; // vx: a fresh Submit press flies the banner in from the right edge again
+	mVxResBankCollapsed = false;
 	mVxTestIndex = 0;
 	for (int i = 0; i < mVxTestCount; i++)
 	{
@@ -1793,7 +1795,14 @@ void LawnApp::UpdateFrames()
 		else
 			VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
 		if (aKind == 2 && mVxVerifying)
+		{
 			mVxPendingEditorOpen = true; // vx: keep the editor open across verification test restarts
+			if (mBoard->mVxResBankImage) // vx: carry the banner state only between test points (the old board has one)
+			{
+				mVxResBankX = mBoard->mVxResBankX;
+				mVxResBankCollapsed = mBoard->mVxResBankCollapsed;
+			}
+		}
 		PreNewGame(mGameMode, false);
 		// vx: mVxPendingEditorOpen is left set on purpose: the old board is destroyed lazily
 		// (SafeDeleteWidget), and its dtor reads the flag to keep the editor open across the restart
