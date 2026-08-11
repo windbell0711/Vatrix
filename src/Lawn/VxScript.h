@@ -38,6 +38,7 @@ namespace VX
 	};
 	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut);
 	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots);
+	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut);
 
 	// vx: player-driven world-6 runs (Run = trial, Submit = official)
 	void RequestScriptRun(int theLevel, int theGameMode, bool theSubmit);

@@ -90,6 +90,9 @@ Board::Board(LawnApp* theApp)
 
 	mApp->mEffectSystem->EffectSystemFreeAll();
 	mBoardRandSeed = mApp->mAppRandSeed;
+	// vx: a Submit verification test point runs with its own seed
+	if (mApp->mVxVerifying)
+		mBoardRandSeed = mApp->mVxTestSeeds[mApp->mVxTestIndex];
 	if (mApp->IsSurvivalMode())
 	{
 		mBoardRandSeed = Rand();
@@ -261,6 +264,8 @@ Board::~Board()
 	delete mCursorPreview;
 	delete mSeedBank;
 	delete mVxResBankImage;
+	delete mVxResAcImage;
+	delete mVxResWaImage;
 	if (mMenuButton)
 	{
 		delete mMenuButton;
@@ -1805,6 +1810,8 @@ void Board::StartLevel()
 			mVxResBankImage = mApp->GetImage("Properties/VX_RESBANK.png");
 			mVxResBankX = BOARD_WIDTH; // vx: start offscreen at the right edge
 			mVxResBankY = BOARD_HEIGHT - mVxResBankImage->GetHeight() - 100; // vx: rest 100px above the bottom edge
+			mVxResAcImage = mApp->GetImage("Properties/VX_RES_AC.png");
+			mVxResWaImage = mApp->GetImage("Properties/VX_RES_WA.png");
 		}
 	}
 	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
@@ -5000,8 +5007,9 @@ void Board::MouseUp(int x, int y, int theClickCount)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 3;
 						break;
-					case 103: // Submit (official: win advances the save and awards)
+					case 103: // Submit (official: 5-test verification, all AC then the save advances)
 						VX::VxEditorSave();
+						mApp->VxStartVerification(); // vx: 5 test points with different seeds
 						mApp->mVxPendingRestart = 2;
 						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
 						break;
@@ -5429,6 +5437,22 @@ void Board::ZombiesWon(Zombie* theZombie)
 	// then pause and show "You lose" so the player can inspect the board and retry
 	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
 	{
+		// vx: Submit verification: a lost test point records WA; 5 done with any WA = fail
+		if (mApp->mVxVerifying)
+		{
+			mApp->VxRecordTestResult(false);
+			if (mApp->mVxTestIndex < mApp->mVxTestCount)
+			{
+				mApp->mVxPendingRestart = 2; // vx: next test point, no pause
+				return;
+			}
+			mApp->VxEndVerification();
+			mApp->mBoardResult = BoardResult::BOARDRESULT_LOST;
+			mScriptLosePaused = true; // vx: keep the buttons clickable so the player can restart
+			Pause(true);
+			DisplayAdvice("Submit failed", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+			return;
+		}
 		mApp->mBoardResult = BoardResult::BOARDRESULT_LOST;
 		if (theZombie)
 		{
@@ -6946,7 +6970,18 @@ void Board::DrawGameObjects(Graphics* g)
 	{
 		g->DrawImage(mVxResBankImage, mVxResBankX, mVxResBankY);
 		// vx: current level number at the banner bottom-left (moves with the banner)
-		PvzpDrawString(g, mApp->GetStageString(mLevel), mVxResBankX + 40, mVxResBankY + 80, Sexy::FONT_HOUSEOFTERROR16, Color(0, 0, 0), DrawStringJustification::DS_ALIGN_CENTER);
+		PvzpDrawString(g, mApp->GetStageString(mLevel), mVxResBankX + 40, mVxResBankY + 80, Sexy::FONT_CONTINUUMBOLD14, Color(0, 0, 0), DrawStringJustification::DS_ALIGN_CENTER);
+		// vx: Submit verification results (AC/WA), scaled into the 5 banner slots
+		for (int i = 0; i < mApp->mVxTestCount; i++)
+		{
+			Sexy::Image* aIcon = mApp->mVxTestResults[i] == 1 ? mVxResAcImage : (mApp->mVxTestResults[i] == 2 ? mVxResWaImage : nullptr);
+			if (aIcon)
+			{
+				// vx: 0.4x of the 125x175 card, centered on each slot ring
+				Rect aDest(mVxResBankX + 78 + i * 52, mVxResBankY + 8, 50, 70);
+				g->DrawImage(aIcon, aDest, Rect(0, 0, aIcon->GetWidth(), aIcon->GetHeight()));
+			}
+		}
 	}
 
 	PvzpHesitationTrace("end draw");

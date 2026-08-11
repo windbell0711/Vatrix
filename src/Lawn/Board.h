@@ -150,6 +150,8 @@ public:
 	int							mVxResBankX = 0; // vx: banner X while flying in from the right edge
 	int							mVxResBankY = 0; // vx: banner Y (fixed, 100px above the bottom edge)
 	bool						mVxResBankCollapsed = false; // vx: banner toggled to a 100px stub on click
+	Image*						mVxResAcImage = nullptr; // vx: verification AC icon (Properties/VX_RES_AC.png)
+	Image*						mVxResWaImage = nullptr; // vx: verification WA icon (Properties/VX_RES_WA.png)
 	bool							mIgnoreMouseUp;
 	ToolTipWidget*					mToolTip;
 	//_Font*							mDebugFont;

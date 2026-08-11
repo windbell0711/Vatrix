@@ -126,6 +126,12 @@ public:
 	AdviceType						mVxKeepHelpIndex = AdviceType::ADVICE_NONE;
 	// vx: pop the code editor open after the pending restart (left-click Run / panel Run)
 	bool							mVxPendingEditorOpen = false;
+	// vx: Submit verification: 5 test points with different seeds; results fill the resbank
+	bool						mVxVerifying = false;
+	int							mVxTestIndex = 0;
+	int							mVxTestResults[5] = {}; // vx: 0=empty, 1=AC, 2=WA
+	int							mVxTestSeeds[5] = {};
+	static constexpr int		mVxTestCount = 5;
 	bool							mSawYeti;
 	TypingCheck*					mKonamiCheck;
 	TypingCheck*					mMustacheCheck;
@@ -333,6 +339,10 @@ public:
 	/*inline*/ void					FinishZenGardenToturial();
 	bool							UpdatePlayerProfileForFinishingLevel();
 	bool							SaveFileExists();
+	// vx: Submit verification helpers
+	void						VxStartVerification();
+	void						VxRecordTestResult(bool theAC);
+	void						VxEndVerification();
 	/*inline*/ bool					CanDoPinataMode();
 	/*inline*/ bool					CanDoDanceMode();
 	/*inline*/ bool					CanDoDaisyMode();

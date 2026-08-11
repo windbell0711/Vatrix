@@ -1530,11 +1530,76 @@ bool LawnApp::UpdatePlayerProfileForFinishingLevel()
 	return aUnlockedNewChallenge;
 }
 
+// vx: Submit verification: begin 5 test points with one distinct seed each
+void LawnApp::VxStartVerification()
+{
+	mVxVerifying = true;
+	mVxTestIndex = 0;
+	for (int i = 0; i < mVxTestCount; i++)
+	{
+		mVxTestResults[i] = 0;
+		mVxTestSeeds[i] = mAppRandSeed + i * 7919; // vx: fallback when the CSV has no seeds
+	}
+	// vx: the 5 test seeds come from the level's random_seeds column in adventure_info.csv
+	std::vector<int> aSeeds;
+	if (mBoard && VX::GetRandomSeeds(mBoard->mLevel, aSeeds) && !aSeeds.empty())
+	{
+		for (int i = 0; i < mVxTestCount; i++)
+			mVxTestSeeds[i] = i < static_cast<int>(aSeeds.size()) ? aSeeds[i] : mAppRandSeed + i * 7919;
+	}
+}
+
+// vx: Submit verification: record one test point (AC/WA) and advance to the next
+void LawnApp::VxRecordTestResult(bool theAC)
+{
+	if (mVxTestIndex >= 0 && mVxTestIndex < mVxTestCount)
+		mVxTestResults[mVxTestIndex] = theAC ? 1 : 2;
+	mVxTestIndex++;
+}
+
+// vx: Submit verification: leave the phase (results stay for the resbank display)
+void LawnApp::VxEndVerification()
+{
+	mVxVerifying = false;
+	mVxTestIndex = 0;
+}
+
 // GOTY @Patoke: 0x4558E0
 void LawnApp::CheckForGameEnd()
 {
 	if (mBoard == nullptr || !mBoard->mLevelComplete)
 		return;
+
+	// vx: Submit verification: a won test point records AC and immediately restarts the next one
+	if (mVxVerifying)
+	{
+		VxRecordTestResult(true);
+		bool aAllAC = true;
+		for (int i = 0; i < mVxTestCount; i++)
+		{
+			if (mVxTestResults[i] != 1)
+			{
+				aAllAC = false;
+				break;
+			}
+		}
+		if (mVxTestIndex < mVxTestCount)
+		{
+			mVxPendingRestart = 2; // vx: next test point
+			return;
+		}
+		VxEndVerification();
+		if (!aAllAC)
+		{
+			// vx: verification failed: freeze the board and let the player reset
+			mBoard->mLevelComplete = false;
+			mBoard->mScriptLosePaused = true;
+			mBoard->Pause(true);
+			mBoard->DisplayAdvice("Submit failed", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+			return;
+		}
+		// vx: all 5 AC: fall through to the normal submit-win reward below
+	}
 
 	// vx: world-6 trial runs (Run button) never advance the save or grant rewards
 	bool aVxTrialRun = IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL && VX::IsTrialRun();
@@ -1721,9 +1786,14 @@ void LawnApp::UpdateFrames()
 		AdviceType aHelp = mBoard->mHelpIndex;
 		mVxKeepHelpIndex = (aHelp == ADVICE_6_1_START || aHelp == ADVICE_6_1_DESTROY_POT || aHelp == ADVICE_6_1_BUTTON_OPEN || aHelp == ADVICE_6_1_BUTTON_RUN || aHelp == ADVICE_6_1_BUTTON_RUN_2 || aHelp == ADVICE_6_1_END) ? aHelp : AdviceType::ADVICE_NONE;
 		if (aKind == 3)
+		{
 			VX::ClearRunFlags();
+			VxEndVerification(); // vx: Reset aborts any Submit verification
+		}
 		else
 			VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
+		if (aKind == 2 && mVxVerifying)
+			mVxPendingEditorOpen = true; // vx: keep the editor open across verification test restarts
 		PreNewGame(mGameMode, false);
 		// vx: mVxPendingEditorOpen is left set on purpose: the old board is destroyed lazily
 		// (SafeDeleteWidget), and its dtor reads the flag to keep the editor open across the restart

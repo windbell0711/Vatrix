@@ -7232,6 +7232,9 @@ bool Zombie::TrySpawnLevelAward()
     {
         aCoinType = CoinType::COIN_GOLD;
         mBoard->DisplayAdvice("You win", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
+        // vx: the gold coin is not a level-award coin, so complete the level instantly
+        // (no fade-out: verification test points must restart fast, like ScaryPotter's clear-reset)
+        mBoard->mLevelComplete = true;
     }
     else if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
     {

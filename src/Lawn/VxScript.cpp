@@ -792,6 +792,31 @@ namespace VX
 		return aOk;
 	}
 
+	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut)
+	{
+		if (!gPythonReady)
+			return false;
+		PyGILState_STATE aGILState = PyGILState_Ensure();
+
+		bool aOk = false;
+		PyObject* aResult = VxCallLevelFunc("get_random_seeds", theLevel, 0);
+		PyErr_Clear();
+		if (aResult && PyList_Check(aResult))
+		{
+			Py_ssize_t aLength = PyList_Size(aResult);
+			for (Py_ssize_t i = 0; i < aLength; i++)
+			{
+				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
+				if (aItem && PyLong_Check(aItem))
+					theOut.push_back(static_cast<int>(PyLong_AsLong(aItem)));
+			}
+			aOk = true;
+		}
+		Py_XDECREF(aResult);
+		PyGILState_Release(aGILState);
+		return aOk;
+	}
+
 	void ProcessBoardQueue(Board* theBoard)
 	{
 		// vx: answer a pending vb.get_zombies() query on the game thread
@@ -1030,6 +1055,7 @@ namespace VX
 	bool GetScaryPotLineup(int, int, std::vector<VxPotDef>&) { return false; }
 	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
+	bool GetRandomSeeds(int, std::vector<int>&) { return false; }
 	void RequestScriptRun(int, int, bool) {}
 	bool ConsumePendingScriptRun() { return false; }
 	bool IsTrialRun() { return false; }

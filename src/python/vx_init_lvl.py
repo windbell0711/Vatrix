@@ -29,6 +29,7 @@ class InfoInput:
     slot_rule: str
     beizhu: str
     key: str
+    random_seeds: str
 
 
 _ALIAS2CODE = {
@@ -135,6 +136,20 @@ def parse_vase_rules(info: InfoInput) -> Optional[Dict[str, List[List[str]]]]:
             result[category] = p
         return result
     return None
+
+
+def get_random_seeds(level) -> list:
+    """Game-facing entry: the Submit verification test seeds (random_seeds column)."""
+    info = get_input(level)
+    out = []
+    for part in info.random_seeds.split(";"):
+        part = part.strip()
+        if part:
+            try:
+                out.append(int(part))
+            except ValueError:
+                pass
+    return out
 
 
 def generate(level, seed=0) -> list:
