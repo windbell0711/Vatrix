@@ -153,7 +153,9 @@ enum ChallengePage : int32_t
     CHALLENGE_PAGE_CHALLENGE = 1,
     CHALLENGE_PAGE_LIMBO = 2,
     CHALLENGE_PAGE_PUZZLE = 3,
-    MAX_CHALLANGE_PAGES = 4
+    // vx: adventure level-select page
+    CHALLENGE_PAGE_ADVENTURE = 4,
+    MAX_CHALLANGE_PAGES = 5
 };
 enum ChallengeState : int32_t
 {
@@ -459,6 +461,18 @@ enum GameMode : int32_t
     GAMEMODE_PUZZLE_I_ZOMBIE_ENDLESS,
     GAMEMODE_UPSELL,
     GAMEMODE_INTRO,
+    // vx: pseudo-modes for the adventure level-select page (never started directly)
+    GAMEMODE_VX_ADVENTURE_6_1,
+    GAMEMODE_VX_ADVENTURE_6_2,
+    GAMEMODE_VX_ADVENTURE_6_3,
+    GAMEMODE_VX_ADVENTURE_6_4,
+    GAMEMODE_VX_ADVENTURE_6_5,
+    GAMEMODE_VX_ADVENTURE_6_6,
+    GAMEMODE_VX_ADVENTURE_6_7,
+    GAMEMODE_VX_ADVENTURE_6_8,
+    GAMEMODE_VX_ADVENTURE_6_9,
+    GAMEMODE_VX_ADVENTURE_6_10,
+    GAMEMODE_VX_ADVENTURE_5_10,
     NUM_GAME_MODES
 };
 enum GameObjectType : int32_t

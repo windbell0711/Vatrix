@@ -107,7 +107,19 @@ constinit const ChallengeDefinition gChallengeDefs[NUM_CHALLENGE_MODES] = {
 	{ .mChallengeMode = GameMode::GAMEMODE_PUZZLE_I_ZOMBIE_9, .mChallengeIconIndex = 11, .mPage = ChallengePage::CHALLENGE_PAGE_PUZZLE, .mRow = 3, .mCol = 3, .mChallengeName = "[I_ZOMBIE_9]" },
 	{ .mChallengeMode = GameMode::GAMEMODE_PUZZLE_I_ZOMBIE_ENDLESS, .mChallengeIconIndex = 11, .mPage = ChallengePage::CHALLENGE_PAGE_PUZZLE, .mRow = 3, .mCol = 4, .mChallengeName = "[I_ZOMBIE_ENDLESS]" },
 	{ .mChallengeMode = GameMode::GAMEMODE_UPSELL, .mChallengeIconIndex = 10, .mPage = ChallengePage::CHALLENGE_PAGE_LIMBO, .mRow = 3, .mCol = 4, .mChallengeName = "Upsell" },
-	{ .mChallengeMode = GameMode::GAMEMODE_INTRO, .mChallengeIconIndex = 10, .mPage = ChallengePage::CHALLENGE_PAGE_LIMBO, .mRow = 2, .mCol = 3, .mChallengeName = "Intro" }
+	{ .mChallengeMode = GameMode::GAMEMODE_INTRO, .mChallengeIconIndex = 10, .mPage = ChallengePage::CHALLENGE_PAGE_LIMBO, .mRow = 2, .mCol = 3, .mChallengeName = "Intro" },
+	// vx: adventure level-select page entries
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_1, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 0, .mCol = 0, .mChallengeName = "6-1", .mAdventureLevel = 51 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_2, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 0, .mCol = 1, .mChallengeName = "6-2", .mAdventureLevel = 52 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_3, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 0, .mCol = 2, .mChallengeName = "6-3", .mAdventureLevel = 53 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_4, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 0, .mCol = 3, .mChallengeName = "6-4", .mAdventureLevel = 54 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_5, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 0, .mCol = 4, .mChallengeName = "6-5", .mAdventureLevel = 55 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_6, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 1, .mCol = 0, .mChallengeName = "6-6", .mAdventureLevel = 56 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_7, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 1, .mCol = 1, .mChallengeName = "6-7", .mAdventureLevel = 57 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_8, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 1, .mCol = 2, .mChallengeName = "6-8", .mAdventureLevel = 58 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_9, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 1, .mCol = 3, .mChallengeName = "6-9", .mAdventureLevel = 59 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_6_10, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 1, .mCol = 4, .mChallengeName = "6-10", .mAdventureLevel = 60 },
+	{ .mChallengeMode = GameMode::GAMEMODE_VX_ADVENTURE_5_10, .mChallengeIconIndex = 0, .mPage = ChallengePage::CHALLENGE_PAGE_ADVENTURE, .mRow = 2, .mCol = 0, .mChallengeName = "5-10", .mAdventureLevel = 50 },
 };
 
 // GOTY @Patoke: 0x430810
@@ -145,6 +157,8 @@ ChallengeScreen::ChallengeScreen(LawnApp* theApp, ChallengePage thePage)
 		mPageButton[aPageIdx] = aPageButton;
 		if (aPageIdx == CHALLENGE_PAGE_LIMBO)
 			aPageButton->mLabel = mApp->GetString("LIMBO_PAGE_BUTTON", "Limbo Page");
+		else if (aPageIdx == CHALLENGE_PAGE_ADVENTURE) // vx: adventure level-select page button
+			aPageButton->mLabel = mApp->GetString("ADVENTURE_PAGE_BUTTON", "Adventure");
 		else
 			aPageButton->mLabel = PvzpReplaceNumberString("[PAGE_X]", "{PAGE}", aPageIdx);
 		aPageButton->mButtonImage = Sexy::IMAGE_BLANK;
@@ -154,7 +168,8 @@ ChallengeScreen::ChallengeScreen(LawnApp* theApp, ChallengePage thePage)
 		aPageButton->mColors[ButtonWidget::COLOR_LABEL] = Color(255, 240, 0);
 		aPageButton->mColors[ButtonWidget::COLOR_LABEL_HILITE] = Color(220, 220, 0);
 		aPageButton->Resize(200 + 100 * aPageIdx, 540, 100, 75);
-		if (!ShowPageButtons() || aPageIdx == CHALLENGE_PAGE_SURVIVAL || aPageIdx == CHALLENGE_PAGE_PUZZLE)
+		// vx: the Adventure page button stays visible so the level-select page is reachable
+		if ((!ShowPageButtons() || aPageIdx == CHALLENGE_PAGE_SURVIVAL || aPageIdx == CHALLENGE_PAGE_PUZZLE) && aPageIdx != CHALLENGE_PAGE_ADVENTURE)
 			aPageButton->mVisible = false;
 	}
 	
@@ -443,7 +458,7 @@ void ChallengeScreen::DrawButton(Graphics* g, int theChallengeIndex)
 			{
 				g->DrawImageCel(Sexy::IMAGE_SURVIVAL_THUMBNAILS, aPosX + 13, aPosY + 4, aDef.mChallengeIconIndex);
 			}
-			else
+			else if (mPageIndex != CHALLENGE_PAGE_ADVENTURE) // vx: no thumbnail on the adventure level-select page
 			{
 				g->DrawImageCel(Sexy::IMAGE_CHALLENGE_THUMBNAILS, aPosX + 13, aPosY + 4, aDef.mChallengeIconIndex);
 			}
@@ -589,7 +604,8 @@ void ChallengeScreen::Draw(Graphics* g)
 
 	std::string aTitleString =
 		mPageIndex == CHALLENGE_PAGE_SURVIVAL ? "[PICK_AREA]" : 
-		mPageIndex == CHALLENGE_PAGE_PUZZLE ? "[SCARY_POTTER]" : "[PICK_CHALLENGE]";
+		mPageIndex == CHALLENGE_PAGE_PUZZLE ? "[SCARY_POTTER]" :
+		mPageIndex == CHALLENGE_PAGE_ADVENTURE ? "Adventure" : "[PICK_CHALLENGE]"; // vx: adventure level-select page title
 	PvzpDrawString(g, aTitleString, 400, 58, Sexy::FONT_HOUSEOFTERROR28, Color(220, 220, 220), DS_ALIGN_CENTER);
 
 	int aTrophiesGot = mApp->GetNumTrophies(mPageIndex);
@@ -672,12 +688,20 @@ void ChallengeScreen::ButtonDepress(int theId)
 	int aChallengeMode = theId - ChallengeScreen::ChallengeScreen_Mode;
 	if (aChallengeMode >= 0 && aChallengeMode < NUM_CHALLENGE_MODES)
 	{
+		// vx: adventure level-select: jump straight to the chosen level
+		if (GetChallengeDefinition(aChallengeMode).mPage == CHALLENGE_PAGE_ADVENTURE)
+		{
+			mApp->mPlayerInfo->SetLevel(GetChallengeDefinition(aChallengeMode).mAdventureLevel);
+			mApp->KillChallengeScreen();
+			mApp->PreNewGame(GameMode::GAMEMODE_ADVENTURE, false);
+			return;
+		}
 		mApp->KillChallengeScreen();
 		mApp->PreNewGame((GameMode)(aChallengeMode + 1), true);
 	}
 
 	int aPageIndex = theId - ChallengeScreen::ChallengeScreen_Page;
-	if (aPageIndex >= 0 && aPageIndex < 4)
+	if (aPageIndex >= 0 && aPageIndex < MAX_CHALLANGE_PAGES) // vx: Adventure page added
 	{
 		mPageIndex = (ChallengePage)aPageIndex;
 		UpdateButtons();

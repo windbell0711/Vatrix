@@ -95,6 +95,8 @@ public:
     int                         mRow;
     int                         mCol;
     const char*             mChallengeName;
+    // vx: adventure level-select target level (0 for non-adventure pages)
+    int                         mAdventureLevel;
 };
 extern const ChallengeDefinition gChallengeDefs[NUM_CHALLENGE_MODES];
 
