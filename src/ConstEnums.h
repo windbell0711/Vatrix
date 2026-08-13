@@ -113,6 +113,7 @@ enum AwardType : int32_t
     AWARD_CREDITS_ZOMBIENOTE,
     AWARD_HELP_ZOMBIENOTE,
     AWARD_ACHIEVEMENTONLY,
+    AWARD_VX_STATS, // vx: 6-x Submit verification settlement
     AWARD_PRECREDITS_ZOMBIENOTE,
 };
 enum BackgroundType : int32_t

@@ -39,6 +39,10 @@ namespace VX
 	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut);
 	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots);
 	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut);
+	// vx: author best scores from the CSV statistics column (avg_ms;max_ms;sun); false when unset
+	bool GetLevelStatistics(int theLevel, int& theAvgMs, int& theMaxMs, int& theSun);
+	// vx: prepend the settlement log "# Submit at {ts}: {AvgMs}, {MaxMs}, {Sun}" to the level script
+	void LogSubmitStats(int theLevel, int theAvgMs, int theMaxMs, int theSun);
 	// vx: last player-script error (kind 1=compile CE, 2=runtime RE); consumes the error file
 	bool GetScriptError(std::string& theText, int& theKind);
 
@@ -47,6 +51,9 @@ namespace VX
 	bool ConsumePendingScriptRun();
 	bool IsTrialRun();
 	void ClearRunFlags();
+	// vx: seed carried into the next board (Run = fresh non-repeating, Reset = same as the current board)
+	void SetTrialSeed(int theSeed);
+	int TakeTrialSeed();
 	// vx: locked Submit runs freeze the script on disk (editor autosave suspended)
 	void SetRunLocked(bool theLocked);
 	bool IsRunLocked();

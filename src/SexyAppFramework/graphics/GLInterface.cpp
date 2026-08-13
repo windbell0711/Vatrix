@@ -1151,12 +1151,11 @@ void GLInterface::UpdateViewport()
 	}
 
 	// vx: with the right-side code editor open, dock the 4:3 view to the left edge
-	// and leave the rest of the window to the ImGui editor strip
+	// and leave the rest of the window to the ImGui editor strip; the 4:3 view
+	// keeps its full height (no 800px clamp) so the game is never stretched
 	if (VX::gVxEditorDockedFn && VX::gVxEditorDockedFn())
 	{
 		vx = 0;
-		if (vw > 800)
-			vw = 800;
 	}
 
 	glViewport(vx, vy, vw, vh);

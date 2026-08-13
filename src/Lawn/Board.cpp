@@ -90,12 +90,19 @@ Board::Board(LawnApp* theApp)
 
 	mApp->mEffectSystem->EffectSystemFreeAll();
 	mBoardRandSeed = mApp->mAppRandSeed;
+	// vx: a Run/Reset board carries a seed (Run = fresh, Reset = same); normal entries use the session seed
+	int aCarriedSeed = VX::TakeTrialSeed();
+	if (aCarriedSeed != 0)
+	{
+		mBoardRandSeed = aCarriedSeed;
+	}
 	// vx: a Submit verification test point runs with its own seed; the global RNG is
 	// re-seeded per test point too, so speeds/spawn jitter are reproducible from the CSV seed
 	if (mApp->mVxVerifying)
 	{
 		mBoardRandSeed = mApp->mVxTestSeeds[mApp->mVxTestIndex];
 		SRand(mBoardRandSeed);
+		mApp->mVxTestStartTicks = SDL_GetTicks(); // vx: test-point run start
 	}
 	if (mApp->IsSurvivalMode())
 	{
@@ -1961,6 +1968,17 @@ void Board::VxShovelPlantID(int thePlantID)
 	if (!aPlant || aPlant->mDead)
 		return;
 	VxShovelPlant(aPlant);
+}
+
+// vx: break exactly the vase with the given DataArray id (overlapping pots on one cell)
+void Board::VxBreakVaseID(int theVaseID)
+{
+	GridItem* aPot = mGridItems.DataArrayTryToGet(theVaseID);
+	if (!aPot || aPot->mDead)
+		return;
+	if (aPot->mGridItemType != GridItemType::GRIDITEM_SCARY_POT)
+		return;
+	mChallenge->ScaryPotterOpenPot(aPot);
 }
 
 // vx: plant a dropped seed card (coin) at grid cell (theGridX, theGridY)

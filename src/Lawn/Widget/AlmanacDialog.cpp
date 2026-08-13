@@ -40,8 +40,8 @@
 
 bool gZombieDefeated[NUM_ZOMBIE_TYPES] = { false };
 
-// vx: almanac index-page link target (Vatrix homepage)
-static const char kVatrixSiteURL[] = "https://github.com/windbell0711/Vatrix";
+// vx: almanac index-page link target (GitHub)
+static const char kVatrixSiteURL[] = "https://github.com/windbell0711/Vatrix/blob/main/Properties/MANUAL.md";
 
 AlmanacDialog::AlmanacDialog(LawnApp* theApp) : LawnDialog(theApp, DIALOG_ALMANAC, true, theApp->GetString("ALMANAC_HEADER", "Almanac"), "", "", BUTTONS_NONE)
 {

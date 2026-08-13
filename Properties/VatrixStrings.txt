@@ -8,7 +8,7 @@
 [CRAZY_DAVE_9100] Oh, you've got a note?
 [CRAZY_DAVE_9101] It seems that he began to teach zombies to code.
 [CRAZY_DAVE_9102] The war is approaching.
-[CRAZY_DAVE_9103] And the enemy may organize their attack way more diffrently.
+[CRAZY_DAVE_9103] And the enemy may organize their attack way more differently.
 [CRAZY_DAVE_9104] And he named the technology 'Vatrix'.
 [CRAZY_DAVE_9105] Apologize that I may have nothing to help when the war breaks out,
 [CRAZY_DAVE_9106] So I'll now give you this engine, and hope you bring back the trophy.

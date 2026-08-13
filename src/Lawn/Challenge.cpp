@@ -2278,9 +2278,18 @@ void Challenge::SpawnLevelAward(int theGridX, int theGridY)
 
 	float aPosX = mBoard->GridToPixelX(theGridX, theGridY) + 40;
 	float aPosY = mBoard->GridToPixelY(theGridX, theGridY) + 40;
-	CoinType aCoinType = 
-		mApp->IsFirstTimeAdventureMode() ? COIN_FINAL_SEED_PACKET : 
-		mApp->IsAdventureMode() || mApp->HasBeatenChallenge(mApp->mGameMode) ? COIN_AWARD_MONEY_BAG : COIN_TROPHY;
+	CoinType aCoinType;
+	if (mApp->IsAdventureMode() && mBoard->mLevel >= 52 && mBoard->mLevel <= 59)
+	{
+		// vx: world 6 pot clears (6-2..6-9) award the money bag
+		aCoinType = COIN_AWARD_MONEY_BAG;
+	}
+	else
+	{
+		aCoinType = 
+			mApp->IsFirstTimeAdventureMode() ? COIN_FINAL_SEED_PACKET : 
+			mApp->IsAdventureMode() || mApp->HasBeatenChallenge(mApp->mGameMode) ? COIN_AWARD_MONEY_BAG : COIN_TROPHY;
+	}
 	
 	mBoard->mLevelAwardSpawned = true;
 	mApp->mBoardResult = BOARDRESULT_WON;

@@ -284,6 +284,7 @@ public:
 	void							VxShovelPlant(Plant* thePlant);
 	void							VxShovelAt(int theGridX, int theGridY);
 	void							VxShovelPlantID(int thePlantID);
+	void							VxBreakVaseID(int theVaseID);
 	void							DisplayAdvice(std::string_view theAdvice, MessageStyle theMessageStyle, AdviceType theHelpIndex);
 	void							StartLevel();
 	Plant*							AddPlant(int theGridX, int theGridY, SeedType theSeedType, SeedType theImitaterType = SeedType::SEED_NONE);

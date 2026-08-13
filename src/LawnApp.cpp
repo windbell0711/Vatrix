@@ -1545,6 +1545,8 @@ void LawnApp::VxStartVerification()
 	for (int i = 0; i < mVxTestCount; i++)
 	{
 		mVxTestResults[i] = 0;
+		mVxTestDurations[i] = 0;
+		mVxTestSuns[i] = 0;
 		// vx: x = CSV seed (fixed fallback 1000+i when the column is missing); seed = 10^7 + (6367x + 1234) % 89999999
 		int x = i < static_cast<int>(aSeeds.size()) ? aSeeds[i] : 1000 + i;
 		mVxTestSeeds[i] = 10000000 + static_cast<int>((6367LL * x + 1234) % 89999999LL);
@@ -1573,9 +1575,13 @@ void LawnApp::CheckForGameEnd()
 		return;
 
 	// vx: Submit verification: a won test point records AC and immediately restarts the next one
+	bool aVxSubmitWin = false;
 	if (mVxVerifying)
 	{
 		VxRecordTestResult(1); // vx: AC
+		int aTestIndex = mVxTestIndex - 1;
+		mVxTestDurations[aTestIndex] = static_cast<int>(SDL_GetTicks() - mVxTestStartTicks);
+		mVxTestSuns[aTestIndex] = mBoard ? mBoard->mSunMoney : 0;
 		bool aAllAC = true;
 		for (int i = 0; i < mVxTestCount; i++)
 		{
@@ -1601,6 +1607,7 @@ void LawnApp::CheckForGameEnd()
 			return;
 		}
 		// vx: all 5 AC: fall through to the normal submit-win reward below
+		aVxSubmitWin = true;
 	}
 
 	// vx: world-6 trial runs (Run button) never advance the save or grant rewards
@@ -1612,7 +1619,7 @@ void LawnApp::CheckForGameEnd()
 		int aLevel = mBoard->mLevel;
 		KillBoard();
 
-		// vx: adventure 5-10/6-1 end with custom paper note awards, 6-2 with the almanac
+		// vx: adventure 5-10/6-1 end with custom paper note awards
 		if (aVxTrialRun)
 		{
 			// vx: a trial run (Run button) win gives no level-clear reward; replay the level
@@ -1622,9 +1629,27 @@ void LawnApp::CheckForGameEnd()
 		{
 			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, aLevel == 50 ? 1 : 2);
 		}
-		else if (aLevel == 52)
+		else if (aVxSubmitWin && aLevel >= 52 && aLevel <= 59 && aLevel != 55)
 		{
-			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false);
+			// vx: 6-2..6-4, 6-6..6-9 Submit settlement shows the 5-run stats
+			VX::GetLevelStatistics(aLevel, mVxStatsBestAvgMs, mVxStatsBestMaxMs, mVxStatsBestSun); // vx: author bests for this level
+			int aVxAvgMs = 0, aVxMaxMs = 0, aVxSun = 0;
+			for (int i = 0; i < mVxTestCount; i++)
+			{
+				aVxAvgMs += mVxTestDurations[i];
+				if (aVxMaxMs < mVxTestDurations[i])
+					aVxMaxMs = mVxTestDurations[i];
+				aVxSun += mVxTestSuns[i];
+			}
+			aVxAvgMs /= mVxTestCount;
+			aVxSun /= mVxTestCount;
+			VX::LogSubmitStats(aLevel, aVxAvgMs, aVxMaxMs, aVxSun); // vx: settlement log at the top of the level script
+			ShowAwardScreen(AwardType::AWARD_VX_STATS, false);
+		}
+		else if (aLevel >= 52 && aLevel <= 59 && aLevel != 55)
+		{
+			// vx: other wins on these levels keep the money-bag reward and skip the award screen
+			PreNewGame(mGameMode, false);
 		}
 		else if (IsFirstTimeAdventureMode() && aLevel < FINAL_LEVEL)
 		{
@@ -1792,6 +1817,7 @@ void LawnApp::UpdateFrames()
 		if (aKind == 3)
 		{
 			VX::ClearRunFlags();
+			VX::SetTrialSeed(mBoard->mBoardRandSeed); // vx: Reset replays the same seed
 			VxEndVerification(); // vx: Reset aborts any Submit verification
 		}
 		else

@@ -110,6 +110,11 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		// vx: custom note content image (falls back to the built-in placeholder if missing)
 		mNoteCustomImage = mApp->GetImage(mNoteId == 2 ? "Properties/VX_HINT_2.png" : "Properties/VX_HINT_1.png");
 	}
+	else if (mAwardType == AWARD_VX_STATS)
+	{
+		// vx: settlement trophy: VX_TROPHY_H_<1 silver|2 gold|3 color>.png
+		mTrophyImage = mApp->GetImage("Properties/VX_TROPHY_H_" + std::to_string(GetVxTrophyId()) + ".png");
+	}
 	else if (mApp->IsAdventureMode())
 	{
 		if (aLevel == 10)
@@ -231,7 +236,7 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mMenuButton->mBtnNoDraw = true;
 		mMenuButton->mDisabled = true;
 	}
-	else if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
+	else if (aLevel == 15)
 		mStartButton->SetLabel("[VIEW_ALMANAC_BUTTON]");
 	else if (aLevel == 25 || aLevel == 35 || aLevel == 45)
 		mStartButton->SetLabel("[CONTINUE_BUTTON]");
@@ -276,6 +281,7 @@ AwardScreen::~AwardScreen()
 	if (mContinueButton) delete mContinueButton; // @Patoke: add new button
 	if (mMenuButton) delete mMenuButton;
 	if (mNoteCustomImage) delete mNoteCustomImage; // vx: custom note PNG
+	if (mTrophyImage) delete mTrophyImage; // vx: settlement trophy PNG
 }
 
 bool AwardScreen::IsPaperNote()
@@ -312,6 +318,102 @@ void AwardScreen::DrawAwardSeed(Graphics* g)
 	g->SetScale(1, 1, 0, 0);
 }
 
+// vx: settlement trophy: silver when sun is below the author best, else color when any stat is
+// strictly better than the author best (perfect), else gold; no author data = gold
+int AwardScreen::GetVxTrophyId()
+{
+	if (mApp->mVxStatsBestAvgMs < 0)
+		return 2;
+	int aAvgDuration = 0;
+	int aMaxDuration = 0;
+	int aAvgSun = 0;
+	for (int i = 0; i < mApp->mVxTestCount; i++)
+	{
+		aAvgDuration += mApp->mVxTestDurations[i];
+		if (aMaxDuration < mApp->mVxTestDurations[i])
+			aMaxDuration = mApp->mVxTestDurations[i];
+		aAvgSun += mApp->mVxTestSuns[i];
+	}
+	aAvgDuration /= mApp->mVxTestCount;
+	aAvgSun /= mApp->mVxTestCount;
+	if (aAvgSun < mApp->mVxStatsBestSun)
+		return 1;
+	// vx: time stats within 1s (10 tenths) of the best count as equal, so perfect needs > 1s better
+	if (aAvgDuration / 100 < mApp->mVxStatsBestAvgMs / 100 - 10
+		|| aMaxDuration / 100 < mApp->mVxStatsBestMaxMs / 100 - 10
+		|| aAvgSun > mApp->mVxStatsBestSun)
+		return 3;
+	return 2;
+}
+
+// vx: 6-2..6-4, 6-6..6-9 Submit verification settlement: trophy + avg/max duration, avg sun left
+void AwardScreen::DrawVxStats(Graphics* g)
+{
+	g->DrawImage(Sexy::IMAGE_AWARDSCREEN_BACK, 0, 0);
+
+	// vx: text positions to tweak (screen is BOARD_WIDTH x BOARD_HEIGHT, 800x600)
+	constexpr int aTitleX = BOARD_WIDTH / 2;
+	constexpr int aTitleY = 58;
+	PvzpDrawString(g, "Submit complete", aTitleX, aTitleY, Sexy::FONT_DWARVENTODCRAFT24, Color(213, 159, 43), DS_ALIGN_CENTER);
+
+	// vx: trophy centered on the screen at the seed card display height (image 166x136)
+	if (mTrophyImage)
+		g->DrawImage(mTrophyImage, BOARD_WIDTH / 2 - mTrophyImage->mWidth / 2, 211 - mTrophyImage->mHeight / 2);
+
+	int aAvgDuration = 0;
+	int aMaxDuration = 0;
+	int aAvgSun = 0;
+	for (int i = 0; i < mApp->mVxTestCount; i++)
+	{
+		aAvgDuration += mApp->mVxTestDurations[i];
+		if (aMaxDuration < mApp->mVxTestDurations[i])
+		{
+			aMaxDuration = mApp->mVxTestDurations[i];
+		}
+		aAvgSun += mApp->mVxTestSuns[i];
+	}
+	aAvgDuration /= mApp->mVxTestCount;
+	aAvgSun /= mApp->mVxTestCount;
+
+	// vx: " (Best)" when equal to the author's best, " (Perfect!)" when strictly better.
+	// Time stats: |diff| <= 1s (10 tenths) counts as equal; sun compares as integers.
+	auto aVxBestSuffix = [](int aPlayer, int aBest, bool aLowerIsBetter) -> std::string
+	{
+		if (aBest < 0)
+			return "";
+		if (aLowerIsBetter)
+		{
+			if (aPlayer - aBest <= 10 && aBest - aPlayer <= 10)
+				return " (Best)";
+			if (aPlayer < aBest - 10)
+				return " (Perfect!)";
+		}
+		else
+		{
+			if (aPlayer == aBest)
+				return " (Best)";
+			if (aPlayer > aBest)
+				return " (Perfect!)";
+		}
+		return "";
+	};
+
+	std::string aAvgStr = "Average time: " + std::to_string(aAvgDuration / 1000) + "." + std::to_string((aAvgDuration % 1000) / 100) + "s";
+	std::string aMaxStr = "Max time: " + std::to_string(aMaxDuration / 1000) + "." + std::to_string((aMaxDuration % 1000) / 100) + "s";
+	std::string aSunStr = "Average sun left: " + std::to_string(aAvgSun);
+	// vx: author bests are absent when the CSV statistics column is empty (-1)
+	int aBestAvgTenths = mApp->mVxStatsBestAvgMs < 0 ? -1 : mApp->mVxStatsBestAvgMs / 100;
+	int aBestMaxTenths = mApp->mVxStatsBestMaxMs < 0 ? -1 : mApp->mVxStatsBestMaxMs / 100;
+	aAvgStr += aVxBestSuffix(aAvgDuration / 100, aBestAvgTenths, true);
+	aMaxStr += aVxBestSuffix(aMaxDuration / 100, aBestMaxTenths, true);
+	if (mApp->mVxStatsBestAvgMs >= 0)
+		aSunStr += aVxBestSuffix(aAvgSun, mApp->mVxStatsBestSun, false);
+
+	// vx: three info lines in the description area (same rect as the standard award message)
+	std::string aStatsText = aAvgStr + "\n" + aMaxStr + "\n" + aSunStr;
+	PvzpDrawStringWrapped(g, aStatsText, Rect(285, 360, 230, 90), Sexy::FONT_BRIANNETOD16, Color(40, 50, 90), DS_ALIGN_CENTER_VERTICAL_MIDDLE);
+}
+
 // GOTY @Patoke: 0x4081C0
 void AwardScreen::Draw(Graphics* g)
 {
@@ -336,6 +438,10 @@ void AwardScreen::Draw(Graphics* g)
 		g->DrawImage(Sexy::IMAGE_BACKGROUND1, -700, -300, 2800, 1200);
 		g->DrawImage(Sexy::IMAGE_ZOMBIE_NOTE, 80, 80);
 		g->DrawImage(Sexy::IMAGE_ZOMBIE_NOTE_HELP, 131, 132);
+	}
+	else if (mAwardType == AWARD_VX_STATS)
+	{
+		DrawVxStats(g);
 	}
 	else if (mAwardType != AWARD_ACHIEVEMENTONLY) // @Patoke: add check
 	{
@@ -389,7 +495,7 @@ void AwardScreen::Draw(Graphics* g)
 			g->DrawImage(Sexy::IMAGE_ZOMBIE_NOTE1, 131, 132);
 			PvzpDrawString(g, "[FOUND_NOTE]", BOARD_WIDTH / 2, 70, Sexy::FONT_DWARVENTODCRAFT24, Color(255, 200, 0, 255), DS_ALIGN_CENTER);
 		}
-		else if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
+		else if (aLevel == 15)
 		{
 			DrawBottom(g, "[FOUND_SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC_DESCRIPTION]");
 			g->DrawImage(Sexy::IMAGE_ALMANAC, BOARD_WIDTH / 2 - Sexy::IMAGE_ALMANAC->mWidth / 2, 160);
@@ -556,7 +662,7 @@ void AwardScreen::StartButtonPressed()
 		}
 		else
 		{
-			if (aLevel == 15 || aLevel == 53) // vx: 6-2 almanac award
+			if (aLevel == 15)
 			{
 				mApp->DoAlmanacDialog()->WaitForResult();
 			}

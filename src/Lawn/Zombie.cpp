@@ -30,6 +30,7 @@
 #include "GridItem.h"
 #include "LawnMower.h"
 #include "Challenge.h"
+#include "VxScript.h"
 #include "Projectile.h"
 #include "../LawnApp.h"
 #include "../Resources.h"
@@ -7227,14 +7228,27 @@ bool Zombie::TrySpawnLevelAward()
     }
 
     CoinType aCoinType;
-    // vx: world 6 wins drop no loot; "You win" and an instant completion instead
+    // vx: world 6: 6-1 and trial/verification runs keep the instant clear;
+    // normal 6-2..6-9 clears drop a money bag, 6-10 the silver sunflower
     if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL)
     {
-        aCoinType = CoinType::COIN_NONE;
+        bool aInstantClear = mBoard->mLevel == 51 || mApp->mVxVerifying || VX::IsTrialRun();
+        if (aInstantClear)
+        {
+            aCoinType = CoinType::COIN_NONE;
+        }
+        else if (mBoard->mLevel <= 59)
+        {
+            aCoinType = CoinType::COIN_AWARD_MONEY_BAG;
+        }
+        else
+        {
+            aCoinType = CoinType::COIN_AWARD_SILVER_SUNFLOWER;
+        }
         mBoard->DisplayAdvice("You win", MessageStyle::MESSAGE_STYLE_HINT_STAY, AdviceType::ADVICE_NONE);
-        // vx: complete the level instantly (no fade-out: verification test points must
-        // restart fast, like ScaryPotter's clear-reset)
-        mBoard->mLevelComplete = true;
+        // vx: instant clear only for 6-1 and trial/verification test points;
+        // normal 6-2..6-10 wins end on the award coin collection
+        mBoard->mLevelComplete = aInstantClear;
     }
     else if (mApp->IsScaryPotterLevel() && !mBoard->IsFinalScaryPotterStage())
     {
@@ -7247,15 +7261,10 @@ bool Zombie::TrySpawnLevelAward()
         {
             aCoinType = CoinType::COIN_NOTE;
         }
-        else if (mBoard->mLevel == 50 || mBoard->mLevel == 51)
+        else if (mBoard->mLevel == 50)
         {
-            // vx: adventure 5-10 / 6-1 drop the custom paper note
+            // vx: adventure 5-10 drops the custom paper note
             aCoinType = CoinType::COIN_NOTE;
-        }
-        else if (mBoard->mLevel == 52)
-        {
-            // vx: adventure 6-2 awards the almanac
-            aCoinType = CoinType::COIN_ALMANAC;
         }
         else if (mApp->HasFinishedAdventure())
         {

@@ -11,6 +11,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ctime>
 #include <iterator>
 #include <mutex>
 #include <string>
@@ -21,12 +22,14 @@
 #include "VxScript.h"
 #include "Board.h"
 #include "Challenge.h"
+#include "VxEditor.h"
 
 namespace
 {
 	enum class VxCmdType
 	{
 		BreakPot,
+		BreakPotId,
 		Plant,
 		Shovel,
 		PlantCard,
@@ -145,6 +148,10 @@ namespace
 	int gPendingRunLevel = 0;
 	int gPendingRunMode = 0;
 	bool gTrialRun = false;
+	// vx: seed carried into the next board (Run = fresh, Reset = same as the current board)
+	int gTrialSeed = 0;
+	// vx: strictly increasing per-session counter (random-ish base) keeps Run seeds unique
+	int gTrialSeedCounter = static_cast<int>(std::chrono::steady_clock::now().time_since_epoch().count() & 0xFFFFFF);
 	// vx: true while a locked Submit run is active: the editor autosave is suspended
 	bool gRunLocked = false;
 
@@ -225,6 +232,51 @@ namespace
 		PySys_SetObject("vx_data_dir", PyUnicode_FromWideChar(aDataWide.c_str(), static_cast<Py_ssize_t>(aDataWide.size())));
 	}
 
+	void ScriptLog(const std::string& theMessage); // vx: forward decl, defined below
+
+	// vx: surface a python exception from a level-func call: log it and show it in the editor
+	// error panel instead of silently clearing it (caller holds the GIL)
+	void VxReportLevelFuncError(const char* theFuncName)
+	{
+		PyObject* aType = nullptr;
+		PyObject* aValue = nullptr;
+		PyObject* aTraceback = nullptr;
+		PyErr_Fetch(&aType, &aValue, &aTraceback);
+		std::string anError;
+		if (aType)
+		{
+			PyObject* aTracebackMod = PyImport_ImportModule("traceback");
+			if (aTracebackMod)
+			{
+				PyObject* aList = PyObject_CallMethod(aTracebackMod, "format_exception", "OOO", aType, aValue, aTraceback);
+				if (aList && PyList_Check(aList))
+				{
+					Py_ssize_t aLength = PyList_Size(aList);
+					for (Py_ssize_t i = 0; i < aLength; i++)
+					{
+						PyObject* aLine = PyList_GetItem(aList, i); // borrowed
+						if (aLine && PyUnicode_Check(aLine))
+						{
+							const char* aUtf = PyUnicode_AsUTF8(aLine);
+							if (aUtf)
+								anError += aUtf;
+						}
+					}
+				}
+				Py_XDECREF(aList);
+				Py_XDECREF(aTracebackMod);
+			}
+			Py_XDECREF(aType);
+			Py_XDECREF(aValue);
+			Py_XDECREF(aTraceback);
+		}
+		PyErr_Clear();
+		if (anError.empty())
+			anError = "(no python traceback)";
+		ScriptLog("[vb] " + std::string(theFuncName) + " failed: " + anError);
+		VX::VxEditorShowError(anError, false);
+	}
+
 	PyObject* VxCallLevelFunc(const char* theFuncName, int theLevel, int theSeed)
 	{
 		if (gScriptDirs.empty())
@@ -233,7 +285,7 @@ namespace
 		PyObject* aModule = PyImport_ImportModule("vx_init_lvl");
 		if (!aModule)
 		{
-			PyErr_Clear();
+			VxReportLevelFuncError(theFuncName); // vx: surface the import error instead of swallowing it
 			return nullptr;
 		}
 		PyObject* aResult = nullptr;
@@ -244,6 +296,8 @@ namespace
 			aResult = PyObject_CallObject(aFunc, aArgs);
 			Py_XDECREF(aArgs);
 		}
+		if (aResult == nullptr)
+			VxReportLevelFuncError(theFuncName); // vx: surface the python exception instead of swallowing it
 		Py_XDECREF(aFunc);
 		Py_XDECREF(aModule);
 		return aResult;
@@ -374,6 +428,23 @@ if log is not None:
 		{
 			std::lock_guard<std::mutex> aLock(gQueueMutex);
 			gQueue.push_back({VxCmdType::BreakPot, aRow, aCol, 0});
+		}
+		Py_RETURN_NONE;
+	}
+
+	PyObject* VbBrkVase(PyObject*, PyObject* theArgs)
+	{
+		int aVaseID = 0;
+		if (!PyArg_ParseTuple(theArgs, "i", &aVaseID))
+			return nullptr;
+		if (aVaseID <= 0)
+		{
+			PyErr_SetString(PyExc_ValueError, "vase id must be positive");
+			return nullptr;
+		}
+		{
+			std::lock_guard<std::mutex> aLock(gQueueMutex);
+			gQueue.push_back({VxCmdType::BreakPotId, 0, 0, aVaseID});
 		}
 		Py_RETURN_NONE;
 	}
@@ -530,6 +601,7 @@ if log is not None:
 
 	PyMethodDef gVbMethods[] = {
 		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
+		{"brk_vase", VbBrkVase, METH_VARARGS, "Queue a break of the vase with the given id."},
 		{"slp", VbSlp, METH_VARARGS, "Sleep for delay seconds; interruptible by StopScripts."},
 		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
 		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
@@ -850,6 +922,36 @@ namespace VX
 		return aOk;
 	}
 
+	bool GetLevelStatistics(int theLevel, int& theAvgMs, int& theMaxMs, int& theSun)
+	{
+		theAvgMs = -1;
+		theMaxMs = -1;
+		theSun = 0;
+		if (!gPythonReady)
+			return false;
+		PyGILState_STATE aGILState = PyGILState_Ensure();
+
+		bool aOk = false;
+		PyObject* aResult = VxCallLevelFunc("get_statistics", theLevel, 0);
+		PyErr_Clear();
+		if (aResult && PyList_Check(aResult) && PyList_Size(aResult) >= 3)
+		{
+			PyObject* aAvg = PyList_GetItem(aResult, 0); // borrowed
+			PyObject* aMax = PyList_GetItem(aResult, 1); // borrowed
+			PyObject* aSun = PyList_GetItem(aResult, 2); // borrowed
+			if (aAvg && aMax && aSun && PyLong_Check(aAvg) && PyLong_Check(aMax) && PyLong_Check(aSun))
+			{
+				theAvgMs = static_cast<int>(PyLong_AsLong(aAvg));
+				theMaxMs = static_cast<int>(PyLong_AsLong(aMax));
+				theSun = static_cast<int>(PyLong_AsLong(aSun));
+				aOk = true;
+			}
+		}
+		Py_XDECREF(aResult);
+		PyGILState_Release(aGILState);
+		return aOk;
+	}
+
 	bool GetScriptError(std::string& theText, int& theKind)
 	{
 		if (gScriptsDir.empty())
@@ -894,7 +996,8 @@ namespace VX
 							"hp_max", aZombie->mBodyMaxHealth,
 							"helm_max", aZombie->mHelmMaxHealth,
 							"slow", aZombie->mChilledCounter,
-							"typ", static_cast<int>(aZombie->mZombieType));
+							"typ", static_cast<int>(aZombie->mZombieType),
+							"id", static_cast<int>(theBoard->mZombies.DataArrayGetID(aZombie)));
 						PyList_Append(aList, aDict);
 						Py_DECREF(aDict);
 					}
@@ -941,12 +1044,13 @@ namespace VX
 							aContentTyp = -1;
 							break;
 						}
-						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:i,s:i,s:O}",
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:i,s:i,s:O,s:i}",
 							"row", aGridItem->mGridY,
 							"col", aGridItem->mGridX,
 							"vase_typ", static_cast<int>(aGridItem->mGridItemState),
 							"content_typ", aContentTyp,
-							"transparent", aGridItem->mTransparentCounter > 0 ? Py_True : Py_False);
+							"transparent", aGridItem->mTransparentCounter > 0 ? Py_True : Py_False,
+							"id", static_cast<int>(theBoard->mGridItems.DataArrayGetID(aGridItem)));
 						PyList_Append(aList, aDict);
 						Py_DECREF(aDict);
 					}
@@ -994,6 +1098,9 @@ namespace VX
 				theBoard->mChallenge->ScaryPotterOpenPot(aPot);
 				break;
 			}
+			case VxCmdType::BreakPotId:
+				theBoard->VxBreakVaseID(aCommand.mArg);
+				break;
 			case VxCmdType::Plant:
 				theBoard->VxPlantFromBank(aCommand.mArg, aCommand.mCol, aCommand.mRow);
 				break;
@@ -1021,6 +1128,14 @@ namespace VX
 		gPendingRunLevel = theLevel;
 		gPendingRunMode = theGameMode;
 		gTrialRun = !theSubmit;
+		if (!theSubmit)
+		{
+			gTrialSeed = gTrialSeedCounter += 7919; // vx: each Run click gets a fresh non-repeating seed
+		}
+		else
+		{
+			gTrialSeed = 0; // vx: Submit uses the fixed CSV test seeds
+		}
 	}
 
 	bool ConsumePendingScriptRun()
@@ -1047,6 +1162,20 @@ namespace VX
 		std::lock_guard<std::mutex> aLock(gRunMutex);
 		gPendingRun = false;
 		gTrialRun = true; // vx: without a Submit run, a world-6 win must not advance the save
+	}
+
+	void SetTrialSeed(int theSeed)
+	{
+		std::lock_guard<std::mutex> aLock(gRunMutex);
+		gTrialSeed = theSeed;
+	}
+
+	int TakeTrialSeed()
+	{
+		std::lock_guard<std::mutex> aLock(gRunMutex);
+		int aSeed = gTrialSeed;
+		gTrialSeed = 0;
+		return aSeed;
 	}
 
 	void SetRunLocked(bool theLocked)
@@ -1100,6 +1229,24 @@ namespace VX
 		snprintf(aName, sizeof(aName), "script_adventure_%d_%d.py", aArea, aSub);
 		return (gScriptsDir / aName).wstring();
 	}
+
+	void LogSubmitStats(int theLevel, int theAvgMs, int theMaxMs, int theSun)
+	{
+		// vx: settlement log: prepend "# Submit at {ts}: {AvgMs}, {MaxMs}, {Sun}" to the level script
+		std::filesystem::path aPath = GetLevelScriptPath(theLevel);
+		time_t aNow = time(nullptr);
+		struct tm aTm = {};
+		localtime_s(&aTm, &aNow);
+		char aTimeBuf[64];
+		strftime(aTimeBuf, sizeof(aTimeBuf), "%Y-%m-%d %H:%M:%S", &aTm);
+		std::string aLine = "# Submit at " + std::string(aTimeBuf) + ": " + std::to_string(theAvgMs) + ", " + std::to_string(theMaxMs) + ", " + std::to_string(theSun) + "\n";
+		std::ifstream aIn(aPath, std::ios::binary);
+		std::string aContent((std::istreambuf_iterator<char>(aIn)), std::istreambuf_iterator<char>());
+		aIn.close();
+		std::ofstream aOut(aPath, std::ios::binary | std::ios::trunc);
+		aOut << aLine << aContent;
+		aOut.close();
+	}
 }
 
 #else // !VX_SCRIPT
@@ -1117,11 +1264,15 @@ namespace VX
 	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
 	bool GetRandomSeeds(int, std::vector<int>&) { return false; }
+	bool GetLevelStatistics(int, int&, int&, int&) { return false; }
+	void LogSubmitStats(int, int, int, int) {}
 	bool GetScriptError(std::string&, int&) { return false; }
 	void RequestScriptRun(int, int, bool) {}
 	bool ConsumePendingScriptRun() { return false; }
 	bool IsTrialRun() { return false; }
 	void ClearRunFlags() {}
+	void SetTrialSeed(int) {}
+	int TakeTrialSeed() { return 0; }
 	void SetRunLocked(bool) {}
 	bool IsRunLocked() { return false; }
 	bool IsScriptRunning() { return false; }

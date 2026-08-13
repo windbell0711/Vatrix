@@ -12,6 +12,7 @@
 #include "VxScript.h"
 #include "SexyAppFramework/graphics/GLInterface.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -40,10 +41,8 @@ namespace
 	std::uintmax_t gVxOutputSize = 0;
 	bool gVxOutputScrollToBottom = false;
 
-	// vx: three window/editor width levels; the game view stays a fixed 800px strip
-	constexpr int kVxWidthLevels = 3;
-	constexpr int kVxWindowWidths[kVxWidthLevels] = { 1000, 1100, 1200 };
-	int gVxWidthLevel = 0;
+	// vx: default editor window width; the player can drag the window to any size
+	constexpr int kVxEditorWidth = 1100;
 
 	std::filesystem::path VxOutputPath()
 	{
@@ -94,14 +93,33 @@ namespace
 		return true;
 	}
 
+	bool VxIsFullscreen()
+	{
+		if (!gGameWindow)
+			return false;
+		Uint32 aFlags = SDL_GetWindowFlags(gGameWindow);
+		return (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+	}
+
 	void VxSetEditorWindowSize(bool theEditorOpen)
 	{
 		if (!gGameWindow)
 			return;
-		Uint32 aFlags = SDL_GetWindowFlags(gGameWindow);
-		if (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP))
+		if (VxIsFullscreen())
+		{
+			// vx: fullscreen cannot resize the window; re-fire a resize event so the
+			// game view docks/undocks against the editor strip (same path as windowed)
+			int aWidth = 0, aHeight = 0;
+			SDL_GetWindowSize(gGameWindow, &aWidth, &aHeight);
+			SDL_Event aResize{};
+			aResize.type = SDL_WINDOWEVENT;
+			aResize.window.event = SDL_WINDOWEVENT_RESIZED;
+			aResize.window.data1 = aWidth;
+			aResize.window.data2 = aHeight;
+			SDL_PushEvent(&aResize);
 			return;
-		SDL_SetWindowSize(gGameWindow, theEditorOpen ? kVxWindowWidths[gVxWidthLevel] : 800, 600);
+		}
+		SDL_SetWindowSize(gGameWindow, theEditorOpen ? kVxEditorWidth : 800, 600);
 	}
 
 	// vx: Python language definition for ImGuiColorTextEdit (upstream has no Python preset)
@@ -217,8 +235,9 @@ namespace
 		if (gBufferDirty && !VX::IsRunLocked() && SDL_GetTicks() - gLastSaveTick > 2000)
 			VxSaveBuffer(false);
 
-		// vx: the game view is docked to a fixed 800px strip; the panel fills the rest
-		float aEditorWidth = io.DisplaySize.x - 800.0f;
+		// vx: the game view is the 4:3 letterbox docked to the left; the panel fills the rest
+		float aGameWidth = std::min(io.DisplaySize.x, io.DisplaySize.y * 4.0f / 3.0f);
+		float aEditorWidth = io.DisplaySize.x - aGameWidth;
 		if (aEditorWidth < 100.0f)
 			aEditorWidth = 100.0f;
 		const float kVxOutputHeight = 220.0f;
@@ -233,12 +252,6 @@ namespace
 		// vx: Run lives on the bottom-left script bar; Save is replaced by autosave
 		if (ImGui::Button("Close"))
 			gPendingAction = VX::VxEditorAction::Close;
-		ImGui::SameLine();
-		if (ImGui::Button(gVxWidthLevel == 0 ? "Width 1/3" : gVxWidthLevel == 1 ? "Width 2/3" : "Width 3/3"))
-		{
-			gVxWidthLevel = (gVxWidthLevel + 1) % kVxWidthLevels;
-			VxSetEditorWindowSize(true);
-		}
 		ImGui::SameLine();
 		// vx: the persistent output panel toggles open/closed from here
 		if (ImGui::Button(gVxPanelOpen ? "Collapse Output" : "Expand Output"))

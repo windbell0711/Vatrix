@@ -30,6 +30,7 @@ class InfoInput:
     beizhu: str
     key: str
     random_seeds: str
+    statistics: str
 
 
 _ALIAS2CODE = {
@@ -151,6 +152,22 @@ def get_random_seeds(level, seed=0) -> list:  # vx: VX::GetRandomSeeds always pa
                 pass
     return out
 
+
+def get_statistics(level, seed=0) -> list:
+    """Author's best scores from the statistics column: [avg_ms, max_ms, sun]."""
+    try:
+        info = get_input(level)
+    except ValueError:
+        return []
+    if not info.statistics:
+        return []
+    parts = [p.strip() for p in info.statistics.split(";")]
+    if len(parts) < 3:
+        return []
+    try:
+        return [int(round(float(parts[0]) * 1000)), int(round(float(parts[1]) * 1000)), int(parts[2])]
+    except ValueError:
+        return []
 
 def generate(level, seed=0) -> list:
     """Game-facing entry: pot lineup for VX::GetScaryPotLineup.

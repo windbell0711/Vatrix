@@ -1178,9 +1178,9 @@ void Coin::Collect()
                 StartFade();
             }
         }
-        else if (mApp->IsAdventureMode() && (mBoard->mLevel == 50 || mBoard->mLevel == 51 || mBoard->mLevel == 52))
+        else if (mApp->IsAdventureMode() && (mBoard->mLevel == 50 || mBoard->mLevel == 51))
         {
-            // vx: 5-10/6-1 note and 6-2 almanac fan out bonus diamonds into the money bag
+            // vx: 5-10/6-1 note fan out bonus diamonds into the money bag
             FanOutCoins(CoinType::COIN_DIAMOND, mBoard->mLevel == 50 ? 3 : 2);
         }
         else if (mApp->IsScaryPotterLevel())

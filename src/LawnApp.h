@@ -135,6 +135,14 @@ public:
 	int							mVxTestResults[5] = {}; // vx: 0=empty, 1=AC, 2=WA
 	int							mVxTestSeeds[5] = {};
 	static constexpr int		mVxTestCount = 5;
+	// vx: Submit verification per-test-point stats for the 6-x settlement screen
+	uint32_t					mVxTestStartTicks = 0;
+	int							mVxTestDurations[5] = {};
+	int							mVxTestSuns[5] = {};
+	// vx: author best scores from the CSV statistics column for the settlement screen (-1 = unset)
+	int							mVxStatsBestAvgMs = -1;
+	int							mVxStatsBestMaxMs = -1;
+	int							mVxStatsBestSun = 0;
 	bool							mSawYeti;
 	TypingCheck*					mKonamiCheck;
 	TypingCheck*					mMustacheCheck;

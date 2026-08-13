@@ -62,6 +62,7 @@ public:
 	bool								mIsBossNoteAward;		// vx: 0-0 note award
 	int									mNoteId = 0;			// vx: custom note image index (VX_HINT_<id>.png)
 	Sexy::Image*					mNoteCustomImage = nullptr;	// vx: custom note PNG (Properties/VX_HINT_<id>.png)
+	Sexy::Image*					mTrophyImage = nullptr;		// vx: settlement trophy PNG (Properties/VX_TROPHY_H_<1|2|3>.png)
 	std::vector<AchievementScreenItem>	mAchievementItems;		//+GOTY @Patoke: 0xC0
 
 public:
@@ -73,6 +74,8 @@ public:
 	void				Resize(int theX, int theY, int theWidth, int theHeight) override { Widget::Resize(theX, theY, theWidth, theHeight); }
 	static void			DrawBottom(Graphics* g, std::string_view theTitle, std::string_view theAward, std::string_view theMessage);
 	void				DrawAwardSeed(Graphics* g);
+	void				DrawVxStats(Graphics* g); // vx: 6-x Submit verification settlement
+	int					GetVxTrophyId(); // vx: settlement trophy 1=silver 2=gold 3=color
 	void				Draw(Graphics* g) override;
 	void				Update() override;
 	void				AddedToManager(WidgetManager* theWidgetManager) override { Widget::AddedToManager(theWidgetManager); }
