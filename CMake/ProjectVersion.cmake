@@ -6,8 +6,8 @@
 #   PVZP_BUILD_NUMBER  commit count, grows monotonically on main
 #   PVZP_COMMIT_DATE   HEAD commit date
 # and generates ${PROJECT_BINARY_DIR}/ProjectVersion.h.
-set(PVZP_VERSION "0.1.0")
-set(PVZP_VERSION_PLAIN "0.1.0")
+set(PVZP_VERSION "0.2.0")
+set(PVZP_VERSION_PLAIN "0.2.0")
 set(PVZP_BUILD_NUMBER "1")
 set(PVZP_COMMIT_DATE "unknown")
 

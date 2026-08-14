@@ -17,12 +17,20 @@ ninja -C build
 - No unit tests; verify by running the game manually through the main flow.
 
 ## Version (版本号)
-版本号全局固定为 `0.0.0`。升级版本时需同步修改三处:
+版本号手动维护固定值（不随 git describe 推导）。升级版本时需同步修改三处:
 - `CMake/ProjectVersion.cmake` 顶部: `PVZP_VERSION` 和 `PVZP_VERSION_PLAIN`
 - `android/app/build.gradle`: `def gitVersionName = '0.0.0'`
 - `archlinux/PKGBUILD` 和 `archlinux/PKGBUILD-AUR` 顶部: `pkgver=0.0.0`
 
 窗口标题由 `PVZP_VERSION` 自动生成(`src/LawnApp.cpp` 中 `"Vatrix v" PVZP_VERSION`),无需手动改。Android 的 `versionCode` 仍由 git 提交数自动递增。
+
+## 发布流程 (vX.Y.Z)
+准备发布时按顺序执行：
+1. 升级版本号（三处同步，见上），并把 `wasm/shell.html` 的 `<title>` 改为 `Vatrix vX.Y.Z — Web`（窗口标题由 PVZP_VERSION 自动生成，无需手改）。
+2. 在 `CHANGELOG.md` 顶部新增 `## [vX.Y.Z] - <日期>` 条目，按 Keep a Changelog 风格写中文变更说明（注意中文编码，见 Conventions）。
+3. 询问用户是否进行构建打包，如果是则继续执行。
+4. Release 构建并打包到 `dist/vatrix-win64-X.Y.Z/`（见 `## Packaging (Windows 发布包)`）；重打包时只重跑 `ninja -C build-release` 并覆盖 exe即可。不要压缩文件夹，用户会自己压缩。
+5. 不要自己执行 git 提交；把改动总结与建议 commit message（如 `release. vX.Y.Z`）交给用户。
 
 ## Packaging (Windows 发布包)
 When the user asks to 打包/发布, produce a Release build and bundle it:
@@ -69,5 +77,6 @@ When user requests you to "commit" or "提交", please follow the following step
 - Mark every Vatrix-modification site with a `// vx: <short description>` comment (ASCII only), placed directly above the changed code. Comments in file `src/Lawn/SpawnLogic.cpp` can omit the vx prefix.
 - Tabs for indentation; keep the upstream `// GOTY @Patoke: 0x...` comment style.
 - Source files are UTF-8 without BOM. On Windows, PowerShell's `Get-Content` may mis-decode UTF-8 Chinese comments (GBK console); prefer `rg`/Python/git for reading.
+- 写含中文的文件（CHANGELOG.md、使用说明.txt 等）时，禁止用 PowerShell 管道（@'...'@ | python -）把中文传给 Python：管道按 GBK 编码传输，中文会被破坏成 ?（已发生多次）。改用 .NET API 直接写 UTF-8 无 BOM（[System.IO.File]::WriteAllText(path, text, New-Object System.Text.UTF8Encoding $false)），或把 Python 源码中的中文写成 \uXXXX 转义。
 - When writing files, avoid using Chinese comments. Existing Chinese comments should not be modified.
 - After code changes, run `ninja -C build` to confirm compilation.
