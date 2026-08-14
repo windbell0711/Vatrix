@@ -71,7 +71,7 @@ int gZombieWaves[NUM_LEVELS] = {
 	10, 20, 20, 30, 20, 20, 30, 20, 30, 30,
 	10, 20, 10, 20, 20, 10, 20, 10, 20, 20,
 	10, 20, 20, 30, 20, 20, 30, 20, 30, 30,
-	20, 30, 20, 30, 30, 20, 30, 20, 30, 30,
+	20, 30, 20, 30, 20, 20, 30, 20, 30, 30, // vx: 6-5 (index 54) is a 2-flag level
 };
 
 ZombieAllowedLevels gZombieAllowedLevels[NUM_ZOMBIE_TYPES] = {

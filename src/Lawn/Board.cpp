@@ -132,6 +132,7 @@ Board::Board(LawnApp* theApp)
 		}
 	}
 	mFogOffset = 0.0f;
+	mFogXray = false; // vx: F9 fog x-ray toggle
 	mSunCountDown = 0;
 	mShakeCounter = 0;
 	mShakeAmountX = 0;
@@ -800,6 +801,10 @@ void Board::PickZombieWaves()
 		{
 			aZombiePoints *= 3;
 		}
+		else if (mLevel == 55) // vx: world 6-5 4x zombie points
+		{
+			aZombiePoints *= 4;
+		}
 		else if (mApp->IsShovelLevel() || mApp->IsBungeeBlitzLevel() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_PORTAL_COMBAT || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_INVISIGHOUL)
 		{
 			aZombiePoints *= 2;
@@ -888,6 +893,13 @@ void Board::PickZombieWaves()
 		// ------------------------------------------------------------------------------------------------
 		// △ 剩余的僵尸点数用于向列表中补充随机僵尸
 		// ------------------------------------------------------------------------------------------------
+		// vx: world 6-5: the first two waves are a single normal zombie only
+		if (mLevel == 55 && aWave < 2)
+		{
+			PutZombieInWave(ZombieType::ZOMBIE_NORMAL, aWave, &aZombiePicker);
+			continue;
+		}
+
 		while (aZombiePoints > 0 && aZombiePicker.mZombieCount < MAX_ZOMBIES_IN_WAVE)
 		{
 			ZombieType aZombieType = PickZombieType(aZombiePoints, aWave, &aZombiePicker);
@@ -994,6 +1006,10 @@ void Board::PickBackground()
 			mBackground = BackgroundType::BACKGROUND_2_NIGHT;
 		}
 		else if (mLevel <= 4 * LEVELS_PER_AREA)
+		{
+			mBackground = BackgroundType::BACKGROUND_4_FOG;
+		}
+		else if (mLevel == 55) // vx: world 6-5 fog field
 		{
 			mBackground = BackgroundType::BACKGROUND_4_FOG;
 		}
@@ -1686,7 +1702,7 @@ void Board::InitLevel()
 	if (mApp->IsAdventureMode())
 	{
 		std::vector<VX::VxSceneDef> aScene;
-		if (VX::GetSceneLayout(mLevel, aScene))
+		if (VX::GetSceneLayout(mLevel, GetLevelRandSeed(), aScene))
 		{
 			for (const VX::VxSceneDef& aDef : aScene)
 			{
@@ -2686,6 +2702,15 @@ bool Board::CanZombieSpawnOnLevel(ZombieType theZombieType, int theLevel)
 	if (theZombieType == ZombieType::ZOMBIE_YETI)
 	{
 		return gLawnApp->CanSpawnYetis();
+	}
+
+	// vx: world 6-5 roster: normal, conehead, buckethead, dolphin, balloon, jack-in-the-box, pogo
+	if (theLevel == 55)
+	{
+		return theZombieType == ZombieType::ZOMBIE_NORMAL || theZombieType == ZombieType::ZOMBIE_TRAFFIC_CONE ||
+			theZombieType == ZombieType::ZOMBIE_PAIL || theZombieType == ZombieType::ZOMBIE_DOLPHIN_RIDER ||
+			theZombieType == ZombieType::ZOMBIE_BALLOON || theZombieType == ZombieType::ZOMBIE_JACK_IN_THE_BOX ||
+			theZombieType == ZombieType::ZOMBIE_POGO;
 	}
 
 	if (theLevel < aZombieDef.mStartingLevel || aZombieDef.mPickWeight == 0)
@@ -7913,7 +7938,7 @@ void Board::ClearFogAroundPlant(Plant* thePlant, int theSize)
 
 void Board::UpdateFog()
 {
-	if (!StageHasFog())
+	if (!StageHasFog() || mFogXray)
 		return;
 
 	//int aFogFadeInSpeed = mFogBlownCountDown >= 2000 ? 20 : mFogBlownCountDown > 0 ? 1 : 3;
@@ -8306,6 +8331,20 @@ void Board::KeyDown(KeyCode theKey)
 		else if (CanInteractWithBoardButtons() && mApp->mGameScene != GameScenes::SCENE_ZOMBIES_WON)
 		{
 			mApp->DoNewOptions(false);
+		}
+	}
+	else if (theKey == KeyCode::KEYCODE_F9) // vx: toggle fog x-ray
+	{
+		mFogXray = !mFogXray;
+		if (mFogXray)
+		{
+			for (int i = 0; i < MAX_GRID_SIZE_X; i++)
+			{
+				for (int k = 0; k < MAX_GRID_SIZE_Y + 1; k++)
+				{
+					mGridCelFog[i][k] = 0;
+				}
+			}
 		}
 	}
 }
@@ -9380,6 +9419,7 @@ int Board::LeftFogColumn()
 	if (mLevel == 31)													return 6;
 	if (mLevel >= 32 && mLevel <= 36)									return 5;
 	if (mLevel >= 37 && mLevel <= 40)									return 4;
+	if (mLevel == 55)													return 0; // vx
 	PVZP_ASSERT(false);
 
 	unreachable();
@@ -9627,8 +9667,9 @@ int GetRectOverlap(const Rect& rect1, const Rect& rect2)
 
 bool GetCircleRectOverlap(int theCircleX, int theCircleY, int theRadius, const Rect& theRect)
 {
-	int aNearX = std::clamp(theCircleX, theRect.mX, theRect.mX + theRect.mWidth);
-	int aNearY = std::clamp(theCircleY, theRect.mY, theRect.mY + theRect.mHeight);
+	// vx: a degenerate (negative-size) rect used to assert in std::clamp; clamp against the rect size floored at 0
+	int aNearX = std::clamp(theCircleX, theRect.mX, theRect.mX + std::max(theRect.mWidth, 0));
+	int aNearY = std::clamp(theCircleY, theRect.mY, theRect.mY + std::max(theRect.mHeight, 0));
 	int dx = theCircleX - aNearX;
 	int dy = theCircleY - aNearY;
 	return dx * dx + dy * dy <= theRadius * theRadius;

@@ -1619,15 +1619,19 @@ void LawnApp::CheckForGameEnd()
 		int aLevel = mBoard->mLevel;
 		KillBoard();
 
-		// vx: adventure 5-10/6-1 end with custom paper note awards
+		// vx: adventure 5-10 ends with the custom paper note; 6-1 awards the almanac
 		if (aVxTrialRun)
 		{
 			// vx: a trial run (Run button) win gives no level-clear reward; replay the level
 			PreNewGame(mGameMode, false);
 		}
-		else if (aLevel == 50 || aLevel == 51)
+		else if (aLevel == 50)
 		{
-			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, aLevel == 50 ? 1 : 2);
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, 1);
+		}
+		else if (aLevel == 51)
+		{
+			ShowAwardScreen(AwardType::AWARD_ALMANAC, false);
 		}
 		else if (aVxSubmitWin && aLevel >= 52 && aLevel <= 59 && aLevel != 55)
 		{

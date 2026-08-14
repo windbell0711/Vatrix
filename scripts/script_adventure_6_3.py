@@ -1,29 +1,12 @@
-# Submit at 2026-08-13 17:50:23: 1401, 2515, 0
-# Submit at 2026-08-13 17:48:40: 1277, 1839, 0
-# Submit at 2026-08-13 17:47:58: 21623, 21883, 0
-# Submit at 2026-08-13 17:45:26: 1360, 2874, 0
-# Submit at 2026-08-13 17:25:08: 2772, 9944, 0
-# Submit at 2026-08-13 12:35:31: 21791, 22618, 0
-# Submit at 2026-08-13 12:33:00: 2278, 5212, 0
-# Submit at 2026-08-13 12:31:29: 21671, 22183, 0
-# Submit at 2026-08-13 12:29:31: 2626, 5809, 0
-# Submit at 2026-08-13 12:08:14: 1364, 2386, 0
-# Submit at 2026-08-13 11:52:51: 2064, 5288, 0
-# Submit at 2026-08-12 21:18:21: 21716, 22421, 0
-# Submit at 2026-08-12 21:06:15: 21722, 22410, 0
-import vb
-
-print(__file__ + " begin")
+# Submit at 2026-08-14 16:24:21: 1640, 1651, 0
+from vb import *
 
 for r in (2, 3, 4):
-    for c in (7, 8):
-        vb.brk(r, c)
+	for c in (3, 4, 5, 6, 7):
+		brk(r, c)
 
-vb.slp(0.5)
+slp(0.1)
 
-row = 2
-for card in vb.get_cards():
-    card.plc(row, 9)
-    row += 1
+z = get_zombies()[0]
+plt(z.row, z.col)
 
-print(__file__ + " end")

@@ -1,15 +1,21 @@
-import vb
+# Submit at 2026-08-14 15:42:20: 24889, 26271, 0
+# Submit at 2026-08-14 15:40:01: 26780, 27840, 0
+from vb import *
 
-print(__file__ + " begin")
+slp(6)
+brk(3, 9)
+slp(6)
+brk(3, 7)
 
-for row in (1, 2, 3, 4, 5):
-    for col in (9, 8, 7, 6, 5):
-        vb.brk(row, col)
+loop = True
+while loop:
+	for z in get_zombies():
+		if z.x < 380:
+			loop = False
+	slp(0.5)
+	
+brk(3, 6)
 
-vb.slp(0.2)
-cnt = 0
-for c in vb.get_cards():
-    c.plc(cnt % 5 + 1, cnt // 5 + 1)
-    cnt += 1
+slp(3)
+brk(3, 8)
 
-print(__file__ + " end")

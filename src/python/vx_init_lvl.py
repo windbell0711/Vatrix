@@ -216,6 +216,11 @@ def get_scene(level, seed=0) -> list:
     if not array:
         return []
     scene_pools = {k: v[:] for k, v in pools.items()} if pools else {}
+    # vx: shuffle each category pool by seed so pre-placed plants/zombies are
+    # distributed randomly across the design cells, not in CSV order
+    rng = random.Random(seed)
+    for pool in scene_pools.values():
+        rng.shuffle(pool)
     result = []
     for row, design_row in enumerate(array):
         for col, names in enumerate(design_row):

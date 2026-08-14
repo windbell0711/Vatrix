@@ -388,6 +388,18 @@ if log is not None:
 	{
 		if (!gPythonReady)
 			return;
+		// vx: hard C++ delay: the user script only starts 0.5s after the level is created
+		{
+			std::unique_lock<std::mutex> aLock(gSleepMutex);
+			if (gSleepCv.wait_for(aLock, std::chrono::milliseconds(500), [] { return gSleepStop; }))
+			{
+				// vx: stop requested before the script started; mark ended so StopScripts joins cleanly
+				std::lock_guard<std::mutex> aEndedLock(gScriptEndedMutex);
+				gScriptEnded = true;
+				gScriptEndedCv.notify_all();
+				return;
+			}
+		}
 		PyGILState_STATE aGILState = PyGILState_Ensure();
 		gScriptThreadId.store(PyThread_get_thread_ident());
 		VxSetupPythonPath();
@@ -815,14 +827,14 @@ namespace VX
 		return aOk;
 	}
 
-	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut)
+	bool GetSceneLayout(int theLevel, int theSeed, std::vector<VxSceneDef>& theOut)
 	{
 		if (!gPythonReady)
 			return false;
 		PyGILState_STATE aGILState = PyGILState_Ensure();
 
 		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel, 0);
+		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel, theSeed);
 		// vx: unconfigured levels are normal (get_scene returns []), so failures stay silent here
 		PyErr_Clear();
 
@@ -987,7 +999,7 @@ namespace VX
 					{
 						if (aZombie->mDead)
 							continue;
-						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:i,s:i,s:i,s:i,s:i,s:i}",
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:i,s:i,s:i,s:i,s:i,s:i,s:i}", // vx: last s:i fills the "id" key
 							"row", aZombie->mRow,
 							"col", theBoard->PixelToGridXKeepOnBoard(static_cast<int>(aZombie->mPosX), static_cast<int>(aZombie->mPosY)),
 							"x", aZombie->mPosX,
@@ -1261,7 +1273,7 @@ namespace VX
 	void StopScripts() {}
 	void ProcessBoardQueue(Board*) {}
 	bool GetScaryPotLineup(int, int, std::vector<VxPotDef>&) { return false; }
-	bool GetSceneLayout(int, std::vector<VxSceneDef>&) { return false; }
+	bool GetSceneLayout(int, int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }
 	bool GetRandomSeeds(int, std::vector<int>&) { return false; }
 	bool GetLevelStatistics(int, int&, int&, int&) { return false; }

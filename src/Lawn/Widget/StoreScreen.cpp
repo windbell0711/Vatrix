@@ -266,31 +266,7 @@ bool StoreScreen::IsItemUnavailable(StoreItem theStoreItem)
         theStoreItem != STORE_ITEM_FIRSTAID;
     */
 
-    if (theStoreItem == STORE_ITEM_ROOF_CLEANER)
-    {
-        return mApp->IsTrialStageLocked() || (!mApp->HasFinishedAdventure() && mApp->mPlayerInfo->GetLevel() < 42);
-    }
-    if (theStoreItem == STORE_ITEM_PLANT_GLOOMSHROOM)
-    {
-        return mApp->IsTrialStageLocked() || (!mApp->HasFinishedAdventure() && mApp->mPlayerInfo->GetLevel() < 35);
-    }
-    if (theStoreItem == STORE_ITEM_PLANT_CATTAIL)
-    {
-        return mApp->IsTrialStageLocked() || (!mApp->HasFinishedAdventure() && mApp->mPlayerInfo->GetLevel() < 35);
-    }
-    if (theStoreItem == STORE_ITEM_PLANT_SPIKEROCK)
-    {
-        return !mApp->HasFinishedAdventure() && mApp->mPlayerInfo->GetLevel() < 41;
-    }
-    if (theStoreItem == STORE_ITEM_PLANT_GOLD_MAGNET)
-    {
-        return !mApp->HasFinishedAdventure() && mApp->mPlayerInfo->GetLevel() < 41;
-    }
-    if (theStoreItem == STORE_ITEM_PLANT_WINTERMELON || theStoreItem == STORE_ITEM_PLANT_COBCANNON ||
-        theStoreItem == STORE_ITEM_PLANT_IMITATER || theStoreItem == STORE_ITEM_FIRSTAID)
-    {
-        return !mApp->HasFinishedAdventure();
-    }
+    // vx: no store restrictions, everything is buyable from the start
     return false;
 }
 
@@ -892,6 +868,8 @@ void StoreScreen::KeyDown(KeyCode theKey)
 
 int StoreScreen::GetItemCost(StoreItem theStoreItem)
 {
+    auto aBaseCost = [theStoreItem]() -> int
+    {
     if (theStoreItem == STORE_ITEM_BONUS_LAWN_MOWER)    return gLawnApp->mPlayerInfo->mPurchases[STORE_ITEM_BONUS_LAWN_MOWER] ? 500 : 200;
     switch (theStoreItem)
     {
@@ -929,6 +907,9 @@ int StoreScreen::GetItemCost(StoreItem theStoreItem)
     case STORE_ITEM_FIRSTAID:                           return 200;
     default: PVZP_ASSERT(false);                              return 0;
     }
+    };
+    // vx: store-wide discount: everything costs 1/100 of the base price, rounded up
+    return (aBaseCost() + 99) / 100;
 }
 
 bool StoreScreen::CanAffordItem(StoreItem theStoreItem)

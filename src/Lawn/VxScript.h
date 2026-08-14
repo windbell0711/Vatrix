@@ -36,7 +36,7 @@ namespace VX
 		int mSeed;     // SeedType when mIsPlant
 		int mZombie;   // ZombieType when !mIsPlant
 	};
-	bool GetSceneLayout(int theLevel, std::vector<VxSceneDef>& theOut);
+	bool GetSceneLayout(int theLevel, int theSeed, std::vector<VxSceneDef>& theOut);
 	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots);
 	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut);
 	// vx: author best scores from the CSV statistics column (avg_ms;max_ms;sun); false when unset

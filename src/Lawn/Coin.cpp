@@ -740,6 +740,12 @@ void Coin::Update()
         return;
     }
 
+    // vx: auto-collect suns as soon as they land
+    if (!mIsBeingCollected && mFadeCount == 0 && mHitGround && IsSun())
+    {
+        mIsBeingCollected = true;
+    }
+
     if (mFadeCount != 0)
     {
         UpdateFade();

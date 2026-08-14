@@ -3,9 +3,6 @@ import _vb
 from . import consts
 from dataclasses import dataclass
 
-# 硬性要求500ms后开始操作
-_vb.slp(0.5)
-
 @dataclass(frozen=True)
 class Zombie:
     """Snapshot of a zombie; row/col are 1-based (feed them back into brk/plt/rmv directly)."""

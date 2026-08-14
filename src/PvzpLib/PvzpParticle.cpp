@@ -964,10 +964,11 @@ void RenderParticle(Graphics* g, PvzpParticle* theParticle, const Color& theColo
 	int aFrame = aEmitter->mFrameOverride;
 	if (aFrame == -1)  // 如果未定义覆写帧
 	{
+		const int aFrameCount = std::max(aEmitterDef->mImageFrames, 1); // vx: a 0-frame animated emitter used to assert in std::clamp
 		if (FloatTrackIsSet(aEmitterDef->mAnimationRate))  // 如果定义了动画速率
-			aFrame = std::clamp(static_cast<int>(theParticle->mAnimationTimeValue * aEmitterDef->mImageFrames), 0, aEmitterDef->mImageFrames - 1);  // 动画时间值（循环率） * 总帧数得到当前帧
+			aFrame = std::clamp(static_cast<int>(theParticle->mAnimationTimeValue * aFrameCount), 0, aFrameCount - 1);  // 动画时间值（循环率） * 总帧数得到当前帧
 		else if (aEmitterDef->mAnimated)
-			aFrame = std::clamp(static_cast<int>(theParticle->mParticleTimeValue * aEmitterDef->mImageFrames), 0, aEmitterDef->mImageFrames - 1);  // 粒子时间值 * 总帧数得到当前帧
+			aFrame = std::clamp(static_cast<int>(theParticle->mParticleTimeValue * aFrameCount), 0, aFrameCount - 1);  // 粒子时间值 * 总帧数得到当前帧
 		else
 			aFrame = theParticle->mImageFrame;  // 帧固定的粒子，直接取其贴图帧
 	}

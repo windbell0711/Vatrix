@@ -169,6 +169,7 @@ public:
 	int32_t							mSpecialGraveStoneY;
 	float							mFogOffset;
 	int32_t							mFogBlownCountDown;
+	bool							mFogXray; // vx: F9 fog x-ray toggle
 	PlantRowType					mPlantRow[MAX_GRID_SIZE_Y];
 	int32_t							mWaveRowGotLawnMowered[MAX_GRID_SIZE_Y];
 	int32_t							mBonusLawnMowersRemaining;

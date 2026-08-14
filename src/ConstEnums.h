@@ -114,6 +114,7 @@ enum AwardType : int32_t
     AWARD_HELP_ZOMBIENOTE,
     AWARD_ACHIEVEMENTONLY,
     AWARD_VX_STATS, // vx: 6-x Submit verification settlement
+    AWARD_ALMANAC, // vx: 6-1 clear award shows the Suburban Almanac
     AWARD_PRECREDITS_ZOMBIENOTE,
 };
 enum BackgroundType : int32_t

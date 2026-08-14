@@ -243,7 +243,7 @@ void SeedChooserScreen::CrazyDavePickSeeds()
 	{
 		aSeedArray[SEED_UMBRELLA].mWeight = 1;
 	}
-	if (mBoard->mZombieAllowed[ZOMBIE_BALLOON] || mBoard->StageHasFog())
+	if (!SeedNotAllowedToPick(SEED_BLOVER) && (mBoard->mZombieAllowed[ZOMBIE_BALLOON] || mBoard->StageHasFog())) // vx: 6-5 seed ban wins over the balloon/fog bonus
 	{
 		aSeedArray[SEED_BLOVER].mWeight = 1;
 	}
@@ -334,6 +334,12 @@ unsigned int SeedChooserScreen::SeedNotRecommendedToPick(SeedType theSeedType)
 
 bool SeedChooserScreen::SeedNotAllowedToPick(SeedType theSeedType)
 {
+	// vx: world 6-5 forbids Blover and Plantern
+	if (mApp->IsAdventureMode() && mBoard->mLevel == 55 &&
+		(theSeedType == SeedType::SEED_BLOVER || theSeedType == SeedType::SEED_PLANTERN))
+	{
+		return true;
+	}
 	return mApp->mGameMode == GAMEMODE_CHALLENGE_LAST_STAND && (theSeedType == SEED_SUNFLOWER || theSeedType == SEED_SUNSHROOM || 
 		theSeedType == SEED_TWINSUNFLOWER || theSeedType == SEED_SEASHROOM || theSeedType == SEED_PUFFSHROOM);
 }
@@ -714,7 +720,7 @@ void SeedChooserScreen::PickRandomSeeds()
 	{
 		SeedType aSeedType;
 		do aSeedType = (SeedType)Rand(mApp->GetSeedsAvailable());
-		while (!mApp->HasSeedType(aSeedType) || aSeedType == SEED_IMITATER || mChosenSeeds[aSeedType].mSeedState != SEED_IN_CHOOSER);
+		while (!mApp->HasSeedType(aSeedType) || aSeedType == SEED_IMITATER || SeedNotAllowedToPick(aSeedType) || mChosenSeeds[aSeedType].mSeedState != SEED_IN_CHOOSER);
 		ChosenSeed& aChosenSeed = mChosenSeeds[aSeedType];
 		aChosenSeed.mTimeStartMotion = 0;
 		aChosenSeed.mTimeEndMotion = 0;

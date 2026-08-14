@@ -223,6 +223,8 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 	}
 	else if (mIsBossNoteAward)
 		mStartButton->SetLabel("[CONTINUE_BUTTON]");
+	else if (mAwardType == AWARD_ALMANAC)
+		mStartButton->SetLabel("[VIEW_ALMANAC_BUTTON]");
 	else if (!mApp->IsAdventureMode())
 	{
 		mStartButton->SetLabel("[MAIN_MENU_BUTTON]");
@@ -443,6 +445,11 @@ void AwardScreen::Draw(Graphics* g)
 	{
 		DrawVxStats(g);
 	}
+	else if (mAwardType == AWARD_ALMANAC)
+	{
+		DrawBottom(g, "[FOUND_SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC]", "[SUBURBAN_ALMANAC_DESCRIPTION]");
+		g->DrawImage(Sexy::IMAGE_ALMANAC, BOARD_WIDTH / 2 - Sexy::IMAGE_ALMANAC->mWidth / 2, 160);
+	}
 	else if (mAwardType != AWARD_ACHIEVEMENTONLY) // @Patoke: add check
 	{
 		// vx: award shows a paper note with a placeholder picture
@@ -629,6 +636,12 @@ void AwardScreen::StartButtonPressed()
 	{
 		mApp->KillAwardScreen();
 		mApp->ShowGameSelector();
+	}
+	else if (mAwardType == AWARD_ALMANAC)
+	{
+		mApp->DoAlmanacDialog()->WaitForResult();
+		mApp->KillAwardScreen();
+		mApp->PreNewGame(GAMEMODE_ADVENTURE, false);
 	}
 	else if (mApp->IsSurvivalMode())
 	{
