@@ -43,14 +43,14 @@ ninja -C build-release
 ```
 
 - 显式指定 MinGW 编译器(默认 cmake 可能误选 MSVC)。Release 默认 CONSOLE=OFF、PVZ_DEBUG=OFF;`build-release/` 已被 git 忽略。
-- Python 运行时（VX_SCRIPT）来自 `third_party/python/tools/`（由 `scripts/fetch_python.ps1` 拉取的官方 NuGet python 3.12，git 忽略）：首次构建前先运行该脚本；打包时带 `python312.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`、`python312/`（标准库，构建时自动同步）与空的 `userlibs/`（运行时自动创建）。
+- Python 运行时（VX_SCRIPT）来自 `third_party/python/tools/`（由 `fetch_python.ps1` 拉取的官方 NuGet python 3.12，git 忽略）：首次构建前先运行该脚本；打包时带 `python312.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`、`python312/`（标准库，构建时自动同步）与空的 `userlibs/`（运行时自动创建）。
 - 运行时 DLL 来自 `D:/msys64/ucrt64/bin/`:`SDL2.dll`、`libopenmpt-0.dll`、`libpng16-16.dll`、`libjpeg-8.dll`、`zlib1.dll`、`libgcc_s_seh-1.dll`、`libstdc++-6.dll`、`libwinpthread-1.dll`、`libmpg123-0.dll`、`libvorbis-0.dll`、`libvorbisfile-3.dll`、`libogg-0.dll`。后 4 个是 `libopenmpt-0.dll` 的传递依赖,漏带会报“找不到 libmpg123-0.dll”。用 `objdump -p build-release/Vatrix.exe | Select-String "DLL Name"` 核对 exe,并对包内每个 DLL 各跑一次 `objdump -p` 检查传递依赖是否都在包内;SDL Mixer X 为静态链接,无需带 mixer DLL。
 - 组装 `dist/vatrix-win64/`(`dist/` 已被 git 忽略):exe + 上述 DLL + LICENSE + COPYING + `使用说明.txt`(写明玩家需自备 `main.pak` 和 `properties/`,包内不得包含)。
 - 有新提交后重新打包:只重跑 `ninja -C build-release` 并覆盖 exe、重新压缩即可;DLL 未变则无需重拷。
 
 ## Python 运行时获取
 
-首次配置前运行 `scripts/fetch_python.ps1`（下载官方 NuGet python 3.12.10 到 `third_party/python/` 并生成 MinGW 导入库 `libpython312.a`）。CMake 检测到 `third_party/python/tools/` 时使用它，否则回退 `find_package(Python3 3.12)`（如 MSYS2 UCRT64）。
+首次配置前运行 `fetch_python.ps1`（下载官方 NuGet python 3.12.10 到 `third_party/python/` 并生成 MinGW 导入库 `libpython312.a`）。CMake 检测到 `third_party/python/tools/` 时使用它，否则回退 `find_package(Python3 3.12)`（如 MSYS2 UCRT64）。
 
 ## Development
 When user requests you to "commit" or "提交", please follow the following steps:

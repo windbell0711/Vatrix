@@ -83,14 +83,14 @@ cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Python 运行时默认自包含：首次构建前先运行 `scripts/fetch_python.ps1`（下载官方 NuGet python 3.12 到 `third_party/python/` 并生成 MinGW 导入库，已 git 忽略；离线环境可跳过，CMake 会回退到系统 Python 3.12）。
+Python 运行时默认自包含：首次构建前先运行 `fetch_python.ps1`（下载官方 NuGet python 3.12 到 `third_party/python/` 并生成 MinGW 导入库，已 git 忽略；离线环境可跳过，CMake 会回退到系统 Python 3.12）。
 
 常用选项：
 
 | 选项 | 默认 | 说明 |
 | :--- | :--- | :--- |
 | `PVZ_DEBUG` | `OFF` | 启用作弊键、调试显示等调试功能 |
-| `VX_SCRIPT` | `ON` | 启用内嵌 Python 脚本系统与游戏内代码编辑器（优先使用 `scripts/fetch_python.ps1` 拉取的官方 NuGet Python 3.12，缺失时回退系统 Python 3.12 开发文件） |
+| `VX_SCRIPT` | `ON` | 启用内嵌 Python 脚本系统与游戏内代码编辑器（优先使用 `fetch_python.ps1` 拉取的官方 NuGet Python 3.12，缺失时回退系统 Python 3.12 开发文件） |
 | `DO_FIX_BUGS` | `OFF` | 应用社区对官方 1.2.0.1073 GOTY 版"Bug"的修复（多数玩家视为特性） |
 | `CONSOLE` | `OFF` | 显示控制台窗口（仅 Windows） |
 

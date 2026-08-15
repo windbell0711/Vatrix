@@ -1,6 +1,6 @@
 # vx: sync the pure-Python stdlib + C extensions into <out>/python312/ so embedded python needs no system install
 # Layouts supported:
-#   - NuGet package (scripts/fetch_python.ps1): <root>/Lib (pure stdlib) + <root>/DLLs (C extensions)
+#   - NuGet package (fetch_python.ps1): <root>/Lib (pure stdlib) + <root>/DLLs (C extensions)
 #   - MSYS2 install:                          <root>/lib/python3.12 (incl. lib-dynload)
 import pathlib
 import shutil

@@ -143,9 +143,9 @@ else()
 endif()
 
 # vx: optional Python scripting (_vb module). Preferred: self-contained NuGet python fetched by
-# scripts/fetch_python.ps1 into third_party/python/; falls back to a system Python 3.12 dev install.
+# fetch_python.ps1 into third_party/python/; falls back to a system Python 3.12 dev install.
 option(VX_SCRIPT "Enable Python scripting support (_vb module)" ON)
-set(VX_PYTHON_TOOLS "${PROJECT_SOURCE_DIR}/third_party/python/tools" CACHE PATH "Fetched NuGet python tools dir (scripts/fetch_python.ps1)")
+set(VX_PYTHON_TOOLS "${PROJECT_SOURCE_DIR}/third_party/python/tools" CACHE PATH "Fetched NuGet python tools dir (fetch_python.ps1)")
 if(VX_SCRIPT)
 	if(WIN32 AND EXISTS "${VX_PYTHON_TOOLS}/python312.dll" AND EXISTS "${VX_PYTHON_TOOLS}/libpython312.a")
 		# vx: fetched NuGet python: import lib for MinGW + headers + full stdlib next to the exe
@@ -160,7 +160,7 @@ if(VX_SCRIPT)
 		endif()
 		find_package(Python3 3.12 COMPONENTS Development)
 		if(NOT Python3_FOUND)
-			message(WARNING "VX_SCRIPT: no fetched python and Python3 development files not found; scripting disabled (run scripts/fetch_python.ps1 or install Python 3.12)")
+			message(WARNING "VX_SCRIPT: no fetched python and Python3 development files not found; scripting disabled (run fetch_python.ps1 or install Python 3.12)")
 			set(VX_SCRIPT OFF)
 		endif()
 	endif()
