@@ -1,4 +1,4 @@
-# Submit at 2026-08-15 16:02:29: 21531, 22323, 125
+# This script is written and tested by Lilold.
 from vb import *
 slp(0.1)
 aal = [0,0,0,0,0]
@@ -32,7 +32,10 @@ def p(rc = 0):
 	for row in [1,2,3,4,5]:
 		ind = row - 1
 		while zha[ind] - aal[ind] > 0 and pmc[ind] > zcm[ind] - rc:
-			get_cards()[0].plc(row,pmc[ind])
+			cs = get_cards()
+			if len(cs) == 0:
+				break
+			cs[0].plc(row,pmc[ind])
 			aal[ind] += 2
 			pmc[ind] -= 1
 			slp(0.05)

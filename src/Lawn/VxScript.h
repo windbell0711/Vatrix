@@ -24,6 +24,8 @@ namespace VX
 	void Shutdown();
 	void StartScripts(int theLevel, int theGameMode);
 	void StopScripts();
+	// vx: main thread feeds the script-visible game clock (seconds) every frame; pause freezes it
+	void VxUpdateGameTime(double theGameTime);
 	void ProcessBoardQueue(Board* theBoard);
 	bool GetScaryPotLineup(int theLevel, int theSeed, std::vector<VxPotDef>& theOut);
 

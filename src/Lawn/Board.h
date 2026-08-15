@@ -143,9 +143,11 @@ public:
 	GameButton*						mScriptButtons[4];
 	GameButton*						mScriptCollapseButton;
 	bool							mScriptControlsVisible;
-	int								mScriptStartTick; // vx: script start time for the 60s watchdog
+	float							mScriptStartGameTime; // vx: script start game time for the 60s watchdog
 	bool							mScriptSubmitRun; // vx: true during a Submit run: manual input is locked
 	bool							mScriptLosePaused; // vx: world-6 lose pause keeps the buttons clickable
+	float							mGameTime; // vx: level game clock (seconds, frozen while paused)
+	uint32_t						mLastGameTick; // vx: last frame tick for the game-clock delta
 	Image*						mVxResBankImage = nullptr; // vx: submit-run banner (Properties/VX_RESBANK.png)
 	int							mVxResBankX = 0; // vx: banner X while flying in from the right edge
 	int							mVxResBankY = 0; // vx: banner Y (fixed, 100px above the bottom edge)

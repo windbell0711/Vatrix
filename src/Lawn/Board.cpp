@@ -225,7 +225,9 @@ Board::Board(LawnApp* theApp)
 	}
 	mScriptCollapseButton = nullptr;
 	mScriptControlsVisible = true;
-	mScriptStartTick = 0;
+	mScriptStartGameTime = 0.0f;
+	mGameTime = 0.0f;
+	mLastGameTick = SDL_GetTicks();
 	mScriptSubmitRun = false;
 	mScriptLosePaused = false;
 	mIgnoreMouseUp = false;
@@ -1833,7 +1835,7 @@ void Board::StartLevel()
 		VX::VxEditorClearError(); // vx: a fresh run hides the previous run's error panel
 		// vx: world 6 Run/Submit: the script starts on the freshly restarted level
 		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
-		mScriptStartTick = SDL_GetTicks();
+		mScriptStartGameTime = mGameTime;
 		// vx: a Submit run locks manual input for the whole run; a trial run stays playable
 		mScriptSubmitRun = !VX::IsTrialRun();
 		// vx: a Submit run flies the RESBANK banner in from the bottom-right corner
@@ -6169,6 +6171,10 @@ void Board::UpdateGame()
 void Board::Update()
 {
 	PvzpHesitationBracket aHesitation("Board::Update");
+	// vx: per-frame delta feeds the script game clock (frozen by the pause branch below)
+	uint32_t aNowTick = SDL_GetTicks();
+	float aDtSec = (aNowTick - mLastGameTick) * 0.001f;
+	mLastGameTick = aNowTick;
 
 	Widget::Update();
 	MarkDirty();
@@ -6192,6 +6198,10 @@ void Board::Update()
 		mCursorObject->mVisible = false;
 		return;
 	}
+
+	// vx: script game clock advances only when the game runs; pause freezes it
+	mGameTime += aDtSec;
+	VX::VxUpdateGameTime(mGameTime);
 
 	bool aDisabled = !CanInteractWithBoardButtons() || mIgnoreMouseUp;
 	if (!mMenuButton->mBtnNoDraw)
@@ -6230,7 +6240,7 @@ void Board::Update()
 		break;
 	}
 	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL && VX::IsScriptRunning()
-		&& SDL_GetTicks() - mScriptStartTick > 60000)
+		&& mGameTime - mScriptStartGameTime > 60.0f)
 	{
 		VX::InterruptScript();
 		// ponytail: 60s cap; a script that ignores the interrupt is abandoned by StopScripts

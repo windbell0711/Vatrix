@@ -66,6 +66,8 @@ namespace
 	std::mutex gSleepMutex;
 	std::condition_variable gSleepCv;
 	bool gSleepStop = false;
+	// vx: script-visible level game clock (seconds, fed by Board::Update; frozen while paused)
+	double gVxGameTime = 0.0;
 	// vx: async interrupt fires at most once per stop; repeated stop requests must not pile up KeyboardInterrupts
 	bool gStopInterruptFired = false;
 	// vx: player-driven world-6 runs (Run = trial, Submit = official)
@@ -348,9 +350,15 @@ except BaseException:
 			std::unique_lock<std::mutex> aLock(gSleepMutex);
 			if (aDelay > 0 && !gSleepStop)
 			{
-				Py_BEGIN_ALLOW_THREADS
-				gSleepCv.wait_for(aLock, std::chrono::duration<double>(aDelay), [] { return gSleepStop; });
-				Py_END_ALLOW_THREADS
+				// vx: wait on the level game clock: pause freezes the game time, so slp blocks until unpaused.
+				// wait_for with a predicate is a single timeout window; loop so a long delay survives 500ms timeouts
+				double aTargetTime = gVxGameTime + aDelay;
+				while (!gSleepStop && gVxGameTime < aTargetTime)
+				{
+					Py_BEGIN_ALLOW_THREADS
+					gSleepCv.wait_for(aLock, std::chrono::milliseconds(500));
+					Py_END_ALLOW_THREADS
+				}
 			}
 			if (gSleepStop)
 			{
@@ -445,6 +453,12 @@ except BaseException:
 		return VxRunQuery(VxQueryType::Vases);
 	}
 
+	PyObject* VbGetTime(PyObject*, PyObject*)
+	{
+		std::lock_guard<std::mutex> aLock(gSleepMutex);
+		return PyFloat_FromDouble(gVxGameTime);
+	}
+
 	PyObject* VbPlc(PyObject*, PyObject* theArgs)
 	{
 		int aCoinID = 0;
@@ -493,6 +507,7 @@ except BaseException:
 		{"get_plants", VbGetPlants, METH_NOARGS, "Return a list of dicts describing the current plants."},
 		{"get_cards", VbGetCards, METH_NOARGS, "Return a list of dicts describing the dropped seed cards."},
 		{"get_vases", VbGetVases, METH_NOARGS, "Return a list of dicts describing the vases on the field."},
+		{"time", VbGetTime, METH_NOARGS, "Return the current level game time in seconds (frozen while paused)."},
 		{nullptr, nullptr, 0, nullptr},
 	};
 
@@ -587,6 +602,16 @@ namespace VX
 		{
 			std::lock_guard<std::mutex> aLock(gSleepMutex);
 			gSleepStop = true;
+		}
+		gSleepCv.notify_all();
+	}
+
+	// vx: main thread feeds the script-visible game clock every frame and wakes slp waiters
+	void VxUpdateGameTime(double theGameTime)
+	{
+		{
+			std::lock_guard<std::mutex> aLock(gSleepMutex);
+			gVxGameTime = theGameTime;
 		}
 		gSleepCv.notify_all();
 	}
@@ -741,12 +766,13 @@ namespace VX
 					{
 						if (aZombie->mDead)
 							continue;
-						// vx: zombie snapshot exposes mVelX as "v"
-						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:d,s:i,s:i,s:i,s:i,s:i,s:i,s:i}", // vx: last s:i fills the "id" key, s:d fills "v"
+						// vx: zombie snapshot exposes mVelX as "v" and frame counter as "age"
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:d,s:i,s:i,s:i,s:i,s:i,s:i,s:i,s:i}", // vx: last s:i fills the "id" key, s:d fills "v", s:i fills "age"
 							"row", aZombie->mRow,
 							"col", theBoard->PixelToGridXKeepOnBoard(static_cast<int>(aZombie->mPosX), static_cast<int>(aZombie->mPosY)),
 							"x", aZombie->mPosX,
 							"v", aZombie->mVelX,
+							"age", aZombie->mAnimCounter,
 							"hp", aZombie->mBodyHealth,
 							"helm", aZombie->mHelmHealth,
 							"hp_max", aZombie->mBodyMaxHealth,
@@ -1009,6 +1035,7 @@ namespace VX
 	void StartScripts(int, int) {}
 	void StopScripts() {}
 	void ProcessBoardQueue(Board*) {}
+	void VxUpdateGameTime(double) {}
 	bool GetScaryPotLineup(int, int, std::vector<VxPotDef>&) { return false; }
 	bool GetSceneLayout(int, int, std::vector<VxSceneDef>&) { return false; }
 	bool GetSlotSetup(int, int&, std::vector<int>&) { return false; }

@@ -1,4 +1,4 @@
-# Submit at 2026-08-14 16:24:21: 1640, 1651, 0
+# Submit at 2026-08-15 18:08:46: 2113, 2133, 0
 from vb import *
 
 for r in (2, 3, 4):
@@ -9,4 +9,3 @@ slp(0.1)
 
 z = get_zombies()[0]
 plt(z.row, z.col)
-

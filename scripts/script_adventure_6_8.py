@@ -1,7 +1,5 @@
-# Submit at 2026-08-15 15:58:08: 28361, 30939, 0
-# Submit at 2026-08-15 15:55:25: 29725, 37248, 50
+# This script is partly written by Lilold.
 from vb import *
-from vb.consts import *
 import math
 
 def ctox(c):
