@@ -3913,7 +3913,7 @@ void Challenge::ScaryPotterPopulate()
 	}
 	else if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= 59)
 	{
-		// vx: world 6 lineups come from scripts/vx_pots.py (VX::GetScaryPotLineup)
+		// vx: world 6 lineups come from the CSV vase rules (VX::GetScaryPotLineup)
 		std::vector<VX::VxPotDef> aDefs;
 		if (VX::GetScaryPotLineup(mBoard->mLevel, mBoard->GetLevelRandSeed(), aDefs))
 		{

@@ -1698,7 +1698,7 @@ void Board::InitLevel()
 	// 关卡玩法相关的初始化
 	mChallenge->InitLevel();
 
-	// vx: apply the CSV scene layout (pre-placed plants/zombies) from vx_init_lvl.get_scene
+	// vx: apply the CSV scene layout (pre-placed plants/zombies) from VX::GetSceneLayout
 	if (mApp->IsAdventureMode())
 	{
 		std::vector<VX::VxSceneDef> aScene;
@@ -1865,7 +1865,7 @@ void Board::StartLevel()
 	mApp->mLastLevelStats->Reset();
 	mChallenge->StartLevel();
 
-	// vx: apply the CSV slot setup (starting sun + seed bank) from vx_init_lvl.get_slot
+	// vx: apply the CSV slot setup (starting sun + seed bank) from VX::GetSlotSetup
 	if (mApp->IsAdventureMode())
 	{
 		int aSun = -1;

@@ -9,7 +9,7 @@ class Board;
 
 namespace VX
 {
-	// vx: one pot entry produced by scripts/vx_pots.py (enum fields stored as ints)
+	// vx: one pot entry produced by the CSV level init (enum fields stored as ints)
 	struct VxPotDef
 	{
 		int mRow;    // 0-4, or -1 for random among free cells
@@ -27,7 +27,7 @@ namespace VX
 	void ProcessBoardQueue(Board* theBoard);
 	bool GetScaryPotLineup(int theLevel, int theSeed, std::vector<VxPotDef>& theOut);
 
-	// vx: one scene entry produced by vx_init_lvl.get_scene
+	// vx: one scene entry produced by the CSV level init
 	struct VxSceneDef
 	{
 		int mRow;

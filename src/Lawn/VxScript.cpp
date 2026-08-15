@@ -23,6 +23,7 @@
 #include "Board.h"
 #include "Challenge.h"
 #include "VxEditor.h"
+#include "PvzpLib/VxLevelInit.h"
 
 namespace
 {
@@ -44,83 +45,6 @@ namespace
 		int mArg;
 	};
 
-	// vx: generated from ConstEnums.h (gSeedNames)
-	constexpr std::pair<const char*, int> gSeedNames[] = {
-		{"PEASHOOTER", 0}, {"SUNFLOWER", 1}, {"CHERRYBOMB", 2}, {"WALLNUT", 3}, {"POTATOMINE", 4},
-		{"SNOWPEA", 5}, {"CHOMPER", 6}, {"REPEATER", 7}, {"PUFFSHROOM", 8}, {"SUNSHROOM", 9},
-		{"FUMESHROOM", 10}, {"GRAVEBUSTER", 11}, {"HYPNOSHROOM", 12}, {"SCAREDYSHROOM", 13},
-		{"ICESHROOM", 14}, {"DOOMSHROOM", 15}, {"LILYPAD", 16}, {"SQUASH", 17}, {"THREEPEATER", 18},
-		{"TANGLEKELP", 19}, {"JALAPENO", 20}, {"SPIKEWEED", 21}, {"TORCHWOOD", 22}, {"TALLNUT", 23},
-		{"SEASHROOM", 24}, {"PLANTERN", 25}, {"CACTUS", 26}, {"BLOVER", 27}, {"SPLITPEA", 28},
-		{"STARFRUIT", 29}, {"PUMPKINSHELL", 30}, {"MAGNETSHROOM", 31}, {"CABBAGEPULT", 32},
-		{"FLOWERPOT", 33}, {"KERNELPULT", 34}, {"INSTANT_COFFEE", 35}, {"GARLIC", 36}, {"UMBRELLA", 37},
-		{"MARIGOLD", 38}, {"MELONPULT", 39}, {"GATLINGPEA", 40}, {"TWINSUNFLOWER", 41},
-		{"GLOOMSHROOM", 42}, {"CATTAIL", 43}, {"WINTERMELON", 44}, {"GOLD_MAGNET", 45},
-		{"SPIKEROCK", 46}, {"COBCANNON", 47}, {"IMITATER", 48}, {"EXPLODE_O_NUT", 49},
-		{"GIANT_WALLNUT", 50}, {"SPROUT", 51}, {"LEFTPEATER", 52}, {"NUM_SEED_TYPES", 53},
-		{"BEGHOULED_BUTTON_SHUFFLE", 54}, {"BEGHOULED_BUTTON_CRATER", 55}, {"SLOT_MACHINE_SUN", 56},
-		{"SLOT_MACHINE_DIAMOND", 57}, {"ZOMBIQUARIUM_SNORKLE", 58}, {"ZOMBIQUARIUM_TROPHY", 59},
-		{"ZOMBIE_NORMAL", 60}, {"ZOMBIE_TRAFFIC_CONE", 61}, {"ZOMBIE_POLEVAULTER", 62},
-		{"ZOMBIE_PAIL", 63}, {"ZOMBIE_LADDER", 64}, {"ZOMBIE_DIGGER", 65}, {"ZOMBIE_BUNGEE", 66},
-		{"ZOMBIE_FOOTBALL", 67}, {"ZOMBIE_BALLOON", 68}, {"ZOMBIE_SCREEN_DOOR", 69}, {"ZOMBONI", 70},
-		{"ZOMBIE_POGO", 71}, {"ZOMBIE_DANCER", 72}, {"ZOMBIE_GARGANTUAR", 73}, {"ZOMBIE_IMP", 74},
-		{"NUM_SEEDS_IN_CHOOSER", 49},
-	};
-
-	// vx: generated from ConstEnums.h (gZombieNames)
-	constexpr std::pair<const char*, int> gZombieNames[] = {
-		{"NORMAL", 0}, {"FLAG", 1}, {"TRAFFIC_CONE", 2}, {"POLEVAULTER", 3}, {"PAIL", 4},
-		{"NEWSPAPER", 5}, {"DOOR", 6}, {"FOOTBALL", 7}, {"DANCER", 8}, {"BACKUP_DANCER", 9},
-		{"DUCKY_TUBE", 10}, {"SNORKEL", 11}, {"ZAMBONI", 12}, {"BOBSLED", 13}, {"DOLPHIN_RIDER", 14},
-		{"JACK_IN_THE_BOX", 15}, {"BALLOON", 16}, {"DIGGER", 17}, {"POGO", 18}, {"YETI", 19},
-		{"BUNGEE", 20}, {"LADDER", 21}, {"CATAPULT", 22}, {"GARGANTUAR", 23}, {"IMP", 24}, {"BOSS", 25},
-		{"PEA_HEAD", 26}, {"WALLNUT_HEAD", 27}, {"JALAPENO_HEAD", 28}, {"GATLING_HEAD", 29},
-		{"SQUASH_HEAD", 30}, {"TALLNUT_HEAD", 31}, {"REDEYE_GARGANTUAR", 32}, {"NUM_ZOMBIE_TYPES", 33},
-		{"CACHED_POLEVAULTER_WITH_POLE", 34},
-	};
-
-	bool VxLookupName(const char* theName, const std::pair<const char*, int>* theNames, size_t theNameCount, int& theValue)
-	{
-		const char* aName = theName;
-		if (strncmp(aName, "SEED_", 5) == 0)
-			aName += 5;
-		else if (strncmp(aName, "ZOMBIE_", 7) == 0)
-			aName += 7;
-		for (size_t i = 0; i < theNameCount; i++)
-		{
-			if (strcmp(theNames[i].first, aName) == 0)
-			{
-				theValue = theNames[i].second;
-				return true;
-			}
-		}
-		return false;
-	}
-
-	int VxDictInt(PyObject* theDict, const char* theKey, int theDefault)
-	{
-		PyObject* aValue = PyDict_GetItemString(theDict, theKey); // borrowed
-		if (aValue && PyLong_Check(aValue))
-			return static_cast<int>(PyLong_AsLong(aValue));
-		return theDefault;
-	}
-
-	bool VxDictName(PyObject* theDict, const char* theKey, const std::pair<const char*, int>* theNames, size_t theNameCount, int& theValue)
-	{
-		PyObject* aValue = PyDict_GetItemString(theDict, theKey); // borrowed
-		if (aValue && PyLong_Check(aValue))
-		{
-			theValue = static_cast<int>(PyLong_AsLong(aValue));
-			return true;
-		}
-		if (aValue && PyUnicode_Check(aValue))
-		{
-			const char* aName = PyUnicode_AsUTF8(aValue);
-			if (aName)
-				return VxLookupName(aName, theNames, theNameCount, theValue);
-		}
-		return false;
-	}
 
 
 	std::mutex gQueueMutex;
@@ -142,6 +66,8 @@ namespace
 	std::mutex gSleepMutex;
 	std::condition_variable gSleepCv;
 	bool gSleepStop = false;
+	// vx: async interrupt fires at most once per stop; repeated stop requests must not pile up KeyboardInterrupts
+	bool gStopInterruptFired = false;
 	// vx: player-driven world-6 runs (Run = trial, Submit = official)
 	std::mutex gRunMutex;
 	bool gPendingRun = false;
@@ -170,7 +96,6 @@ namespace
 	bool gQueryPending = false;
 	VxQueryType gQueryType = VxQueryType::Zombies;
 	PyObject* gQueryResult = nullptr;
-	// vx: import vx_init_lvl and call <theFuncName>(theLevel); caller holds the GIL and owns the result
 	// vx: resolve script/data dirs; dev builds (running from <repo>/build) use the live source dirs,
 	// so editing scripts/ or Properties/ takes effect without rebuilding
 	void VxResolveDirs()
@@ -182,7 +107,6 @@ namespace
 		if (aDevMode)
 		{
 			gScriptDirs.push_back(aLiveRoot / "scripts");
-			gScriptDirs.push_back(aLiveRoot / "src" / "python");
 			gDataDir = aLiveRoot / "Properties";
 		}
 		else
@@ -234,74 +158,6 @@ namespace
 
 	void ScriptLog(const std::string& theMessage); // vx: forward decl, defined below
 
-	// vx: surface a python exception from a level-func call: log it and show it in the editor
-	// error panel instead of silently clearing it (caller holds the GIL)
-	void VxReportLevelFuncError(const char* theFuncName)
-	{
-		PyObject* aType = nullptr;
-		PyObject* aValue = nullptr;
-		PyObject* aTraceback = nullptr;
-		PyErr_Fetch(&aType, &aValue, &aTraceback);
-		std::string anError;
-		if (aType)
-		{
-			PyObject* aTracebackMod = PyImport_ImportModule("traceback");
-			if (aTracebackMod)
-			{
-				PyObject* aList = PyObject_CallMethod(aTracebackMod, "format_exception", "OOO", aType, aValue, aTraceback);
-				if (aList && PyList_Check(aList))
-				{
-					Py_ssize_t aLength = PyList_Size(aList);
-					for (Py_ssize_t i = 0; i < aLength; i++)
-					{
-						PyObject* aLine = PyList_GetItem(aList, i); // borrowed
-						if (aLine && PyUnicode_Check(aLine))
-						{
-							const char* aUtf = PyUnicode_AsUTF8(aLine);
-							if (aUtf)
-								anError += aUtf;
-						}
-					}
-				}
-				Py_XDECREF(aList);
-				Py_XDECREF(aTracebackMod);
-			}
-			Py_XDECREF(aType);
-			Py_XDECREF(aValue);
-			Py_XDECREF(aTraceback);
-		}
-		PyErr_Clear();
-		if (anError.empty())
-			anError = "(no python traceback)";
-		ScriptLog("[vb] " + std::string(theFuncName) + " failed: " + anError);
-		VX::VxEditorShowError(anError, false);
-	}
-
-	PyObject* VxCallLevelFunc(const char* theFuncName, int theLevel, int theSeed)
-	{
-		if (gScriptDirs.empty())
-			VxResolveDirs();
-		VxSetupPythonPath();
-		PyObject* aModule = PyImport_ImportModule("vx_init_lvl");
-		if (!aModule)
-		{
-			VxReportLevelFuncError(theFuncName); // vx: surface the import error instead of swallowing it
-			return nullptr;
-		}
-		PyObject* aResult = nullptr;
-		PyObject* aFunc = PyObject_GetAttrString(aModule, theFuncName);
-		if (aFunc && PyCallable_Check(aFunc))
-		{
-			PyObject* aArgs = Py_BuildValue("(ii)", theLevel, theSeed);
-			aResult = PyObject_CallObject(aFunc, aArgs);
-			Py_XDECREF(aArgs);
-		}
-		if (aResult == nullptr)
-			VxReportLevelFuncError(theFuncName); // vx: surface the python exception instead of swallowing it
-		Py_XDECREF(aFunc);
-		Py_XDECREF(aModule);
-		return aResult;
-	}
 
 
 
@@ -332,17 +188,20 @@ def write_error(kind):
         with open(err_path, "w", encoding="utf-8") as ef:
             ef.write(kind + "\n")
             traceback.print_exc(file=ef)
-    except Exception:
+    except BaseException:
         pass
     try:
         print("=== %s ===" % path)
         traceback.print_exc()
-    except Exception:
+    except BaseException:
         pass
     if log is not None:
-        log.write("=== %s ===\n" % path)
-        traceback.print_exc(file=log)
-        log.flush()
+        try:
+            log.write("=== %s ===\n" % path)
+            traceback.print_exc(file=log)
+            log.flush()
+        except BaseException:
+            pass
 
 def run_script(path):
     ns = {"__file__": path, "__name__": "__main__"}
@@ -360,21 +219,32 @@ def run_script(path):
     try:
         with contextlib.redirect_stdout(out) if out is not None else contextlib.nullcontext():
             exec(code, ns)
+    except KeyboardInterrupt:
+        pass  # vx: player stop; not an error
     except BaseException:
         write_error("RE")  # runtime error
     finally:
-        if out is not None:
-            out.close()
+        try:
+            if out is not None:
+                out.close()
+        except BaseException:
+            pass
 
 # vx: run only this level's script, e.g. script_adventure_6_1.py
 mode = getattr(sys, "vx_game_mode", "")
 area = getattr(sys, "vx_area", 0)
 sub = getattr(sys, "vx_sub", 0)
 path = os.path.join(d, "script_%s_%d_%d.py" % (mode, area, sub))
-if os.path.exists(path):
-    run_script(path)
-if log is not None:
-    log.close()
+try:
+    if os.path.exists(path):
+        run_script(path)
+except BaseException:
+    pass  # vx: a stray async interrupt must never escape the driver
+try:
+    if log is not None:
+        log.close()
+except BaseException:
+    pass
 )PY";
 
 	void ScriptLog(const std::string& theMessage)
@@ -700,6 +570,7 @@ namespace VX
 		{
 			std::lock_guard<std::mutex> aLock(gSleepMutex);
 			gSleepStop = false;
+			gStopInterruptFired = false;
 		}
 		{
 			std::lock_guard<std::mutex> aLock(gScriptEndedMutex);
@@ -720,20 +591,37 @@ namespace VX
 		gSleepCv.notify_all();
 	}
 
+	// vx: fire the async interrupt at most once per stop; repeated stop requests
+	// (user stop + level restart) would otherwise land KeyboardInterrupts at random
+	// bytecode boundaries (finally blocks, driver tail) and escape the script driver
+	void VxInterruptThread()
+	{
+		unsigned long aThreadId = gScriptThreadId.load();
+		if (!aThreadId)
+			return;
+		bool aFire = false;
+		{
+			std::lock_guard<std::mutex> aLock(gSleepMutex);
+			if (!gStopInterruptFired)
+			{
+				gStopInterruptFired = true;
+				aFire = true;
+			}
+		}
+		if (!aFire)
+			return;
+		// vx: PyThreadState_SetAsyncExc is a C API call and requires the GIL
+		PyGILState_STATE aGilState = PyGILState_Ensure();
+		PyThreadState_SetAsyncExc(aThreadId, PyExc_KeyboardInterrupt);
+		PyGILState_Release(aGilState);
+	}
+
 	void StopScripts()
 	{
 		if (gScriptThread.joinable())
 		{
 			VxRequestScriptStop();
-			// vx: interrupt a hanging script (3.12 time.sleep is async-exc interruptible)
-			unsigned long aThreadId = gScriptThreadId.load();
-			if (aThreadId)
-			{
-				// vx: PyThreadState_SetAsyncExc is a C API call and requires the GIL
-				PyGILState_STATE aGilState = PyGILState_Ensure();
-				PyThreadState_SetAsyncExc(aThreadId, PyExc_KeyboardInterrupt);
-				PyGILState_Release(aGilState);
-			}
+			VxInterruptThread();
 			std::unique_lock<std::mutex> aLock(gScriptEndedMutex);
 			if (!gScriptEndedCv.wait_for(aLock, std::chrono::seconds(3), [] { return gScriptEnded; }))
 			{
@@ -756,212 +644,66 @@ namespace VX
 
 	bool GetScaryPotLineup(int theLevel, int theSeed, std::vector<VxPotDef>& theOut)
 	{
-		if (!gPythonReady)
+		if (gDataDir.empty())
+			VxResolveDirs(); // vx: old VxCallLevelFunc resolved dirs per call; keep the lazy guard
+		theOut.clear();
+		VxLevelInfo aInfo;
+		if (!VxLoadLevelInfo(theLevel, gDataDir / "adventure_info.csv", aInfo))
 			return false;
-		PyGILState_STATE aGILState = PyGILState_Ensure();
-
-		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("generate", theLevel, theSeed);
-		if (aResult == nullptr)
-		{
-			ScriptLog("[vb] vx_init_lvl.generate failed for level " + std::to_string(theLevel));
-		}
-		PyErr_Clear();
-
-		if (aResult && PyList_Check(aResult))
-		{
-			Py_ssize_t aLength = PyList_Size(aResult);
-			for (Py_ssize_t i = 0; i < aLength; i++)
-			{
-				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
-				if (!aItem || !PyDict_Check(aItem))
-					continue;
-				VxPotDef aDef;
-				aDef.mRow = VxDictInt(aItem, "row", -1);
-				aDef.mCol = VxDictInt(aItem, "col", -1);
-				aDef.mCount = VxDictInt(aItem, "count", 1);
-				aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_SEED);
-				aDef.mZombie = static_cast<int>(ZombieType::ZOMBIE_INVALID);
-				aDef.mSeed = static_cast<int>(SeedType::SEED_NONE);
-				const char* aTypeName = nullptr;
-				PyObject* aTypeObj = PyDict_GetItemString(aItem, "type"); // borrowed
-				if (aTypeObj && PyUnicode_Check(aTypeObj))
-					aTypeName = PyUnicode_AsUTF8(aTypeObj);
-				if (aTypeName && strcmp(aTypeName, "zombie") == 0)
-					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_ZOMBIE);
-				else if (aTypeName && strcmp(aTypeName, "sun") == 0)
-					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_SUN);
-				else if (aTypeName && strcmp(aTypeName, "empty") == 0)
-					aDef.mType = static_cast<int>(ScaryPotType::SCARYPOT_NONE);
-
-				if (aDef.mType == static_cast<int>(ScaryPotType::SCARYPOT_ZOMBIE))
-				{
-					int aZombie = -1;
-					if (!VxDictName(aItem, "zombie", gZombieNames, sizeof(gZombieNames) / sizeof(gZombieNames[0]), aZombie))
-					{
-						ScriptLog("[vb] vx_pots: bad zombie in item " + std::to_string(i));
-						continue;
-					}
-					aDef.mZombie = aZombie;
-				}
-				else if (aDef.mType == static_cast<int>(ScaryPotType::SCARYPOT_SEED))
-				{
-					int aSeed = -1;
-					if (!VxDictName(aItem, "seed", gSeedNames, sizeof(gSeedNames) / sizeof(gSeedNames[0]), aSeed))
-					{
-						ScriptLog("[vb] vx_pots: bad seed in item " + std::to_string(i));
-						continue;
-					}
-					aDef.mSeed = aSeed;
-				}
-				theOut.push_back(aDef);
-			}
-			aOk = true;
-		}
-		else if (aResult)
-		{
-			ScriptLog("[vb] vx_pots.generate must return a list");
-		}
-		Py_XDECREF(aResult);
-		PyGILState_Release(aGILState);
-		return aOk;
+		if (!aInfo.mValid)
+			return false;
+		return VxGeneratePots(aInfo, theSeed, theOut);
 	}
 
 	bool GetSceneLayout(int theLevel, int theSeed, std::vector<VxSceneDef>& theOut)
 	{
-		if (!gPythonReady)
+		if (gDataDir.empty())
+			VxResolveDirs();
+		VxLevelInfo aInfo;
+		if (!VxLoadLevelInfo(theLevel, gDataDir / "adventure_info.csv", aInfo))
 			return false;
-		PyGILState_STATE aGILState = PyGILState_Ensure();
-
-		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_scene", theLevel, theSeed);
-		// vx: unconfigured levels are normal (get_scene returns []), so failures stay silent here
-		PyErr_Clear();
-
-		if (aResult && PyList_Check(aResult))
-		{
-			Py_ssize_t aLength = PyList_Size(aResult);
-			for (Py_ssize_t i = 0; i < aLength; i++)
-			{
-				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
-				if (!aItem || !PyDict_Check(aItem))
-					continue;
-				VxSceneDef aDef;
-				aDef.mRow = VxDictInt(aItem, "row", -1);
-				aDef.mCol = VxDictInt(aItem, "col", -1);
-				aDef.mIsPlant = true;
-				const char* aTypeName = nullptr;
-				PyObject* aTypeObj = PyDict_GetItemString(aItem, "type"); // borrowed
-				if (aTypeObj && PyUnicode_Check(aTypeObj))
-					aTypeName = PyUnicode_AsUTF8(aTypeObj);
-				if (aTypeName && strcmp(aTypeName, "zombie") == 0)
-					aDef.mIsPlant = false;
-				if (aDef.mIsPlant)
-				{
-					int aSeed = -1;
-					if (!VxDictName(aItem, "seed", gSeedNames, sizeof(gSeedNames) / sizeof(gSeedNames[0]), aSeed))
-						continue;
-					aDef.mSeed = aSeed;
-				}
-				else
-				{
-					int aZombie = -1;
-					if (!VxDictName(aItem, "zombie", gZombieNames, sizeof(gZombieNames) / sizeof(gZombieNames[0]), aZombie))
-						continue;
-					aDef.mZombie = aZombie;
-				}
-				theOut.push_back(aDef);
-			}
-			aOk = true;
-		}
-		Py_XDECREF(aResult);
-		PyGILState_Release(aGILState);
-		return aOk;
+		// vx: unconfigured levels are normal (the old get_scene returned [])
+		VxBuildScene(aInfo, theSeed, theOut);
+		return true;
 	}
 
 	bool GetSlotSetup(int theLevel, int& theSun, std::vector<int>& theSlots)
 	{
-		if (!gPythonReady)
+		if (gDataDir.empty())
+			VxResolveDirs();
+		theSlots.clear();
+		VxLevelInfo aInfo;
+		if (!VxLoadLevelInfo(theLevel, gDataDir / "adventure_info.csv", aInfo))
 			return false;
-		PyGILState_STATE aGILState = PyGILState_Ensure();
-
-		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_slot", theLevel, 0);
-		PyErr_Clear();
-		if (aResult && PyDict_Check(aResult))
-		{
-			theSun = VxDictInt(aResult, "sun", -1);
-			PyObject* aSlotsObj = PyDict_GetItemString(aResult, "slots"); // borrowed
-			if (aSlotsObj && PyList_Check(aSlotsObj))
-			{
-				Py_ssize_t aLength = PyList_Size(aSlotsObj);
-				for (Py_ssize_t i = 0; i < aLength; i++)
-				{
-					PyObject* aItem = PyList_GetItem(aSlotsObj, i); // borrowed
-					if (aItem && PyLong_Check(aItem))
-						theSlots.push_back(static_cast<int>(PyLong_AsLong(aItem)));
-				}
-			}
-			aOk = true;
-		}
-		Py_XDECREF(aResult);
-		PyGILState_Release(aGILState);
-		return aOk;
+		if (!aInfo.mValid)
+			return false;
+		return VxParseSlot(aInfo, theSun, theSlots);
 	}
 
 	bool GetRandomSeeds(int theLevel, std::vector<int>& theOut)
 	{
-		if (!gPythonReady)
+		if (gDataDir.empty())
+			VxResolveDirs();
+		theOut.clear();
+		VxLevelInfo aInfo;
+		if (!VxLoadLevelInfo(theLevel, gDataDir / "adventure_info.csv", aInfo))
 			return false;
-		PyGILState_STATE aGILState = PyGILState_Ensure();
-
-		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_random_seeds", theLevel, 0);
-		PyErr_Clear();
-		if (aResult && PyList_Check(aResult))
-		{
-			Py_ssize_t aLength = PyList_Size(aResult);
-			for (Py_ssize_t i = 0; i < aLength; i++)
-			{
-				PyObject* aItem = PyList_GetItem(aResult, i); // borrowed
-				if (aItem && PyLong_Check(aItem))
-					theOut.push_back(static_cast<int>(PyLong_AsLong(aItem)));
-			}
-			aOk = true;
-		}
-		Py_XDECREF(aResult);
-		PyGILState_Release(aGILState);
-		return aOk;
+		if (!aInfo.mValid)
+			return false;
+		VxParseRandomSeeds(aInfo, theOut);
+		return true;
 	}
 
 	bool GetLevelStatistics(int theLevel, int& theAvgMs, int& theMaxMs, int& theSun)
 	{
-		theAvgMs = -1;
-		theMaxMs = -1;
-		theSun = 0;
-		if (!gPythonReady)
+		if (gDataDir.empty())
+			VxResolveDirs();
+		VxLevelInfo aInfo;
+		if (!VxLoadLevelInfo(theLevel, gDataDir / "adventure_info.csv", aInfo))
 			return false;
-		PyGILState_STATE aGILState = PyGILState_Ensure();
-
-		bool aOk = false;
-		PyObject* aResult = VxCallLevelFunc("get_statistics", theLevel, 0);
-		PyErr_Clear();
-		if (aResult && PyList_Check(aResult) && PyList_Size(aResult) >= 3)
-		{
-			PyObject* aAvg = PyList_GetItem(aResult, 0); // borrowed
-			PyObject* aMax = PyList_GetItem(aResult, 1); // borrowed
-			PyObject* aSun = PyList_GetItem(aResult, 2); // borrowed
-			if (aAvg && aMax && aSun && PyLong_Check(aAvg) && PyLong_Check(aMax) && PyLong_Check(aSun))
-			{
-				theAvgMs = static_cast<int>(PyLong_AsLong(aAvg));
-				theMaxMs = static_cast<int>(PyLong_AsLong(aMax));
-				theSun = static_cast<int>(PyLong_AsLong(aSun));
-				aOk = true;
-			}
-		}
-		Py_XDECREF(aResult);
-		PyGILState_Release(aGILState);
-		return aOk;
+		if (!aInfo.mValid)
+			return false;
+		return VxParseStatistics(aInfo, theAvgMs, theMaxMs, theSun);
 	}
 
 	bool GetScriptError(std::string& theText, int& theKind)
@@ -999,10 +741,12 @@ namespace VX
 					{
 						if (aZombie->mDead)
 							continue;
-						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:i,s:i,s:i,s:i,s:i,s:i,s:i}", // vx: last s:i fills the "id" key
+						// vx: zombie snapshot exposes mVelX as "v"
+						PyObject* aDict = Py_BuildValue("{s:i,s:i,s:d,s:d,s:i,s:i,s:i,s:i,s:i,s:i,s:i}", // vx: last s:i fills the "id" key, s:d fills "v"
 							"row", aZombie->mRow,
 							"col", theBoard->PixelToGridXKeepOnBoard(static_cast<int>(aZombie->mPosX), static_cast<int>(aZombie->mPosY)),
 							"x", aZombie->mPosX,
+							"v", aZombie->mVelX,
 							"hp", aZombie->mBodyHealth,
 							"helm", aZombie->mHelmHealth,
 							"hp_max", aZombie->mBodyMaxHealth,
@@ -1214,14 +958,7 @@ namespace VX
 	void InterruptScript()
 	{
 		VxRequestScriptStop();
-		unsigned long aThreadId = gScriptThreadId.load();
-		if (aThreadId)
-		{
-			// vx: PyThreadState_SetAsyncExc is a C API call and requires the GIL
-			PyGILState_STATE aGilState = PyGILState_Ensure();
-			PyThreadState_SetAsyncExc(aThreadId, PyExc_KeyboardInterrupt);
-			PyGILState_Release(aGilState);
-		}
+		VxInterruptThread();
 	}
 
 	std::wstring GetScriptsDir()

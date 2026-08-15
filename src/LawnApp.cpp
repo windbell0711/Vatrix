@@ -467,6 +467,9 @@ void LawnApp::PreNewGame(GameMode theGameMode, bool theLookForSavedGame)
 void LawnApp::MakeNewBoard()
 {
 	KillBoard();
+	// vx: stop the player script worker before the new board's InitLevel touches Python
+	// (the old board is destroyed lazily; waiting here avoids a worker racing level init)
+	VX::StopScripts();
 	mBoard = new Board(this);
 	mBoard->Resize(0, 0, mWidth, mHeight);
 	mWidgetManager->AddWidget(mBoard);

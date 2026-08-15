@@ -9,6 +9,7 @@ class Zombie:
     row: int
     col: int
     x: float
+    v: float  # mVelX
     hp: int
     helm: int
     hp_max: int
@@ -89,7 +90,7 @@ class Vase:
 
 def get_zombies():
     """Return the current zombies as a list of Zombie dataclasses (row/col 1-based)."""
-    return [Zombie(row=z["row"] + 1, col=z["col"] + 1, x=z["x"], hp=z["hp"], helm=z["helm"],
+    return [Zombie(row=z["row"] + 1, col=z["col"] + 1, x=z["x"], v=z["v"], hp=z["hp"], helm=z["helm"],
                    hp_max=z["hp_max"], helm_max=z["helm_max"], slow=z["slow"],
                    typ=z["typ"] + 100, id=z["id"]) for z in _vb.get_zombies()]  # 0-based -> consts.zt
 
