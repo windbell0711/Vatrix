@@ -11,6 +11,8 @@
 #include "VxEditor.h"
 #include "VxScript.h"
 #include "SexyAppFramework/graphics/GLInterface.h"
+#include "SexyAppFramework/SexyAppBase.h"
+#include "SexyAppFramework/widget/WidgetManager.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -33,11 +35,11 @@ namespace
 	VX::VxEditorAction gPendingAction = VX::VxEditorAction::None;
 	int gEditorLevel = 0;
 	Uint32 gLastSaveTick = 0;
+	bool gEditorExternal = false; // vx: editor mode (built-in/external), persisted under userdata/
 	// vx: persistent output panel below the editor: streamed script prints + last error
 	std::string gVxOutputText;
 	std::string gVxErrorText;
 	bool gVxErrorCompile = false;
-	bool gVxPanelOpen = true;
 	std::uintmax_t gVxOutputSize = 0;
 	bool gVxOutputScrollToBottom = false;
 
@@ -76,6 +78,9 @@ namespace
 	{
 		if (!gEditorOpen)
 			return true;
+		// vx: external mode never writes the script file; the outside editor owns it
+		if (gEditorExternal)
+			return true;
 		std::error_code anEc;
 		auto aDiskMtime = std::filesystem::last_write_time(gScriptPath, anEc);
 		if (!theForce && gBufferDirty && !anEc && aDiskMtime != gFileMtime)
@@ -100,6 +105,36 @@ namespace
 		Uint32 aFlags = SDL_GetWindowFlags(gGameWindow);
 		return (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
 	}
+	// vx: editor mode preference lives in userdata/ next to the saves; read on every editor open
+	std::filesystem::path VxEditorModePrefPath()
+	{
+		return std::filesystem::path(Sexy::GetAppDataPath("userdata")) / "vx_editor_external.txt";
+	}
+
+	void VxSaveEditorModePref()
+	{
+		std::error_code anEc;
+		std::filesystem::create_directories(VxEditorModePrefPath().parent_path(), anEc);
+		std::ofstream aStream(VxEditorModePrefPath(), std::ios::binary | std::ios::trunc);
+		aStream.put(gEditorExternal ? '1' : '0');
+	}
+
+	void VxLoadEditorModePref()
+	{
+		std::ifstream aStream(VxEditorModePrefPath(), std::ios::binary);
+		char aChar = 0;
+		if (aStream >> aChar)
+			gEditorExternal = (aChar == '1');
+	}
+
+	// vx: flip built-in/external; switching back to built-in reloads the file so external edits show up
+	void VxToggleEditorMode()
+	{
+		gEditorExternal = !gEditorExternal;
+		VxSaveEditorModePref();
+		if (!gEditorExternal)
+			VxLoadFile();
+	}
 
 	void VxSetEditorWindowSize(bool theEditorOpen)
 	{
@@ -120,6 +155,26 @@ namespace
 			return;
 		}
 		SDL_SetWindowSize(gGameWindow, theEditorOpen ? kVxEditorWidth : 800, 600);
+		// vx: re-fire a resize event so the game view re-docks even if the OS drops
+		// the WM_SIZE event from the programmatic resize; manual window stretching
+		// otherwise leaves the letterbox stale until the window is nudged 1px
+		{
+			SDL_Event aResize{};
+			aResize.type = SDL_WINDOWEVENT;
+			aResize.window.event = SDL_WINDOWEVENT_RESIZED;
+			aResize.window.data1 = theEditorOpen ? kVxEditorWidth : 800;
+			aResize.window.data2 = 600;
+			SDL_PushEvent(&aResize);
+		}
+		// vx: apply the docked/undocked viewport synchronously; relying on the async SDL resize
+		// event leaves a stale letterbox when the window was manually stretched first
+		if (Sexy::gSexyAppBase)
+		{
+			Sexy::gSexyAppBase->mGLInterface->UpdateViewport();
+			Sexy::gSexyAppBase->mWidgetManager->Resize(Sexy::gSexyAppBase->mScreenBounds,
+				Sexy::gSexyAppBase->mGLInterface->mPresentationRect);
+			Sexy::gSexyAppBase->mWidgetManager->MarkAllDirty();
+		}
 	}
 
 	// vx: Python language definition for ImGuiColorTextEdit (upstream has no Python preset)
@@ -141,15 +196,15 @@ namespace
 				"bool", "open", "__file__", "__name__", "time" })
 		{
 			TextEditor::Identifier anId;
-			anId.mDeclaration = "Python builtin";
+			// vx: no declaration text: no hover tooltips anywhere, highlighting is unaffected
 			aDef.mIdentifiers.emplace(aName, anId);
 		}
 		// vx: Vatrix script commands get a dedicated yellow highlight (PreprocIdentifier slot)
 		for (const char* aName : { "vb", "brk", "slp", "plt", "rmv", "get_zombies", "get_plants",
-				"get_cards", "get_vases" })
+				"get_cards", "get_vases", "slp_until", "get_time" })
 		{
 			TextEditor::Identifier anId;
-			anId.mDeclaration = "Vatrix command";
+			// vx: no declaration text: hover tooltips stay silent, the yellow highlight is unaffected
 			aDef.mPreprocIdentifiers.emplace(aName, anId);
 		}
 		aDef.mTokenRegexStrings = {
@@ -230,9 +285,8 @@ namespace
 	void VxBuildEditorUI()
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		// vx: autosave dirty buffers every 2s (the manual Save button is gone);
-		// a locked Submit run keeps the submitted code frozen on disk
-		if (gBufferDirty && !VX::IsRunLocked() && SDL_GetTicks() - gLastSaveTick > 2000)
+		// vx: built-in mode autosaves dirty buffers every 2s; external mode never writes the script file
+		if (!gEditorExternal && gBufferDirty && !VX::IsRunLocked() && SDL_GetTicks() - gLastSaveTick > 2000)
 			VxSaveBuffer(false);
 
 		// vx: the game view is the 4:3 letterbox docked to the left; the panel fills the rest
@@ -241,29 +295,29 @@ namespace
 		if (aEditorWidth < 100.0f)
 			aEditorWidth = 100.0f;
 		const float kVxOutputHeight = 220.0f;
-		float aOutputHeight = gVxPanelOpen ? kVxOutputHeight : 0.0f;
 		ImVec2 aPanelOrigin = ImVec2(io.DisplaySize.x - aEditorWidth, 0.0f);
-		ImGui::SetNextWindowPos(aPanelOrigin);
-		ImGui::SetNextWindowSize(ImVec2(aEditorWidth, io.DisplaySize.y - aOutputHeight));
 		ImGuiWindowFlags aFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
 			| ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus;
-		ImGui::Begin("VxEditor", nullptr, aFlags);
 
-		// vx: Run lives on the bottom-left script bar; Save is replaced by autosave
-		if (ImGui::Button("Close"))
-			gPendingAction = VX::VxEditorAction::Close;
-		ImGui::SameLine();
-		// vx: the persistent output panel toggles open/closed from here
-		if (ImGui::Button(gVxPanelOpen ? "Collapse Output" : "Expand Output"))
-			gVxPanelOpen = !gVxPanelOpen;
-		ImGui::Separator();
+		// vx: built-in mode shows the code editor; external mode shows only the output panel
+		if (!gEditorExternal)
+		{
+			ImGui::SetNextWindowPos(aPanelOrigin);
+			ImGui::SetNextWindowSize(ImVec2(aEditorWidth, io.DisplaySize.y - kVxOutputHeight));
+			ImGui::Begin("VxEditor", nullptr, aFlags);
+			if (ImGui::Button("Editor: Built-in"))
+				VxToggleEditorMode();
+			ImGui::SameLine();
+			if (ImGui::Button("Close"))
+				gPendingAction = VX::VxEditorAction::Close;
+			ImGui::Separator();
+			gTextEditor.Render("VxPythonEditor");
+			if (gTextEditor.IsTextChanged())
+				gBufferDirty = true;
+			ImGui::End();
+		}
 
-		gTextEditor.Render("VxPythonEditor");
-		if (gTextEditor.IsTextChanged())
-			gBufferDirty = true;
-		ImGui::End();
-
-		// vx: stream the player script's print output into the panel (line-buffered file)
+		// vx: stream the player script print output into the panel (line-buffered file)
 		{
 			std::error_code anEc;
 			std::uintmax_t aSize = std::filesystem::file_size(VxOutputPath(), anEc);
@@ -282,12 +336,22 @@ namespace
 			}
 		}
 
-		// vx: persistent output panel below the editor: prints + last error, auto-scrolls
-		if (gVxPanelOpen)
+		// vx: the output panel always shows; in external mode it fills the whole sidebar
 		{
-			ImGui::SetNextWindowPos(ImVec2(aPanelOrigin.x, io.DisplaySize.y - kVxOutputHeight));
-			ImGui::SetNextWindowSize(ImVec2(aEditorWidth, kVxOutputHeight));
+			float aPanelY = gEditorExternal ? 0.0f : io.DisplaySize.y - kVxOutputHeight;
+			float aPanelHeight = gEditorExternal ? io.DisplaySize.y : kVxOutputHeight;
+			ImGui::SetNextWindowPos(ImVec2(aPanelOrigin.x, aPanelY));
+			ImGui::SetNextWindowSize(ImVec2(aEditorWidth, aPanelHeight));
 			ImGui::Begin("VxScriptOutput", nullptr, aFlags);
+			if (gEditorExternal)
+			{
+				if (ImGui::Button("Editor: External"))
+					VxToggleEditorMode();
+				ImGui::SameLine();
+				if (ImGui::Button("Close"))
+					gPendingAction = VX::VxEditorAction::Close;
+				ImGui::Separator();
+			}
 			if (gVxErrorText.empty())
 				ImGui::TextDisabled("Output");
 			else
@@ -334,6 +398,7 @@ namespace
 			ImGui::EndPopup();
 		}
 	}
+
 
 	int VxEditorEventWatch(void*, SDL_Event* theEvent)
 	{
@@ -394,8 +459,9 @@ namespace VX
 			return;
 		VxSetupPythonLanguage();
 		VxLoadFile();
-		VxSetEditorWindowSize(true);
+		VxLoadEditorModePref();
 		gEditorOpen = true;
+		VxSetEditorWindowSize(true);
 	}
 
 	void VxEditorOpenScript(int theLevel, void* theWindow)

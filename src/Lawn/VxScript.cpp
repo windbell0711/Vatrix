@@ -369,6 +369,29 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
+	// vx: sleep until the level game clock reaches the given absolute time (same wait as VbSlp)
+	PyObject* VbSlpUntil(PyObject*, PyObject* theArgs)
+	{
+		double aTargetTime = 0.0;
+		if (!PyArg_ParseTuple(theArgs, "d", &aTargetTime))
+			return nullptr;
+		{
+			std::unique_lock<std::mutex> aLock(gSleepMutex);
+			while (!gSleepStop && gVxGameTime < aTargetTime)
+			{
+				Py_BEGIN_ALLOW_THREADS
+				gSleepCv.wait_for(aLock, std::chrono::milliseconds(500));
+				Py_END_ALLOW_THREADS
+			}
+			if (gSleepStop)
+			{
+				PyErr_SetString(PyExc_KeyboardInterrupt, "script stopped");
+				return nullptr;
+			}
+		}
+		Py_RETURN_NONE;
+	}
+
 	PyObject* VbPlt(PyObject*, PyObject* theArgs)
 	{
 		int aRow = 0;
@@ -499,6 +522,7 @@ except BaseException:
 		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
 		{"brk_vase", VbBrkVase, METH_VARARGS, "Queue a break of the vase with the given id."},
 		{"slp", VbSlp, METH_VARARGS, "Sleep for delay seconds; interruptible by StopScripts."},
+		{"slp_until", VbSlpUntil, METH_VARARGS, "Sleep until the level game time reaches the given value; interruptible by StopScripts."},
 		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
 		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
 		{"plc", VbPlc, METH_VARARGS, "Queue a plant from a dropped card (coin id) at (row, col)."},

@@ -555,6 +555,9 @@ void LawnApp::NewGame()
 void LawnApp::ShowGameSelector()
 {
 	KillBoard();
+	// vx: the main menu never hosts the code editor; close it here because the
+	// board dtor keeps it open (for a pending level restart) and consumes the flag
+	VX::VxEditorClose();
 	//UpdateRegisterInfo();
 	if (mGameSelector)
 	{
@@ -1620,6 +1623,8 @@ void LawnApp::CheckForGameEnd()
 	if (IsAdventureMode())
 	{
 		int aLevel = mBoard->mLevel;
+		// vx: keep the editor sidebar state (open/closed) across the level-end restart
+		mVxPendingEditorOpen = VX::VxEditorIsOpen();
 		KillBoard();
 
 		// vx: adventure 5-10 ends with the custom paper note; 6-1 awards the almanac

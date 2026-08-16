@@ -1086,7 +1086,7 @@ void TextEditor::Render()
 			if (!id.empty())
 			{
 				auto it = mLanguageDefinition.mIdentifiers.find(id);
-				if (it != mLanguageDefinition.mIdentifiers.end())
+				if (it != mLanguageDefinition.mIdentifiers.end() && !it->second.mDeclaration.empty())
 				{
 					ImGui::BeginTooltip();
 					ImGui::TextUnformatted(it->second.mDeclaration.c_str());
@@ -1095,7 +1095,7 @@ void TextEditor::Render()
 				else
 				{
 					auto pi = mLanguageDefinition.mPreprocIdentifiers.find(id);
-					if (pi != mLanguageDefinition.mPreprocIdentifiers.end())
+					if (pi != mLanguageDefinition.mPreprocIdentifiers.end() && !pi->second.mDeclaration.empty())
 					{
 						ImGui::BeginTooltip();
 						ImGui::TextUnformatted(pi->second.mDeclaration.c_str());

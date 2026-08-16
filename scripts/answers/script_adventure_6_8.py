@@ -1,6 +1,10 @@
-# This script is partly written by Lilold.
+# Submit at 2026-08-16 09:27:16: 33715, 45220, 125
 from vb import *
+from vb.coroutine import Scheduler
+import asyncio
 import math
+
+# ===== utils =====
 
 def ctox(c):
 	return 80*c-40
@@ -63,31 +67,43 @@ def plc_card(t, r, c):
 			card.plc(r, c)
 			break
 
-def main():
-	zs = list(filter(lambda z: z.row == 3, get_zombies()))
-	mv = maxv()
-	if not mv:
-		print('end')
-		return
-	if not zs:
-		mv.brk()
-		return
-	time = sum(predict_time(vel_list1, z.v, z.x-180) for z in zs) / len(zs)
-	if time <= predict_time(vel_list1, (0.23+0.37)/2, ctox(mv.col)-180):
-		mv.brk()
-	return
+
+# ===== subtasks =====
+
+def row2():
+	rmv(2, 2)
+	brk(2, 6)
+	yield 3
+	brk(2, 4)
+	plc_card(pt.squ, 2, 4)
+
+def row3():
+	while True:
+		zs = list(filter(lambda z: z.row == 3, get_zombies()))
+		mv = maxv()
+		if not mv:
+			return
+		if not zs:
+			mv.brk()
+			yield 2
+			continue
+		_ = sum(predict_time(vel_list1, z.v, z.x-180) for z in zs) / len(zs)
+		if _ <= predict_time(vel_list1, (0.23+0.37)/2, ctox(mv.col)-180):
+			mv.brk()
+		yield 0.5
+
+def row4():
+	rmv(4, 2)
+	brk(4, 4)
+	plc_card(pt.min, 4, 4)
+	yield 10
+	brk(4, 5)
+	brk(4, 6)
+
 
 if __name__ == "__main__":
-	for v in get_vases():
-		if v.row == 2 or v.row == 4:
-			v.brk()
-
-	slp(3)
-	plc_card(pt.squ, 2, 4)
-	plt(4, 9)
-	
-	rmv(2, 2); rmv(4, 2)
-
-	while True:
-		main()
-		slp(1)
+	s = Scheduler()
+	s.add_task(row2())
+	s.add_task(row3())
+	s.add_task(row4())
+	s.mainloop()
