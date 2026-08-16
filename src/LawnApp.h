@@ -306,6 +306,7 @@ public:
 	/*inline*/ bool					HasFinishedAdventure();
 	/*inline*/ bool					IsFirstTimeAdventureMode();
 	/*inline*/ bool					CanSpawnYetis();
+	/*inline*/ bool					IsVxScriptLevel();			// vx: world 6 levels that show the script console
 	void							CrazyDaveEnter();
 	void							UpdateCrazyDave();
 	void							CrazyDaveTalkIndex(int theMessageIndex);

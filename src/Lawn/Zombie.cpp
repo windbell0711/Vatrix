@@ -7230,7 +7230,12 @@ bool Zombie::TrySpawnLevelAward()
     CoinType aCoinType;
     // vx: world 6: 6-1 and trial/verification runs keep the instant clear;
     // normal 6-2..6-9 clears drop a money bag, 6-10 the silver sunflower
-    if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL)
+    if (mApp->IsAdventureMode() && (mBoard->mLevel == 55 || mBoard->mLevel == 60))
+    {
+        // vx: 6-5/6-10 are normal levels ending with the paper note
+        aCoinType = CoinType::COIN_NOTE;
+    }
+    else if (mApp->IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL)
     {
         bool aInstantClear = mBoard->mLevel == 51 || mApp->mVxVerifying || VX::IsTrialRun();
         if (aInstantClear)
@@ -9405,6 +9410,12 @@ bool Zombie::HasShadow()
         return false;
 
     return mApp->mGameMode != GameMode::GAMEMODE_CHALLENGE_INVISIGHOUL || mFromWave == Zombie::ZOMBIE_WAVE_UI;
+}
+
+bool Zombie::IsInvisible()
+{
+    // vx: 6-5 zombies are always invisible; attacks and mowers still hit them
+    return mApp->IsAdventureMode() && mBoard->mLevel == 55;
 }
 
 bool Zombie::SetupDrawZombieWon(Graphics* g)

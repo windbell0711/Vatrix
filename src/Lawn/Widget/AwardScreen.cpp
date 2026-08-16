@@ -108,7 +108,7 @@ AwardScreen::AwardScreen(LawnApp* theApp, AwardType theAwardType, bool theShowin
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNote");
 		mLoadedResourceNames.push_back("DelayLoad_ZombieNote1");
 		// vx: custom note content image (falls back to the built-in placeholder if missing)
-		mNoteCustomImage = mApp->GetImage(mNoteId == 2 ? "Properties/VX_HINT_2.png" : "Properties/VX_HINT_1.png");
+		mNoteCustomImage = mApp->GetImage("Properties/VX_HINT_" + std::to_string(mNoteId) + ".png");
 	}
 	else if (mAwardType == AWARD_VX_STATS)
 	{

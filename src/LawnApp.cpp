@@ -1617,7 +1617,7 @@ void LawnApp::CheckForGameEnd()
 	}
 
 	// vx: world-6 trial runs (Run button) never advance the save or grant rewards
-	bool aVxTrialRun = IsAdventureMode() && mBoard->mLevel >= 51 && mBoard->mLevel <= FINAL_LEVEL && VX::IsTrialRun();
+	bool aVxTrialRun = IsVxScriptLevel() && VX::IsTrialRun();
 	bool aUnlockedNewChallenge = aVxTrialRun ? false : UpdatePlayerProfileForFinishingLevel();
 
 	if (IsAdventureMode())
@@ -1640,6 +1640,11 @@ void LawnApp::CheckForGameEnd()
 		else if (aLevel == 51)
 		{
 			ShowAwardScreen(AwardType::AWARD_ALMANAC, false);
+		}
+		else if (aLevel == 55)
+		{
+			// vx: 6-5 ends with the custom paper note
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, 3);
 		}
 		else if (aVxSubmitWin && aLevel >= 52 && aLevel <= 59 && aLevel != 55)
 		{
@@ -1669,14 +1674,8 @@ void LawnApp::CheckForGameEnd()
 		}
 		else if (aLevel == FINAL_LEVEL)
 		{
-			if (mPlayerInfo->mFinishedAdventure == 1)
-			{
-				ShowAwardScreen(AwardType::AWARD_FORLEVEL, true);
-			}
-			else
-			{
-				ShowAwardScreen(AwardType::AWARD_CREDITS_ZOMBIENOTE, true);
-			}
+			// vx: 6-10 ends with the custom paper note
+			ShowAwardScreen(AwardType::AWARD_FORLEVEL, false, 4);
 		}
 		else if (aLevel == 9 || aLevel == 19 || aLevel == 29 || aLevel == 39 || aLevel == 49 || aLevel == 59)
 		{
@@ -2430,6 +2429,12 @@ bool LawnApp::IsScaryPotterLevel()
 
 	// vx: world 6 (6-1..6-4, 6-6..6-9) is Scary Potter
 	return IsAdventureMode() && mBoard && (mBoard->mLevel == 35 || (mBoard->mLevel >= 51 && mBoard->mLevel <= 59 && mBoard->mLevel != 55));
+}
+
+bool LawnApp::IsVxScriptLevel()
+{
+	// vx: world 6 script levels (6-1..6-4, 6-6..6-9) show the console; 6-5/6-10 are normal
+	return IsAdventureMode() && mBoard && mBoard->mLevel >= 51 && mBoard->mLevel <= 59 && mBoard->mLevel != 55;
 }
 
 bool LawnApp::IsStormyNightLevel()

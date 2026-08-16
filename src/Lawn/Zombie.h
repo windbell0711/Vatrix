@@ -255,6 +255,7 @@ public:
     void                            UpdateDeath();
     void                            DrawShadow(Graphics* g);
     bool                            HasShadow();
+    bool                            IsInvisible(); // vx: 6-5 permanent zombie invisibility
     Reanimation*                    LoadReanim(ReanimationType theReanimationType);
     /*inline*/ int                  TakeFlyingDamage(int theDamage, unsigned int theDamageFlags);
     int                             TakeShieldDamage(int theDamage, unsigned int theDamageFlags);

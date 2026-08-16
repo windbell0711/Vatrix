@@ -803,9 +803,9 @@ void Board::PickZombieWaves()
 		{
 			aZombiePoints *= 3;
 		}
-		else if (mLevel == 55) // vx: world 6-5 4x zombie points
+		else if (mLevel == 55) // vx: world 6-5 5x zombie points
 		{
-			aZombiePoints *= 4;
+			aZombiePoints *= 5;
 		}
 		else if (mApp->IsShovelLevel() || mApp->IsBungeeBlitzLevel() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_PORTAL_COMBAT || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_INVISIGHOUL)
 		{
@@ -1829,6 +1829,12 @@ bool Board::ChooseSeedsOnCurrentLevel()
 // GOTY @Patoke: 0x40E6A0
 void Board::StartLevel()
 {
+	// vx: 6-5/6-10 are normal levels: no script console, and the editor closes on entry
+	if (!mApp->IsVxScriptLevel())
+	{
+		mApp->mVxPendingEditorOpen = false;
+		VX::VxEditorClose();
+	}
 	// vx: run player scripts once the level actually starts (after the intro / Crazy Dave dialog)
 	if (VX::ConsumePendingScriptRun())
 	{
@@ -1851,7 +1857,7 @@ void Board::StartLevel()
 			mVxResCeImage = mApp->GetImage("Properties/VX_RES_CE.png");
 		}
 	}
-	else if (!(mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL))
+	else if (!mApp->IsVxScriptLevel())
 	{
 		// vx: world 6 waits for the player to press Run/Submit; other levels keep auto-running
 		VX::StartScripts(mLevel, static_cast<int>(mApp->mGameMode));
@@ -1913,8 +1919,8 @@ void Board::StartLevel()
 		mApp->IsFinalBossLevel())
 		return;
 
-	// vx: script control bar for adventure 6-1..6-10 (New/Run/Reset/Submit)
-	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
+	// vx: script control bar for the world-6 script levels (6-1..6-4, 6-6..6-9)
+	if (mApp->IsVxScriptLevel())
 	{
 		const char* aLabels[4] = { "Open", "Reset", "Run", "Submit" };
 		// vx: ids keep their action semantics (101=Run, 102=Reset); only the on-screen order changes
@@ -5493,7 +5499,7 @@ void Board::ZombiesWon(Zombie* theZombie)
 
 	// vx: world 6: no death cinematic, no loot; pause and show "You lose"
 	// so the player can inspect the board and retry
-	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL)
+	if (mApp->IsVxScriptLevel())
 	{
 		// vx: Submit verification: a lost test point records WA; 5 done with any WA = fail
 		if (mApp->mVxVerifying)
@@ -6239,7 +6245,7 @@ void Board::Update()
 	case VX::VxEditorAction::None:
 		break;
 	}
-	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL && VX::IsScriptRunning()
+	if (mApp->IsVxScriptLevel() && VX::IsScriptRunning()
 		&& mGameTime - mScriptStartGameTime > 60.0f)
 	{
 		VX::InterruptScript();
@@ -6247,7 +6253,7 @@ void Board::Update()
 	}
 	// vx: surface player-script errors (CE/RE) below the editor; a Submit test point that
 	// errors ends as RE/CE (3/4) and freezes, waiting for the player to press Reset
-	if (mApp->IsAdventureMode() && mLevel >= 51 && mLevel <= FINAL_LEVEL && VX::IsScriptDone())
+	if (mApp->IsVxScriptLevel() && VX::IsScriptDone())
 	{
 		std::string anError;
 		int aErrorKind = 0;
@@ -6680,6 +6686,9 @@ void Board::DrawGameObjects(Graphics* g)
 		for (Zombie* aZombie : mZombies)
 		{
 			if (aZombie->mDead)
+				continue;
+			// vx: 6-5 zombies are always invisible
+			if (aZombie->IsInvisible())
 				continue;
 			if (aZombie->mZombieType == ZombieType::ZOMBIE_BOSS)
 			{
@@ -9429,7 +9438,7 @@ int Board::LeftFogColumn()
 	if (mLevel == 31)													return 6;
 	if (mLevel >= 32 && mLevel <= 36)									return 5;
 	if (mLevel >= 37 && mLevel <= 40)									return 4;
-	if (mLevel == 55)													return 0; // vx
+	if (mLevel == 55)													return 5;  // vx
 	PVZP_ASSERT(false);
 
 	unreachable();
