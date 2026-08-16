@@ -2475,7 +2475,8 @@ bool LawnApp::IsFinalBossLevel()
 	if (mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS)
 		return true;
 
-	return IsAdventureMode() && mBoard->mLevel == 50;
+	// vx: 6-10 is also a boss battle
+	return IsAdventureMode() && (mBoard->mLevel == 50 || mBoard->mLevel == FINAL_LEVEL);
 }
 
 bool LawnApp::IsChallengeWithoutSeedBank()

@@ -426,7 +426,7 @@ void CutScene::PreloadResources()
 	{
 		ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_HAMMER, true);
 	}
-	if (mApp->IsStormyNightLevel() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_RAINING_SEEDS)
+	if (mBoard->StageHasRain())
 	{
 		ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_RAIN_CIRCLE, true);
 		ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_RAIN_SPLASH, true);
@@ -762,13 +762,18 @@ void CutScene::StartLevelIntro()
 		isRestart = true;
 	}
 	
-	// vx: handle dave dialogue
-	if (aLevel == 50 && mApp->IsAdventureMode()) {
+	// vx: handle crazy dave dialogue
+	if (aLevel == 50 && mApp->IsAdventureMode() && !isRestart)
+	{
 		mCrazyDaveDialogStart = 9000;
 	}
 	else if (aLevel == 51 && mApp->IsAdventureMode() && !isRestart)
 	{
 		mCrazyDaveDialogStart = 9100;
+	}
+	else if (aLevel == 60 && mApp->IsAdventureMode() && !isRestart)
+	{
+		mCrazyDaveDialogStart = 9950;
 	}
 
 	else if (mApp->IsFirstTimeAdventureMode() && aLevel == 11)
@@ -850,11 +855,6 @@ void CutScene::StartLevelIntro()
 	else if (mApp->mGameMode == GameMode::GAMEMODE_SCARY_POTTER_1 && !mApp->HasBeatenChallenge(GameMode::GAMEMODE_SCARY_POTTER_1))
 	{
 		mCrazyDaveDialogStart = 3000;
-	}
-	else if (mApp->IsFinalBossLevel() && mApp->IsAdventureMode() && !isRestart)
-	{
-		// vx: adventure 5-10 uses the custom boss dialogue (Properties/VatrixStrings.txt)
-		mCrazyDaveDialogStart = 9000;
 	}
 	else if (mApp->mGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM)
 	{

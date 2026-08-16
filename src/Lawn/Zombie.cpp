@@ -9904,11 +9904,12 @@ void Zombie::BossSpawnAttack()
     case 2:     aTrackName = "anim_spawn_3";    break;
     case 3:     aTrackName = "anim_spawn_4";    break;
     case 4:     aTrackName = "anim_spawn_5";    break;
-#ifdef DO_FIX_BUGS
+// vx: avoid crashing when summoning zombies on the last row
+// #ifdef DO_FIX_BUGS
     default:    aTrackName = "anim_spawn_5";    break;  // 泳池场景放僵尸崩溃的一种妥协的修复方式（不修改动画时）
-#else
-    default:    PVZP_ASSERT(false);                   break;
-#endif
+// #else
+//     default:    PVZP_ASSERT(false);                   break;
+// #endif
     }
     PlayZombieReanim(aTrackName, ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 12.0f);
     mApp->PlayFoley(FoleyType::FOLEY_HYDRAULIC_SHORT);

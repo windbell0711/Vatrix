@@ -14,6 +14,8 @@
 [CRAZY_DAVE_9106] So I'll now give you this engine, and hope you bring back the trophy.
 [CRAZY_DAVE_9107] Good luck.
 
+[CRAZY_DAVE_9950] Finally ...
+
 [ADVICE_6_1_START] You're now at the Vatrix console. Try Clicking 'Open'.
 [ADVICE_6_1_DESTROY_POT] Don't break the vases yourself! Click 'Reset'.
 [ADVICE_6_1_BUTTON_OPEN] Good job! Click 'Run' to inject the code into the game.

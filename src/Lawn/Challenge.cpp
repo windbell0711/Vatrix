@@ -386,9 +386,9 @@ void Challenge::InitLevel()
 		mChallengeStateCounter = 100;
 		mApp->PlayFoley(FOLEY_RAIN);
 	}
-	if (mApp->IsFinalBossLevel())
+	// vx: fixed starting belt (6-10 is a selectable-seed boss fight, not a conveyor)
+	if (mApp->IsFinalBossLevel() && mBoard->HasConveyorBeltSeedBank())
 	{
-		// vx: fixed starting belt
 		mBoard->mSeedBank->AddSeed(SEED_CABBAGEPULT);
 		mBoard->mSeedBank->AddSeed(SEED_JALAPENO);
 		mBoard->mSeedBank->AddSeed(SEED_KERNELPULT);
@@ -2171,7 +2171,7 @@ void Challenge::Update()
 		return;
 	}
 
-	if (mApp->mGameMode == GAMEMODE_CHALLENGE_RAINING_SEEDS || mApp->IsStormyNightLevel())
+	if (mBoard->StageHasRain())
 	{
 		UpdateRain();
 	}
@@ -3068,7 +3068,7 @@ void Challenge::DrawStormFlash(Graphics* g, int theTime, int theMaxAmount)
 
 void Challenge::DrawWeather(Graphics* g)
 {
-	if (mApp->IsStormyNightLevel() || mApp->mGameMode == GAMEMODE_CHALLENGE_RAINING_SEEDS)
+	if (mBoard->StageHasRain())
 		DrawRain(g);
 
 	if (mApp->IsStormyNightLevel())

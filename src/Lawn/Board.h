@@ -335,6 +335,7 @@ public:
 	/*inline*/ bool					StageHasPool();
 	/*inline*/ bool					StageHas6Rows();
 	/*inline*/ bool					StageHasFog();
+	bool							StageHasRain(); // vx: rainy stages (stormy night, raining seeds, 6-10)
 	/*inline*/ bool					StageIsDayWithoutPool();
 	/*inline*/ bool					StageIsDayWithPool();
 	bool							StageHasGraveStones();

@@ -1015,6 +1015,10 @@ void Board::PickBackground()
 		{
 			mBackground = BackgroundType::BACKGROUND_4_FOG;
 		}
+		else if (mLevel == FINAL_LEVEL) // vx: world 6-10 boss fight on the fog field
+		{
+			mBackground = BackgroundType::BACKGROUND_4_FOG;
+		}
 		else if (mApp->IsFinalBossLevel())
 		{
 			mBackground = BackgroundType::BACKGROUND_6_BOSS;
@@ -1022,10 +1026,6 @@ void Board::PickBackground()
 		else if (mLevel < FINAL_LEVEL)
 		{
 			mBackground = BackgroundType::BACKGROUND_5_ROOF;
-		}
-		else if (mLevel == FINAL_LEVEL)
-		{
-			mBackground = BackgroundType::BACKGROUND_6_BOSS;
 		}
 		else
 		{
@@ -1522,6 +1522,11 @@ void Board::InitLevel()
 	{
 		mSunMoney = 150;
 	}
+	else if (mApp->IsAdventureMode() && mLevel == 60)
+	{
+		// vx: 6-10 boss fight starts with extra sun
+		mSunMoney = 500;
+	}
 	else
 	{
 		mSunMoney = 50;
@@ -1793,7 +1798,8 @@ void Board::InitLawnMowers()
 	if (aGameMode == GameMode::GAMEMODE_CHALLENGE_BEGHOULED || aGameMode == GameMode::GAMEMODE_CHALLENGE_BEGHOULED_TWIST ||
 		aGameMode == GameMode::GAMEMODE_CHALLENGE_ZEN_GARDEN || aGameMode == GameMode::GAMEMODE_TREE_OF_WISDOM ||
 		aGameMode == GameMode::GAMEMODE_CHALLENGE_LAST_STAND || aGameMode == GameMode::GAMEMODE_CHALLENGE_ZOMBIQUARIUM ||
-		mApp->IsSquirrelLevel() || mApp->IsIZombieLevel() || (StageHasRoof() && !mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_ROOF_CLEANER]))
+		mApp->IsSquirrelLevel() || mApp->IsIZombieLevel() || mApp->IsFinalBossLevel() || // vx: boss battles get no lawn mowers
+		(StageHasRoof() && !mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_ROOF_CLEANER]))
 		return;
 
 	for (int aRow = 0; aRow < MAX_GRID_SIZE_Y; aRow++)
@@ -6848,7 +6854,7 @@ void Board::DrawGameObjects(Graphics* g)
 	{
 		AddUIRenderItem(aRenderList, aRenderItemCount, RenderObjectType::RENDER_ITEM_FOG, MakeRenderOrder(RenderLayer::RENDER_LAYER_FOG, 0, 0));
 	}
-	if (mApp->IsStormyNightLevel() || mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_RAINING_SEEDS)
+	if (StageHasRain())
 	{
 		AddUIRenderItem(aRenderList, aRenderItemCount, RenderObjectType::RENDER_ITEM_STORM, MakeRenderOrder(RenderLayer::RENDER_LAYER_FOG, 0, 3));
 	}
@@ -9285,6 +9291,9 @@ void Board::ProcessDeleteQueue()
 // GOTY @Patoke: 0x41EC10
 bool Board::HasConveyorBeltSeedBank()
 {
+	// vx: 6-10 is a selectable-seed boss fight, not a conveyor belt
+	if (mApp->IsAdventureMode() && mLevel == FINAL_LEVEL)
+		return false;
 	return
 		mApp->IsFinalBossLevel() || 
 		mApp->IsMiniBossLevel() || 
@@ -9418,7 +9427,17 @@ bool Board::StageHasZombieWalkInFromRight()
 
 bool Board::StageHasFog()
 {
+	// vx: 6-10 is a fog-field boss fight without the fog overlay
+	if (mApp->IsAdventureMode() && mLevel == FINAL_LEVEL)
+		return false;
 	return !mApp->IsStormyNightLevel() && mApp->mGameMode != GameMode::GAMEMODE_CHALLENGE_INVISIGHOUL && mBackground == BackgroundType::BACKGROUND_4_FOG;
+}
+
+bool Board::StageHasRain()
+{
+	// vx: 6-10 boss fight is rainy
+	return mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_RAINING_SEEDS || mApp->IsStormyNightLevel() ||
+		(mApp->IsAdventureMode() && mLevel == FINAL_LEVEL);
 }
 
 // GOTY @Patoke: inlined 0x41E669
