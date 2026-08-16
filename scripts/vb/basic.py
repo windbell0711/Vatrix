@@ -1,6 +1,8 @@
 import _vb
 from .name import *
 from dataclasses import dataclass
+from typing import Literal, Optional
+
 
 # ===== dataclasses =====
 

@@ -1,7 +1,6 @@
-# Submit at 2026-08-16 09:27:16: 33715, 45220, 125
+# Submit at 2026-08-16 18:43:34: 31785, 35042, 125
 from vb import *
 from vb.coroutine import Scheduler
-import asyncio
 import math
 
 # ===== utils =====
@@ -58,6 +57,13 @@ def predict_time(vel_list, gamma, distance):
     total_frames += t
     return total_frames / 100.0  # 1帧 = 0.01秒
 
+def time_normal(distance, speed: Literal['slow', 'fast'], gamma=None) -> float:
+	if speed == 'slow':
+		return min(predict_time(vel_list1, gamma or 0.23, distance), predict_time(vel_list2, gamma or 0.23, distance))
+	elif speed == 'fast':
+		return max(predict_time(vel_list1, gamma or 0.37, distance), predict_time(vel_list2, gamma or 0.37, distance))
+	raise ValueError
+
 def maxv() -> Vase | None:
 	return max(filter(lambda v: v.row == 3, get_vases()), key=lambda v: v.col, default=None)
 
@@ -79,18 +85,20 @@ def row2():
 
 def row3():
 	while True:
-		zs = list(filter(lambda z: z.row == 3, get_zombies()))
+		zm = min(filter(lambda z: z.row == 3, get_zombies()), key=lambda z: predict_time(vel_list1, z.v, z.x-150), default=None)
 		mv = maxv()
 		if not mv:
 			return
-		if not zs:
+		if not zm:
 			mv.brk()
-			yield 2
+			yield 1
 			continue
-		_ = sum(predict_time(vel_list1, z.v, z.x-180) for z in zs) / len(zs)
-		if _ <= predict_time(vel_list1, (0.23+0.37)/2, ctox(mv.col)-180):
-			mv.brk()
-		yield 0.5
+		d, c, b, a = 150, 217, ctox(mv.col), zm.x
+		least = time_normal(a-c, 'slow', zm.v) - time_normal(b-d, 'fast')
+		most  = time_normal(a-d, 'fast', zm.v) - time_normal(b-c, 'slow')
+		print(f"{least:.1f} < T < {most:.1f}")
+		yield max(0, round((least + most) / 2, 3))
+		mv.brk()
 
 def row4():
 	rmv(4, 2)
