@@ -1834,7 +1834,8 @@ void Zombie::UpdateZombieDolphinRider()
     bool aBackwards = IsWalkingBackwards();
     if (mZombiePhase == ZombiePhase::PHASE_DOLPHIN_WALKING && !aBackwards)
     {
-        if (mX > 700 && mX <= 720)
+        // vx: boss-dropped dolphins on a pool square jump in instead of walking on water
+        if ((mX > 700 && mX <= 720) || (mX <= 700 && mBoard->IsPoolSquare(mBoard->PixelToGridX(mX, mY), mRow)))
         {
             mZombiePhase = ZombiePhase::PHASE_DOLPHIN_INTO_POOL;
             PlayZombieReanim("anim_jumpinpool", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 16.0f);
@@ -1952,7 +1953,8 @@ void Zombie::UpdateZombieSnorkel()
     bool aBackwards = IsWalkingBackwards();
     if (mZombiePhase == ZombiePhase::PHASE_SNORKEL_WALKING && !aBackwards)
     {
-        if (mX > 700 && mX <= 720)
+        // vx: boss-dropped snorkels on a pool square jump in instead of walking on water
+        if ((mX > 700 && mX <= 720) || (mX <= 700 && mBoard->IsPoolSquare(mBoard->PixelToGridX(mX, mY), mRow)))
         {
             mVelX = 0.2f;
             mZombiePhase = ZombiePhase::PHASE_SNORKEL_INTO_POOL;
@@ -9904,9 +9906,8 @@ void Zombie::BossSpawnAttack()
     case 2:     aTrackName = "anim_spawn_3";    break;
     case 3:     aTrackName = "anim_spawn_4";    break;
     case 4:     aTrackName = "anim_spawn_5";    break;
-// vx: avoid crashing when summoning zombies on the last row
 // #ifdef DO_FIX_BUGS
-    default:    aTrackName = "anim_spawn_5";    break;  // 泳池场景放僵尸崩溃的一种妥协的修复方式（不修改动画时）
+    default:    aTrackName = "anim_spawn_5";    break;  // vx: 泳池场景放僵尸崩溃的一种妥协的修复方式（不修改动画时）
 // #else
 //     default:    PVZP_ASSERT(false);                   break;
 // #endif
@@ -10091,11 +10092,11 @@ void Zombie::BossHeadSpit()
     case 2:     aTrackName = "anim_head_attack_3";      break;
     case 3:     aTrackName = "anim_head_attack_4";      break;
     case 4:     aTrackName = "anim_head_attack_5";      break;
-#ifdef DO_FIX_BUGS
-    default:    aTrackName = "anim_head_attack_5";      break;  // 泳池场景吐球的一种妥协的修复方式（不修改动画时）
-#else
-    default:    PVZP_ASSERT(false);                           break;
-#endif
+// #ifdef DO_FIX_BUGS
+    default:    aTrackName = "anim_head_attack_5";      break;  // vx: 泳池场景吐球的一种妥协的修复方式（不修改动画时）
+// #else
+//     default:    PVZP_ASSERT(false);                           break;
+// #endif
     }
     PlayZombieReanim(aTrackName, ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 20, 12.0f);
     
@@ -10637,9 +10638,14 @@ void Zombie::PreloadZombieResources(ZombieType theZombieType)
         ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_BOSS_FIREBALL, true);
         ReanimatorEnsureDefinitionLoaded(ReanimationType::REANIM_BOSS_ICEBALL, true);
 
-        for (size_t i = 0; i < LENGTH(SpawnLogic::gBossZombieList); i++)
+        for (size_t i = 0; i < LENGTH(SpawnLogic::gBossZombieListV5); i++)
         {
-            const ZombieDefinition& aDef = GetZombieDefinition(SpawnLogic::gBossZombieList[i]);
+            const ZombieDefinition& aDef = GetZombieDefinition(SpawnLogic::gBossZombieListV5[i]);
+            ReanimatorEnsureDefinitionLoaded(aDef.mReanimationType, true);
+        }
+        for (size_t i = 0; i < LENGTH(SpawnLogic::gBossZombieListV6); i++)
+        {
+            const ZombieDefinition& aDef = GetZombieDefinition(SpawnLogic::gBossZombieListV6[i]);
             ReanimatorEnsureDefinitionLoaded(aDef.mReanimationType, true);
         }
     }

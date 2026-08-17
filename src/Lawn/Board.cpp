@@ -8411,6 +8411,13 @@ void Board::KeyChar(char theChar)
 		PvzpTraceAndLogLn("Hotkey: killed all zombies");
 		return;
 	}
+	// vx: Ctrl+N adds 100 sun (Ctrl+N arrives as a control code, remapped to 'n' above)
+	if (theChar == 'n')
+	{
+		AddSunMoney(100);
+		mApp->PlaySample(SOUND_BUTTONCLICK);
+		return;
+	}
 
 	// vx: boss-tuning keys work in every build (no debug mode / -cheat needed)
 	if (mApp->mGameScene == GameScenes::SCENE_PLAYING)
@@ -9001,7 +9008,8 @@ void Board::KeyChar(char theChar)
 		AddZombie(ZombieType::ZOMBIE_BALLOON, Zombie::ZOMBIE_WAVE_DEBUG);
 		return;
 	}
-	if (theChar == 'n')
+	// vx: debug key moved from 'n' to 'v' (Ctrl+N now adds sun)
+	if (theChar == 'v')
 	{
 		if (StageHasPool())
 		{

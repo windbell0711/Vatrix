@@ -12,9 +12,25 @@
 // vx: boss summon pool moved here from Zombie.cpp (Vatrix mod)
 namespace SpawnLogic
 {
+// vanilla: original 12-entry random pool from the first-commit Zombie.cpp (V1)
+const ZombieType gBossZombieListV1[12] = {
+	ZombieType::ZOMBIE_TRAFFIC_CONE,
+	ZombieType::ZOMBIE_PAIL,
+	ZombieType::ZOMBIE_FOOTBALL,
+	ZombieType::ZOMBIE_POLEVAULTER,
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
+	ZombieType::ZOMBIE_LADDER,
+	ZombieType::ZOMBIE_ZAMBONI,
+	ZombieType::ZOMBIE_CATAPULT,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_NEWSPAPER,
+	ZombieType::ZOMBIE_DOOR,
+	ZombieType::ZOMBIE_GARGANTUAR,  // vx: must stay last, dropped on row 0
+};
+
 // 原版僵王战出怪不记点数，为纯随机，但那样也太没意思了，于是加上点数机制
 // 为保证平衡，我修改了部分僵尸的点数
-const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
+const ZombieType gBossZombieListV5[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_NORMAL,          // zom: 1 -> 0  增加了普僵，作为点数耗尽时的选择
 	ZombieType::ZOMBIE_DOOR,            // dor: 4 -> 2 -
 	ZombieType::ZOMBIE_NEWSPAPER,       // pap: 2 -> 2
@@ -30,8 +46,8 @@ const ZombieType gBossZombieList[BOSS_ZOMBIE_LIST_COUNT] = {
 	ZombieType::ZOMBIE_GARGANTUAR,      // ggt: 10 -> 12 +
 };
 
-// vx: spawn cost per pool entry, aligned with gBossZombieList (Vatrix mod)
-const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
+// vx: spawn cost per pool entry, aligned with gBossZombieListV5 (Vatrix mod)
+const int gBossZombieCostV5[BOSS_ZOMBIE_LIST_COUNT] = {
 	0,  // NORMAL (free, budget-floor pick)
 	2,  // DOOR
 	2,  // NEWSPAPER
@@ -47,14 +63,34 @@ const int gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT] = {
 	12, // GARGANTUAR
 };
 
+// vx: 6-10 pool: vanilla V1 list + dolphin/snorkel/balloon (Vatrix mod)
+const ZombieType gBossZombieListV6[BOSS_ZOMBIE_LIST_V6_COUNT] = {
+	ZombieType::ZOMBIE_TRAFFIC_CONE,
+	ZombieType::ZOMBIE_PAIL,
+	ZombieType::ZOMBIE_FOOTBALL,
+	ZombieType::ZOMBIE_POLEVAULTER,
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
+	ZombieType::ZOMBIE_LADDER,
+	ZombieType::ZOMBIE_ZAMBONI,
+	ZombieType::ZOMBIE_CATAPULT,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_NEWSPAPER,
+	ZombieType::ZOMBIE_DOOR,
+	ZombieType::ZOMBIE_GARGANTUAR,
+	ZombieType::ZOMBIE_DOLPHIN_RIDER,  // vx: 6-10 addition
+	ZombieType::ZOMBIE_SNORKEL,        // vx: 6-10 addition
+	ZombieType::ZOMBIE_BALLOON,        // vx: 6-10 addition
+	ZombieType::ZOMBIE_DANCER,        // vx: 6-10 addition
+	ZombieType::ZOMBIE_DIGGER,        // vx: 6-10 addition
+};
 // vx: zombie cost per pool entry
 int GetBossZombieCost(ZombieType theZombieType)
 {
 	for (int i = 0; i < BOSS_ZOMBIE_LIST_COUNT; i++)
 	{
-		if (gBossZombieList[i] == theZombieType)
+		if (gBossZombieListV5[i] == theZombieType)
 		{
-			return gBossZombieCost[i];
+			return gBossZombieCostV5[i];
 		}
 	}
 	return 0;
@@ -545,22 +581,6 @@ int PickBossBungeeColV5(Board* theBoard)
 	return aBestCol;
 }
 
-// vanilla: original 12-entry random pool from the first-commit Zombie.cpp (V1)
-const ZombieType gBossZombieListV1[12] = {
-	ZombieType::ZOMBIE_TRAFFIC_CONE,
-	ZombieType::ZOMBIE_PAIL,
-	ZombieType::ZOMBIE_FOOTBALL,
-	ZombieType::ZOMBIE_POLEVAULTER,
-	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
-	ZombieType::ZOMBIE_LADDER,
-	ZombieType::ZOMBIE_ZAMBONI,
-	ZombieType::ZOMBIE_CATAPULT,
-	ZombieType::ZOMBIE_POGO,
-	ZombieType::ZOMBIE_NEWSPAPER,
-	ZombieType::ZOMBIE_DOOR,
-	ZombieType::ZOMBIE_GARGANTUAR,  // vx: must stay last, dropped on row 0
-};
-
 // vanilla: age-based fixed type, then pure-random pick from gBossZombieListV1
 BossSummonDecision PickBossSummonV1(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
@@ -797,7 +817,21 @@ BossFireballDecision PickBossFireballV5(Board* theBoard)
 BossSummonDecision PickBossSummonV6(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
 	BossSummonDecision aSummon{ ZombieType::ZOMBIE_NORMAL, 0 };
-	// vx: 6-10 summon logic goes here
+	
+	// type
+	if (theZombieAge < 3500) {
+		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
+	} else if (theZombieAge < 7500) {
+		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
+	} else if (theZombieAge < 10000) {
+		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
+	} else {
+		aSummon.mZombieType = PvzpPickFromArray(gBossZombieListV6, LENGTH(gBossZombieListV6));
+	}
+
+	// row
+	aSummon.mRow = theBoard->PickRowForNewZombie(aSummon.mZombieType);
+
 	return aSummon;
 }
  
@@ -805,9 +839,36 @@ BossSummonDecision PickBossSummonV6(Board* theBoard, int theZombieAge, int theSp
 BossFireballDecision PickBossFireballV6(Board* theBoard)
 {
 	BossFireballDecision aDecision;
-	// vx: 6-10 fireball logic goes here
-	aDecision.mRow = 0;
+
+	// row: depends on the mToughness of the row, minus 5 per effective zombie
+	auto aRowStates = GetRowStates(theBoard);
+	aDecision.mRow = PickRow(
+		theBoard,
+		aRowStates,
+		[](const RowState& a, const RowState& b) {
+			return sign((a.mToughness - a.mZombieCount * 5) - (b.mToughness - b.mZombieCount * 5));
+		},
+		[](int aRow, const RowState& aRowState) { return true; }
+	);
+
+	// type: depends on status of the seed bank
 	aDecision.mIsFireBall = false;
+	bool aFlag = true;
+	if (aDecision.mRow == 2 || aDecision.mRow == 3) {
+		aFlag = false;
+	}
+	for (int i = 0; i < theBoard->mSeedBank->mNumPackets; i++) {
+		SeedPacket aPacket = theBoard->mSeedBank->mSeedPackets[i];
+		// seed ready or will be within 8s (100 ticks = 1s) && is ice-shroom
+		if ((!aPacket.mRefreshing || aPacket.mRefreshTime - aPacket.mRefreshCounter <= 800)
+			&& (aPacket.mPacketType == SeedType::SEED_ICESHROOM || (aPacket.mPacketType == SeedType::SEED_IMITATER && aPacket.mImitaterType == SeedType::SEED_ICESHROOM))) {
+			aFlag = false;
+		}
+	}
+	if (aFlag) {
+		aDecision.mIsFireBall = true;
+	}
+	  
 	return aDecision;
 }
 }

@@ -53,10 +53,13 @@ namespace SpawnLogic
 		int							mGargantuarCount;
 	};
 
-	// vx: pool includes a free NORMAL zombie as the budget-floor pick (Vatrix mod)
+	// vx: per-variant boss summon pools; V5 adds a free NORMAL pick, V6 adds
+	// dolphin/snorkel/balloon to the vanilla V1 list (Vatrix mod)
 	constexpr int BOSS_ZOMBIE_LIST_COUNT = 13;
-	extern const ZombieType			gBossZombieList[BOSS_ZOMBIE_LIST_COUNT];
-	extern const int				gBossZombieCost[BOSS_ZOMBIE_LIST_COUNT];
+	extern const ZombieType			gBossZombieListV5[BOSS_ZOMBIE_LIST_COUNT];
+	extern const int				gBossZombieCostV5[BOSS_ZOMBIE_LIST_COUNT];
+	constexpr int BOSS_ZOMBIE_LIST_V6_COUNT = 17;
+	extern const ZombieType			gBossZombieListV6[BOSS_ZOMBIE_LIST_V6_COUNT];
 	
 	constexpr int					BOSS_SUMMON_POINTS_INIT = 8;
 	constexpr int					BOSS_SUMMON_POINTS_ADD  = 6;

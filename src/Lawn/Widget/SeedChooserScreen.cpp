@@ -334,12 +334,12 @@ unsigned int SeedChooserScreen::SeedNotRecommendedToPick(SeedType theSeedType)
 
 bool SeedChooserScreen::SeedNotAllowedToPick(SeedType theSeedType)
 {
-	// vx: world 6-10 boss fight forbids Cherry Bomb
-	if (mApp->IsAdventureMode() && mBoard->mLevel == FINAL_LEVEL && theSeedType == SeedType::SEED_CHERRYBOMB)
+	// vx: 6-10 forbids Hypno
+	if (mApp->IsAdventureMode() && mBoard->mLevel == FINAL_LEVEL && theSeedType == SeedType::SEED_HYPNOSHROOM)
 	{
 		return true;
 	}
-	// vx: world 6-5 forbids Blover and Plantern
+	// vx: 6-5 forbids Blover and Plantern
 	if (mApp->IsAdventureMode() && mBoard->mLevel == 55 &&
 		(theSeedType == SeedType::SEED_BLOVER || theSeedType == SeedType::SEED_PLANTERN))
 	{
