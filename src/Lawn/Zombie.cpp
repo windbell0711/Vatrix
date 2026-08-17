@@ -10016,7 +10016,7 @@ void Zombie::BossBungeeSpawn()
     for (int i = 0; i < NUM_BOSS_BUNGEES; i++)
     {
         Zombie* aZombie = mBoard->AddZombieInRow(ZombieType::ZOMBIE_BUNGEE, 0, 0);
-        aZombie->PickBungeeZombieTarget(mTargetCol + i, true);
+        aZombie->PickBungeeZombieTarget(mTargetCol + i, SpawnLogic::GetBossConfig(mBoard).mUseBossBungeeScoring);
         aZombie->mAltitude = aZombie->mPosY - 30.0f;
         mFollowerZombieID[i] = mBoard->ZombieGetID(aZombie);
     }

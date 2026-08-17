@@ -342,59 +342,94 @@ ZombieType PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveI
 	return (ZombieType)PvzpPickFromWeightedArray(aZombieWeightArray, aPickCount);
 }
 
-// vx: fireball targets the row with the most mToughness, minus 5 per effective zombie
-BossFireballDecision PickBossFireball(Board* theBoard)
-{
-	BossFireballDecision aDecision;
-	auto aRowStates = GetRowStates(theBoard);
-	aDecision.mRow = PickRow(
-		theBoard,
-		aRowStates,
-		[](const RowState& a, const RowState& b) {
-			return sign((a.mToughness - a.mZombieCount * 5) - (b.mToughness - b.mZombieCount * 5));
-		},
-		[](int aRow, const RowState& aRowState) { return true; }
-	);
 
-	// vx: ball type depends on ice-shrooms on the conveyor belt
-	int aIceShroomCount = 0, aJalapenoCount = 0;
-	if (theBoard->mSeedBank)
-	{
-		for (int i = 0; i < theBoard->mSeedBank->mNumPackets; i++)
-		{
-			switch (theBoard->mSeedBank->mSeedPackets[i].mPacketType)
-			{
-			case SeedType::SEED_ICESHROOM:
-				aIceShroomCount++;
-				break;
-			case SeedType::SEED_JALAPENO:
-				aJalapenoCount++;
-				break;
-			}
-		}
-	}
-	if (aJalapenoCount == 0)
-		aDecision.mIsFireBall = false;
-	else if (aIceShroomCount == 0)
-		aDecision.mIsFireBall = true;
-	else if (aIceShroomCount == 1)
-		aDecision.mIsFireBall = (RandRangeInt(0, 2) != 0);
-	else
-		aDecision.mIsFireBall = false;
-	
-	return aDecision;
+// vx: zomboss ai
+
+BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)
+{
+	return GetBossConfig(theBoard).mPickSummon(theBoard, theZombieAge, theSpawnPoints);
 }
 
-// vanilla: stomp-row picker
+BossFireballDecision PickBossFireball(Board* theBoard)
+{
+	return GetBossConfig(theBoard).mPickFireball(theBoard);
+}
+
 int PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount)
 {
 	return (int)PvzpPickFromArray(theRowArray, theRowCount);
 }
 
-// vx: smash the 3x2 block (target cell = top-left) scoring: plants smashed
-// (flower pots included) + 2x melons + last-column melons + 2x effective
-// zombies in the two rows
 BossTargetDecision PickBossRVTarget(Board* theBoard)
+{
+	return GetBossConfig(theBoard).mPickRVTarget(theBoard);
+}
+
+int PickBossBungeeCol(Board* theBoard)
+{
+	return GetBossConfig(theBoard).mPickBungeeCol(theBoard);
+}
+
+// vx: boss bungee cell picker, moved here from Zombie::PickBungeeZombieTarget
+BossTargetDecision PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget)
+{
+	// vx: boss bungees take the highest-scoring steal, first enumerated on ties
+	auto aRowStats = GetRowStates(theBoard);
+	BossTargetDecision aTarget{ -1, -1 };
+	int aBestScore = -1;
+	for (int x = 0; x < MAX_GRID_SIZE_X; x++)
+	{
+		if (theColumn != -1 && theColumn != x)
+		{
+			continue;
+		}
+		for (int y = 0; y < MAX_GRID_SIZE_Y; y++)
+		{
+			if (theBoard->GetGraveStoneAt(x, y) || theBoard->mGridSquareType[x][y] == GridSquareType::GRIDSQUARE_DIRT)
+			{
+				continue;
+			}
+
+			int aScore = 0;
+			Plant* aPlant = theBoard->GetTopPlantAt(x, y, PlantPriority::TOPPLANT_BUNGEE_ORDER);
+			if (aPlant)
+			{
+				if (aPlant->mSquished)
+				{
+					continue;
+				}
+				if (!aAllowSunFlowerTarget && aPlant->MakesSun())
+				{
+					continue;
+				}
+				if (aPlant->mSeedType == SeedType::SEED_GRAVEBUSTER || aPlant->mSeedType == SeedType::SEED_COBCANNON)
+				{
+					continue;
+				}
+				aScore = ScoreBungeeSteal(aPlant, aRowStats);
+				// vx: debug print
+				Sexy::PrintF("Bungee col %d cell(%d,%d) %s row%d z%d p%d g%d score%d\n",
+					theColumn, x, y, Plant::GetNameString(aPlant->mSeedType, aPlant->mImitaterType).c_str(),
+					aPlant->mRow, aRowStats[aPlant->mRow].mZombieCount, aRowStats[aPlant->mRow].mPultCount,
+					aRowStats[aPlant->mRow].mGargantuarCount, aScore);
+			}
+
+			if (!theBoard->BungeeIsTargetingCell(x, y) && (aTarget.mRow < 0 || aScore > aBestScore))
+			{
+				aTarget.mRow = y;
+				aTarget.mCol = x;
+				aBestScore = aScore;
+			}
+		}
+	}
+	// vx: debug print
+	Sexy::PrintF("Bungee col %d -> target(%d,%d) score %d\n", theColumn, aTarget.mCol, aTarget.mRow, aBestScore);
+	return aTarget;
+}
+
+namespace
+{
+BossTargetDecision PickBossRVTargetV5(Board* theBoard)
 {
 	auto aRowStats = GetRowStates(theBoard);
 
@@ -460,7 +495,7 @@ BossTargetDecision PickBossRVTarget(Board* theBoard)
 	return BossTargetDecision{aBestRow, aBestCol};
 }
 
-int PickBossBungeeCol(Board* theBoard)
+int PickBossBungeeColV5(Board* theBoard)
 {
 	// vx: pick the 3-column block whose 3 best steals (one per bungee
 	// column) score the highest; first enumerated wins on ties
@@ -510,65 +545,81 @@ int PickBossBungeeCol(Board* theBoard)
 	return aBestCol;
 }
 
-// vx: boss bungee cell picker, moved here from Zombie::PickBungeeZombieTarget
-BossTargetDecision PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget)
+// vanilla: original 12-entry random pool from the first-commit Zombie.cpp (V1)
+const ZombieType gBossZombieListV1[12] = {
+	ZombieType::ZOMBIE_TRAFFIC_CONE,
+	ZombieType::ZOMBIE_PAIL,
+	ZombieType::ZOMBIE_FOOTBALL,
+	ZombieType::ZOMBIE_POLEVAULTER,
+	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
+	ZombieType::ZOMBIE_LADDER,
+	ZombieType::ZOMBIE_ZAMBONI,
+	ZombieType::ZOMBIE_CATAPULT,
+	ZombieType::ZOMBIE_POGO,
+	ZombieType::ZOMBIE_NEWSPAPER,
+	ZombieType::ZOMBIE_DOOR,
+	ZombieType::ZOMBIE_GARGANTUAR,  // vx: must stay last, dropped on row 0
+};
+
+// vanilla: age-based fixed type, then pure-random pick from gBossZombieListV1
+BossSummonDecision PickBossSummonV1(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
-	// vx: boss bungees take the highest-scoring steal, first enumerated on ties
-	auto aRowStats = GetRowStates(theBoard);
-	BossTargetDecision aTarget{ -1, -1 };
-	int aBestScore = -1;
-	for (int x = 0; x < MAX_GRID_SIZE_X; x++)
+	BossSummonDecision aSummon{ZombieType::ZOMBIE_NORMAL, -1};
+
+	// vx: row decided first, like the original BossSpawnAttack
+	aSummon.mRow = theBoard->PickRowForNewZombie(ZombieType::ZOMBIE_NORMAL);
+
+	if (theZombieAge < 3500)
 	{
-		if (theColumn != -1 && theColumn != x)
-		{
-			continue;
-		}
-		for (int y = 0; y < MAX_GRID_SIZE_Y; y++)
-		{
-			if (theBoard->GetGraveStoneAt(x, y) || theBoard->mGridSquareType[x][y] == GridSquareType::GRIDSQUARE_DIRT)
-			{
-				continue;
-			}
-
-			int aScore = 0;
-			Plant* aPlant = theBoard->GetTopPlantAt(x, y, PlantPriority::TOPPLANT_BUNGEE_ORDER);
-			if (aPlant)
-			{
-				if (aPlant->mSquished)
-				{
-					continue;
-				}
-				if (!aAllowSunFlowerTarget && aPlant->MakesSun())
-				{
-					continue;
-				}
-				if (aPlant->mSeedType == SeedType::SEED_GRAVEBUSTER || aPlant->mSeedType == SeedType::SEED_COBCANNON)
-				{
-					continue;
-				}
-				aScore = ScoreBungeeSteal(aPlant, aRowStats);
-				// vx: debug print
-				Sexy::PrintF("Bungee col %d cell(%d,%d) %s row%d z%d p%d g%d score%d\n",
-					theColumn, x, y, Plant::GetNameString(aPlant->mSeedType, aPlant->mImitaterType).c_str(),
-					aPlant->mRow, aRowStats[aPlant->mRow].mZombieCount, aRowStats[aPlant->mRow].mPultCount,
-					aRowStats[aPlant->mRow].mGargantuarCount, aScore);
-			}
-
-			if (!theBoard->BungeeIsTargetingCell(x, y) && (aTarget.mRow < 0 || aScore > aBestScore))
-			{
-				aTarget.mRow = y;
-				aTarget.mCol = x;
-				aBestScore = aScore;
-			}
-		}
+		aSummon.mZombieType = ZombieType::ZOMBIE_NORMAL;
 	}
-	// vx: debug print
-	Sexy::PrintF("Bungee col %d -> target(%d,%d) score %d\n", theColumn, aTarget.mCol, aTarget.mRow, aBestScore);
+	else if (theZombieAge < 8000)
+	{
+		aSummon.mZombieType = ZombieType::ZOMBIE_TRAFFIC_CONE;
+	}
+	else if (theZombieAge < 12500)
+	{
+		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
+	}
+	else
+	{
+		int aZombieTypeCount = LENGTH(gBossZombieListV1);
+		if (aSummon.mRow == 0)
+		{
+			aZombieTypeCount--;  // vx: original excluded GARGANTUAR on row 0
+		}
+		aSummon.mZombieType = PvzpPickFromArray(gBossZombieListV1, aZombieTypeCount);
+	}
+	return aSummon;
+}
+
+// vanilla: random row, 50/50 fire/ice ball
+BossFireballDecision PickBossFireballV1(Board* theBoard)
+{
+	BossFireballDecision aDecision;
+	aDecision.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 5 : 4);
+	aDecision.mIsFireBall = RandRangeInt(0, 1) == 0;
+	return aDecision;
+}
+
+// vanilla: random 3x2 block (row 0-3, or 0-4 with 6 rows) + random column
+BossTargetDecision PickBossRVTargetV1(Board* theBoard)
+{
+	BossTargetDecision aTarget;
+	aTarget.mRow = RandRangeInt(0, theBoard->StageHas6Rows() ? 4 : 3);
+	aTarget.mCol = RandRangeInt(0, 2);
 	return aTarget;
 }
 
+// vanilla: random 3-column block
+int PickBossBungeeColV1(Board* theBoard)
+{
+	return RandRangeInt(0, 2);
+}
+
+
 // vx: decide summon type and row together
-BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints)
+BossSummonDecision PickBossSummonV5(Board* theBoard, int theZombieAge, int theSpawnPoints)
 {
 	BossSummonDecision aSummon{ZombieType::ZOMBIE_NORMAL, -1};
 
@@ -698,4 +749,77 @@ BossSummonDecision PickBossSummon(Board* theBoard, int theZombieAge, int theSpaw
 	return aSummon;
 }
 
+// vx: fireball targets the row with the most mToughness, minus 5 per effective zombie
+BossFireballDecision PickBossFireballV5(Board* theBoard)
+{
+	BossFireballDecision aDecision;
+	auto aRowStates = GetRowStates(theBoard);
+	aDecision.mRow = PickRow(
+		theBoard,
+		aRowStates,
+		[](const RowState& a, const RowState& b) {
+			return sign((a.mToughness - a.mZombieCount * 5) - (b.mToughness - b.mZombieCount * 5));
+		},
+		[](int aRow, const RowState& aRowState) { return true; }
+	);
+
+	// vx: ball type depends on ice-shrooms on the conveyor belt
+	int aIceShroomCount = 0, aJalapenoCount = 0;
+	if (theBoard->mSeedBank)
+	{
+		for (int i = 0; i < theBoard->mSeedBank->mNumPackets; i++)
+		{
+			switch (theBoard->mSeedBank->mSeedPackets[i].mPacketType)
+			{
+			case SeedType::SEED_ICESHROOM:
+				aIceShroomCount++;
+				break;
+			case SeedType::SEED_JALAPENO:
+				aJalapenoCount++;
+				break;
+			}
+		}
+	}
+	if (aJalapenoCount == 0)
+		aDecision.mIsFireBall = false;
+	else if (aIceShroomCount == 0)
+		aDecision.mIsFireBall = true;
+	else if (aIceShroomCount == 1)
+		aDecision.mIsFireBall = (RandRangeInt(0, 2) != 0);
+	else
+		aDecision.mIsFireBall = false;
+	
+	return aDecision;
+}
+
+
+// vx: 6-10 summon algorithm (TODO: fill in the 6-10 rules)
+BossSummonDecision PickBossSummonV6(Board* theBoard, int theZombieAge, int theSpawnPoints)
+{
+	BossSummonDecision aSummon{ ZombieType::ZOMBIE_NORMAL, 0 };
+	// vx: 6-10 summon logic goes here
+	return aSummon;
+}
+ 
+// vx: 6-10 fireball algorithm (TODO: fill in the 6-10 rules)
+BossFireballDecision PickBossFireballV6(Board* theBoard)
+{
+	BossFireballDecision aDecision;
+	// vx: 6-10 fireball logic goes here
+	aDecision.mRow = 0;
+	aDecision.mIsFireBall = false;
+	return aDecision;
+}
+}
+
+// vx: per-mode boss spawn config; the Challenge final boss keeps the vanilla V1
+// algorithm, 5-10 uses the points-based V5, 6-10 switches to V6
+BossSpawnConfig GetBossConfig(Board* theBoard)
+{
+	if (theBoard->mApp->mGameMode == GameMode::GAMEMODE_CHALLENGE_FINAL_BOSS)
+		return { PickBossSummonV1, PickBossFireballV1, PickBossRVTargetV1, PickBossBungeeColV1, false };
+	if (theBoard->mLevel == 60)
+		return { PickBossSummonV6, PickBossFireballV6, PickBossRVTargetV5, PickBossBungeeColV5, true };
+	return { PickBossSummonV5, PickBossFireballV5, PickBossRVTargetV5, PickBossBungeeColV5, true };
+}
 }

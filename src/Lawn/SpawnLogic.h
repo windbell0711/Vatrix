@@ -30,6 +30,17 @@ namespace SpawnLogic
 		int							mRow;
 	};
 
+	// vx: per-boss variant selection; V1 is the vanilla random config, V5/V6 share
+	// the smart RV/bungee pickers and per-bungee boss scoring
+	struct BossSpawnConfig
+	{
+		BossSummonDecision (*mPickSummon)(Board* theBoard, int theZombieAge, int theSpawnPoints);
+		BossFireballDecision (*mPickFireball)(Board* theBoard);
+		BossTargetDecision (*mPickRVTarget)(Board* theBoard);
+		int (*mPickBungeeCol)(Board* theBoard);
+		bool mUseBossBungeeScoring;  // vx: V1 falls back to the vanilla per-bungee pick
+	};
+
 	struct RowState
 	{
 		int							mPlantCount;
@@ -54,11 +65,12 @@ namespace SpawnLogic
 	std::array<RowState, MAX_GRID_SIZE_Y>	GetRowStates(Board* theBoard);
 	int								ScoreBungeeSteal(Plant* thePlant, const std::array<RowState, MAX_GRID_SIZE_Y>& theRowStats);
 	ZombieType						PickWaveZombieType(Board* theBoard, int theZombiePoints, int theWaveIndex, ZombiePicker* theZombiePicker);
-	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossTargetDecision				PickBossRVTarget(Board* theBoard);
 	int								PickBossStompRow(Board* theBoard, const intptr_t* theRowArray, int theRowCount);
 	int								PickBossBungeeCol(Board* theBoard);
 	BossTargetDecision				PickBossBungeeTarget(Board* theBoard, int theColumn, bool aAllowSunFlowerTarget);
+	BossSpawnConfig					GetBossConfig(Board* theBoard);
+	BossFireballDecision			PickBossFireball(Board* theBoard);
 	BossSummonDecision				PickBossSummon(Board* theBoard, int theZombieAge, int theSpawnPoints);
 }
 
