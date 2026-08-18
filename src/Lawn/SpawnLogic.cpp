@@ -109,7 +109,6 @@ const ZombieType gBossTacticCollapse[3] = {
 };
 
 const ZombieType gBossTacticWeak[6] = {
-	ZombieType::ZOMBIE_ZAMBONI,
 	ZombieType::ZOMBIE_POGO,
 	ZombieType::ZOMBIE_GARGANTUAR,
 	ZombieType::ZOMBIE_FOOTBALL,
@@ -214,6 +213,10 @@ std::array<RowState, MAX_GRID_SIZE_Y> GetRowStates(Board* theBoard)
 		if (aZombie->mZombieType == ZombieType::ZOMBIE_GARGANTUAR || aZombie->mZombieType == ZombieType::ZOMBIE_REDEYE_GARGANTUAR)
 		{
 			aRowState[aZombie->mRow].mGargantuarCount++;
+		}
+		if (aZombie->mZombieType == ZombieType::ZOMBIE_ZAMBONI)
+		{
+			aRowState[aZombie->mRow].mCarCount++;
 		}
 	}
 	
@@ -674,21 +677,29 @@ BossSummonDecision PickBossSummonV5(Board* theBoard, int theZombieAge, int theSp
 	}
 	else if (theZombieAge < 12500)
 	{
-		// 铁桶放二四路已有僵尸最少的地方
+		// 铁桶放最弱且已有僵尸最多但不多于三个的地方
 		aSummon.mZombieType = ZombieType::ZOMBIE_PAIL;
 		aSummon.mRow = PickRow(
 			theBoard,
 			aRowStates,
 			[](const RowState& a, const RowState& b) {
-				return sign(b.mZombieCount - a.mZombieCount);
+				return sign((a.mZombieCount - a.mToughness / 2) - (b.mZombieCount - b.mToughness / 2));
 			},
-			[](int aRow, const RowState& aRowState) { return aRow == 1 || aRow == 3; }
+			[](int aRow, const RowState& aRowState) { return aRowState.mZombieCount <= 3; }
 		);
 	}
 	else if (theSpawnPoints <= 8)
 	{
+		// 小僵尸在最弱的路挡子弹准备进攻
+		aSummon.mRow = PickRow(
+			theBoard,
+			aRowStates,
+			[](const RowState& a, const RowState& b) {
+				return sign(b.mToughness - a.mToughness);
+			},
+			[](int aRow, const RowState& aRowState) { return true; }
+		);
 		// 积累点数
-		aSummon.mRow = RandRangeInt(0, 4);
 		aSummon.mZombieType = random_choice_if(
 			gBossZombieCheap,
 			LENGTH(gBossZombieCheap),
@@ -746,9 +757,11 @@ BossSummonDecision PickBossSummonV5(Board* theBoard, int theZombieAge, int theSp
 		aSummon.mZombieType = random_choice_if(
 			aTactic,
 			aTacticCount,
-			[aSummon, theBoard, theSpawnPoints](ZombieType theZombieType){
+			[aSummon, theBoard, theSpawnPoints, aRowStates](ZombieType theZombieType){
 				return GetBossZombieCost(theZombieType) <= theSpawnPoints
-					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType);
+					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType)
+					&& (aRowStates[aSummon.mRow].mCarCount > 0 ? theZombieType != ZombieType::ZOMBIE_ZAMBONI : true)
+					&& (aRowStates[aSummon.mRow].mZombieCount == 0 ? theZombieType != ZombieType::ZOMBIE_JACK_IN_THE_BOX : true);
 			},
 			ZombieType::ZOMBIE_NORMAL
 		);
@@ -805,7 +818,7 @@ BossFireballDecision PickBossFireballV5(Board* theBoard)
 	else if (aIceShroomCount == 0)
 		aDecision.mIsFireBall = true;
 	else if (aIceShroomCount == 1)
-		aDecision.mIsFireBall = (RandRangeInt(0, 2) != 0);
+		aDecision.mIsFireBall = (RandRangeInt(0, 4) == 0);
 	else
 		aDecision.mIsFireBall = false;
 	
@@ -840,13 +853,13 @@ BossFireballDecision PickBossFireballV6(Board* theBoard)
 {
 	BossFireballDecision aDecision;
 
-	// row: depends on the mToughness of the row, minus 5 per effective zombie
+	// row: depends on the mPlantCount of the row, minus 3 per effective zombie
 	auto aRowStates = GetRowStates(theBoard);
 	aDecision.mRow = PickRow(
 		theBoard,
 		aRowStates,
 		[](const RowState& a, const RowState& b) {
-			return sign((a.mToughness - a.mZombieCount * 5) - (b.mToughness - b.mZombieCount * 5));
+			return sign((a.mPlantCount - a.mZombieCount * 3) - (b.mPlantCount - b.mZombieCount * 3));
 		},
 		[](int aRow, const RowState& aRowState) { return true; }
 	);

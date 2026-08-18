@@ -963,7 +963,15 @@ void CutScene::StartLevelIntro()
 	}
 	else if (mApp->IsFinalBossLevel())
 	{
-		mApp->mMusic->StopAllMusic();
+		// vx: world 6-10 uses the choose tune during seed choosing; classic boss stays silent
+		if (mBoard->mLevel == FINAL_LEVEL)
+		{
+			mApp->mMusic->MakeSureMusicIsPlaying(MusicTune::MUSIC_TUNE_CHOOSE_YOUR_SEEDS);
+		}
+		else
+		{
+			mApp->mMusic->StopAllMusic();
+		}
 	}
 	else
 	{
@@ -1346,7 +1354,8 @@ void CutScene::AnimateBoard()
 	// ====================================================================================================
 	// ▲ 僵王博士关卡背景音乐的播放
 	// ====================================================================================================
-	if (mApp->IsFinalBossLevel() && mCutsceneTime == aTimeSeedBankOnStart)
+	// vx: world 6-10 starts the boss BGM at level start (after Ready Set Plant), not during seed choosing
+	if (mApp->IsFinalBossLevel() && mBoard->mLevel != FINAL_LEVEL && mCutsceneTime == aTimeSeedBankOnStart)
 	{
 		mApp->mMusic->StartGameMusic();
 	}
@@ -1359,7 +1368,8 @@ void CutScene::AnimateBoard()
 	{
 		mApp->AddReanimation(400, 324, Board::MakeRenderOrder(RenderLayer::RENDER_LAYER_SCREEN_FADE, 0, 0), ReanimationType::REANIM_READYSETPLANT);
 		mApp->PlaySample(SOUND_READYSETPLANT);
-		if (!mApp->IsFinalBossLevel())
+		// vx: world 6-10 fades the choose tune here before the boss BGM kicks in
+		if (!mApp->IsFinalBossLevel() || mBoard->mLevel == FINAL_LEVEL)
 		{
 			mApp->mMusic->FadeOut(150);
 		}
@@ -1506,6 +1516,12 @@ void CutScene::Update()
 		}
 
 		ShowShovel();
+		// vx: world 6-10 boss BGM starts once the level begins (after Ready Set Plant);
+		// Board::StartLevel() returns early for boss levels, so this must be explicit
+		if (mApp->IsFinalBossLevel() && mBoard->mLevel == FINAL_LEVEL)
+		{
+			mApp->mMusic->StartGameMusic();
+		}
 		mApp->StartPlaying();
 		return;
 	}
@@ -1631,7 +1647,15 @@ void CutScene::AdvanceCrazyDaveDialog(bool theJustSkipping)
 			Reanimation* aCrazyDaveReanim = mApp->ReanimationTryToGet(mApp->mCrazyDaveReanimID);
 			aCrazyDaveReanim->PlayReanim("anim_grab", ReanimLoopType::REANIM_PLAY_ONCE_AND_HOLD, 0, 18.0f);
 
-			mApp->mMusic->FadeOut(50);
+			// vx: world 6-10 keeps the choose tune during seed choosing; classic boss fades to silence
+			if (mBoard->mLevel == FINAL_LEVEL)
+			{
+				mApp->mMusic->MakeSureMusicIsPlaying(MusicTune::MUSIC_TUNE_CHOOSE_YOUR_SEEDS);
+			}
+			else
+			{
+				mApp->mMusic->FadeOut(50);
+			}
 			if (!theJustSkipping)
 			{
 				mApp->PlaySample(SOUND_BUNGEE_SCREAM);

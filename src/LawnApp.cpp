@@ -1631,6 +1631,8 @@ void LawnApp::CheckForGameEnd()
 		if (aVxTrialRun)
 		{
 			// vx: a trial run (Run button) win gives no level-clear reward; replay the level
+			// vx: replaying the same level must skip Dave's intro dialogue like any other restart
+			mBoardResult = BoardResult::BOARDRESULT_RESTART;
 			PreNewGame(mGameMode, false);
 		}
 		else if (aLevel == 50)

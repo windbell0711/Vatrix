@@ -50,6 +50,7 @@ namespace SpawnLogic
 		bool                        mLastColMelon;
 		float                       mToughness;
 		int							mZombieCount;
+		int							mCarCount;
 		int							mGargantuarCount;
 	};
 

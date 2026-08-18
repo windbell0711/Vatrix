@@ -53,7 +53,6 @@ public:
     bool                    mRefreshing;
     int                     mRefreshCounter;
     SeedType                mImitaterType;
-    bool                    mCrazyDavePicked;
 };
 
 class SeedChooserScreen : public Widget

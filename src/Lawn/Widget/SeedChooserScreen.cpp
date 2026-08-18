@@ -176,7 +176,6 @@ SeedChooserScreen::SeedChooserScreen()
 		aChosenSeed.mRefreshCounter = 0;
 		aChosenSeed.mRefreshing = false;
 		aChosenSeed.mImitaterType = SEED_NONE;
-		aChosenSeed.mCrazyDavePicked = false;
 	}
 	if (mBoard->mCutScene->IsSurvivalRepick())
 	{
@@ -268,7 +267,6 @@ void SeedChooserScreen::CrazyDavePickSeeds()
 		aChosenSeed.mEndY = 8;
 		aChosenSeed.mSeedState = SEED_IN_BANK;
 		aChosenSeed.mSeedIndexInBank = i;
-		aChosenSeed.mCrazyDavePicked = true;
 		mSeedsInBank++;
 	}
 }
@@ -517,12 +515,6 @@ void SeedChooserScreen::UpdateCursor()
 {
 	if (mApp->GetDialogCount() || mBoard->mCutScene->IsInShovelTutorial() || mApp->mGameMode == GAMEMODE_UPSELL) return;
 	SeedType aMouseSeedType = SeedHitTest(mLastMouseX, mLastMouseY);
-	if (aMouseSeedType != SEED_NONE)
-	{
-		ChosenSeed& aMouseChosenSeed = mChosenSeeds[aMouseSeedType];
-		if (aMouseChosenSeed.mSeedState == SEED_IN_BANK && aMouseChosenSeed.mCrazyDavePicked)
-			aMouseSeedType = SEED_NONE;
-	}
 
 	if (mMouseVisible && mChooseState != CHOOSE_VIEW_LAWN && ((aMouseSeedType != SEED_NONE && !SeedNotAllowedToPick(aMouseSeedType)) ||
 		mRandomButton->IsMouseOver() || mViewLawnButton->IsMouseOver() || mAlmanacButton->IsMouseOver() || mImitaterButton->IsMouseOver() ||
@@ -909,10 +901,7 @@ void SeedChooserScreen::ShowToolTip()
 				{
 					mToolTip->SetWarningText("[FULL_VERSION_ONLY]");
 				}
-				else if (aChosenSeed.mSeedState == SEED_IN_BANK && aChosenSeed.mCrazyDavePicked)
-				{
-					mToolTip->SetWarningText("[CRAZY_DAVE_WANTS]");
-				}
+				// vx: dave-picked seeds are removable, no lock warning
 				else if (aRecFlags != 0U)
 				{
 					if (TestBit(aRecFlags, NOT_RECOMMENDED_NOCTURNAL))
@@ -1078,14 +1067,7 @@ void SeedChooserScreen::MouseDown(int x, int y, int theClickCount)
 			{
 				ChosenSeed& aChosenSeed = mChosenSeeds[aSeedType];
 				if (aChosenSeed.mSeedState == SEED_IN_BANK)
-				{
-					if (aChosenSeed.mCrazyDavePicked)
-					{
-						mApp->PlaySample(Sexy::SOUND_BUZZER);
-						mToolTip->FlashWarning();
-					}
-					else ClickedSeedInBank(aChosenSeed);
-				}
+					ClickedSeedInBank(aChosenSeed);
 				else if (aChosenSeed.mSeedState == SEED_IN_CHOOSER)
 					ClickedSeedInChooser(aChosenSeed);
 			}

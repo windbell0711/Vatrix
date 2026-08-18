@@ -9923,9 +9923,25 @@ void Zombie::BossSpawnContact()
     {
         return;
     }
+    // vx: guard against invalid summon types; a garbage type would render a plain
+    // zombie with every accessory track visible (swim ring + door + bucket + cone)
+    ZombieType aSummonType = mSummonType;
+    int aSummonRow = mTargetRow;
+    if (aSummonType < ZombieType::ZOMBIE_NORMAL || aSummonType >= ZombieType::NUM_ZOMBIE_TYPES ||
+        aSummonRow < 0 || aSummonRow >= MAX_GRID_SIZE_Y)
+    {
+        PvzpTraceAndLogLn("WARNING: boss summon type %d row %d invalid, fallback to NORMAL", static_cast<int>(aSummonType), aSummonRow);
+        aSummonType = ZombieType::ZOMBIE_NORMAL;
+        aSummonRow = mBoard->PickRowForNewZombie(aSummonType);
+    }
     // vx: deduct the summoned zombie's cost, never below zero
-    mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(mSummonType);
-    Zombie* aZombie = mBoard->AddZombieInRow(mSummonType, mTargetRow, 0);
+    mBossSpawnPoints -= SpawnLogic::GetBossZombieCost(aSummonType);
+    Zombie* aZombie = mBoard->AddZombieInRow(aSummonType, aSummonRow, 0);
+    if (aZombie == nullptr)
+    {
+        mBossSpawnPoints += SpawnLogic::BOSS_SUMMON_POINTS_ADD;
+        return;
+    }
     aZombie->mPosX = 600.0f;
     // vx: grant summon points
     mBossSpawnPoints += SpawnLogic::BOSS_SUMMON_POINTS_ADD;
@@ -10061,7 +10077,9 @@ bool Zombie::BossAreBungeesDone()
 void Zombie::BossHeadAttack()
 {
     mZombiePhase = ZombiePhase::PHASE_BOSS_HEAD_ENTER;
-    mBossHeadCounter = RandRangeInt(4000, 5000);
+    
+    // vx: mBossHeadCounter adjusted from 4000~5000 to 5000~6000
+    mBossHeadCounter = RandRangeInt(5000, 6000);
     
     // vx: bowing the head to summon resets spawn points
     mBossSpawnPoints = SpawnLogic::BOSS_SUMMON_POINTS_INIT;
