@@ -761,6 +761,7 @@ BossSummonDecision PickBossSummonV5(Board* theBoard, int theZombieAge, int theSp
 				return GetBossZombieCost(theZombieType) <= theSpawnPoints
 					&& theBoard->RowCanHaveZombieType(aSummon.mRow, theZombieType)
 					&& (aRowStates[aSummon.mRow].mCarCount > 0 ? theZombieType != ZombieType::ZOMBIE_ZAMBONI : true)
+					&& (aRowStates[aSummon.mRow].mGargantuarCount > 0 ? theZombieType != ZombieType::ZOMBIE_GARGANTUAR : true)
 					&& (aRowStates[aSummon.mRow].mZombieCount == 0 ? theZombieType != ZombieType::ZOMBIE_JACK_IN_THE_BOX : true);
 			},
 			ZombieType::ZOMBIE_NORMAL
