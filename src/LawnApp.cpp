@@ -97,6 +97,12 @@ static bool HasUnshownAchievements(PlayerInfo* thePlayerInfo)
 	return false;
 }
 
+// vx: the 6-1 tutorial advice steps carried across in-session world-6 restarts
+static bool IsVxTutorialAdvice(AdviceType theHelp)
+{
+	return theHelp == AdviceType::ADVICE_6_1_START || theHelp == AdviceType::ADVICE_6_1_DESTROY_POT || theHelp == AdviceType::ADVICE_6_1_BUTTON_OPEN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN_2 || theHelp == AdviceType::ADVICE_6_1_END;
+}
+
 bool LawnGetCloseRequest()
 {
 	if (gLawnApp == nullptr)
@@ -592,6 +598,8 @@ void LawnApp::KillGameSelector()
 // GOTY @Patoke: 0x452CB0
 void LawnApp::ShowAwardScreen(AwardType theAwardType, bool theShowAchievements, int theNoteId)
 {
+	// vx: the award page is a level boundary; close the script editor automatically
+	VX::VxEditorClose();
 	mGameScene = GameScenes::SCENE_AWARD;
 	mAwardScreen = new AwardScreen(this, theAwardType, theShowAchievements, theNoteId);
 	mAwardScreen->Resize(0, 0, mWidth, mHeight);
@@ -1625,6 +1633,13 @@ void LawnApp::CheckForGameEnd()
 		int aLevel = mBoard->mLevel;
 		// vx: keep the editor sidebar state (open/closed) across the level-end restart
 		mVxPendingEditorOpen = VX::VxEditorIsOpen();
+		// vx: a trial win replays the level in-session; carry the 6-1 tutorial advice
+		// so later resets (Reset/Run/Submit) do not restart the tutorial from the beginning
+		if (aVxTrialRun)
+		{
+			AdviceType aHelp = mBoard->mHelpIndex;
+			mVxKeepHelpIndex = IsVxTutorialAdvice(aHelp) ? aHelp : AdviceType::ADVICE_NONE;
+		}
 		KillBoard();
 
 		// vx: adventure 5-10 ends with the custom paper note; 6-1 awards the almanac
@@ -1826,7 +1841,7 @@ void LawnApp::UpdateFrames()
 		// later Submit test points (2nd..5th) restart silently without any advice
 		AdviceType aHelp = mBoard->mHelpIndex;
 		bool aKeepTutorial = !(aKind == 2 && mVxVerifying && mVxTestIndex >= 1);
-		mVxKeepHelpIndex = (aKeepTutorial && (aHelp == ADVICE_6_1_START || aHelp == ADVICE_6_1_DESTROY_POT || aHelp == ADVICE_6_1_BUTTON_OPEN || aHelp == ADVICE_6_1_BUTTON_RUN || aHelp == ADVICE_6_1_BUTTON_RUN_2 || aHelp == ADVICE_6_1_END)) ? aHelp : AdviceType::ADVICE_NONE;
+		mVxKeepHelpIndex = (aKeepTutorial && IsVxTutorialAdvice(aHelp)) ? aHelp : AdviceType::ADVICE_NONE;
 		if (aKind == 3)
 		{
 			VX::ClearRunFlags();

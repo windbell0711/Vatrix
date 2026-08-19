@@ -1,7 +1,7 @@
 #ifndef __VXSCRIPT_H__
 #define __VXSCRIPT_H__
 
-// vx: Python scripting bridge for player scripts (_vb module)
+// vx: Python scripting bridge for player scripts (_vx module)
 
 #include <vector>
 

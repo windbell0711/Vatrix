@@ -142,9 +142,9 @@ else()
 	find_package(SDL2 REQUIRED)
 endif()
 
-# vx: optional Python scripting (_vb module). Preferred: self-contained NuGet python fetched by
+# vx: optional Python scripting (_vx module). Preferred: self-contained NuGet python fetched by
 # fetch_python.ps1 into third_party/python/; falls back to a system Python 3.12 dev install.
-option(VX_SCRIPT "Enable Python scripting support (_vb module)" ON)
+option(VX_SCRIPT "Enable Python scripting support (_vx module)" ON)
 set(VX_PYTHON_TOOLS "${PROJECT_SOURCE_DIR}/third_party/python/tools" CACHE PATH "Fetched NuGet python tools dir (fetch_python.ps1)")
 if(VX_SCRIPT)
 	if(WIN32 AND EXISTS "${VX_PYTHON_TOOLS}/python312.dll" AND EXISTS "${VX_PYTHON_TOOLS}/libpython312.a")

@@ -200,7 +200,7 @@ namespace
 			aDef.mIdentifiers.emplace(aName, anId);
 		}
 		// vx: Vatrix script commands get a dedicated yellow highlight (PreprocIdentifier slot)
-		for (const char* aName : { "vb", "brk", "slp", "plt", "rmv", "get_zombies", "get_plants",
+		for (const char* aName : { "vx", "brk", "slp", "plt", "rmv", "get_zombies", "get_plants",
 				"get_cards", "get_vases", "slp_until", "get_time" })
 		{
 			TextEditor::Identifier anId;

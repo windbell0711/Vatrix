@@ -1,5 +1,5 @@
 # Submit at 2026-08-14 15:42:20: 24889, 26271, 0
-from vb import *
+from vx import *
 
 slp(6)
 brk(3, 9)

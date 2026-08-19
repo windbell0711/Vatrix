@@ -61,7 +61,7 @@ namespace
 	bool gScriptEnded = false;
 	std::mutex gScriptEndedMutex;
 	std::condition_variable gScriptEndedCv;
-	// vx: cooperative sleep for vb.slp: the script thread waits on this cv (GIL released),
+	// vx: cooperative sleep for vx.slp: the script thread waits on this cv (GIL released),
 	// and StopScripts/interrupt wake it via the stop flag - deterministic, any delay length
 	std::mutex gSleepMutex;
 	std::condition_variable gSleepCv;
@@ -83,7 +83,7 @@ namespace
 	// vx: true while a locked Submit run is active: the editor autosave is suspended
 	bool gRunLocked = false;
 
-	// vx: blocking script query (vb.get_zombies / get_plants / get_cards):
+	// vx: blocking script query (vx.get_zombies / get_plants / get_cards):
 	// script thread asks, main thread answers in ProcessBoardQueue
 	enum class VxQueryType
 	{
@@ -298,7 +298,7 @@ except BaseException:
 		PyGILState_Release(aGILState);
 	}
 
-	PyObject* VbBrk(PyObject*, PyObject* theArgs)
+	PyObject* VxBrk(PyObject*, PyObject* theArgs)
 	{
 		int aRow = 0;
 		int aCol = 0;
@@ -316,7 +316,7 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	PyObject* VbBrkVase(PyObject*, PyObject* theArgs)
+	PyObject* VxBrkVase(PyObject*, PyObject* theArgs)
 	{
 		int aVaseID = 0;
 		if (!PyArg_ParseTuple(theArgs, "i", &aVaseID))
@@ -336,7 +336,7 @@ except BaseException:
 	// vx: cooperative sleep - the script thread waits on a cv with the GIL released; a stop
 	// request wakes it immediately instead of relying on PyThreadState_SetAsyncExc (which only
 	// interrupts the eval loop, not arbitrary waits)
-	PyObject* VbSlp(PyObject*, PyObject* theArgs)
+	PyObject* VxSlp(PyObject*, PyObject* theArgs)
 	{
 		double aDelay = 0.0;
 		if (!PyArg_ParseTuple(theArgs, "d", &aDelay))
@@ -369,8 +369,8 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	// vx: sleep until the level game clock reaches the given absolute time (same wait as VbSlp)
-	PyObject* VbSlpUntil(PyObject*, PyObject* theArgs)
+	// vx: sleep until the level game clock reaches the given absolute time (same wait as VxSlp)
+	PyObject* VxSlpUntil(PyObject*, PyObject* theArgs)
 	{
 		double aTargetTime = 0.0;
 		if (!PyArg_ParseTuple(theArgs, "d", &aTargetTime))
@@ -392,7 +392,7 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	PyObject* VbPlt(PyObject*, PyObject* theArgs)
+	PyObject* VxPlt(PyObject*, PyObject* theArgs)
 	{
 		int aRow = 0;
 		int aCol = 0;
@@ -411,7 +411,7 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	PyObject* VbRmv(PyObject*, PyObject* theArgs)
+	PyObject* VxRmv(PyObject*, PyObject* theArgs)
 	{
 		int aRow = 0;
 		int aCol = 0;
@@ -456,33 +456,33 @@ except BaseException:
 		return aResult;
 	}
 
-	PyObject* VbGetZombies(PyObject*, PyObject*)
+	PyObject* VxGetZombies(PyObject*, PyObject*)
 	{
 		return VxRunQuery(VxQueryType::Zombies);
 	}
 
-	PyObject* VbGetPlants(PyObject*, PyObject*)
+	PyObject* VxGetPlants(PyObject*, PyObject*)
 	{
 		return VxRunQuery(VxQueryType::Plants);
 	}
 
-	PyObject* VbGetCards(PyObject*, PyObject*)
+	PyObject* VxGetCards(PyObject*, PyObject*)
 	{
 		return VxRunQuery(VxQueryType::Cards);
 	}
 
-	PyObject* VbGetVases(PyObject*, PyObject*)
+	PyObject* VxGetVases(PyObject*, PyObject*)
 	{
 		return VxRunQuery(VxQueryType::Vases);
 	}
 
-	PyObject* VbGetTime(PyObject*, PyObject*)
+	PyObject* VxGetTime(PyObject*, PyObject*)
 	{
 		std::lock_guard<std::mutex> aLock(gSleepMutex);
 		return PyFloat_FromDouble(gVxGameTime);
 	}
 
-	PyObject* VbPlc(PyObject*, PyObject* theArgs)
+	PyObject* VxPlc(PyObject*, PyObject* theArgs)
 	{
 		int aCoinID = 0;
 		int aRow = 0;
@@ -501,7 +501,7 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	PyObject* VbRmvPlant(PyObject*, PyObject* theArgs)
+	PyObject* VxRmvPlant(PyObject*, PyObject* theArgs)
 	{
 		int aPlantID = 0;
 		if (!PyArg_ParseTuple(theArgs, "i", &aPlantID))
@@ -518,35 +518,35 @@ except BaseException:
 		Py_RETURN_NONE;
 	}
 
-	PyMethodDef gVbMethods[] = {
-		{"brk", VbBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
-		{"brk_vase", VbBrkVase, METH_VARARGS, "Queue a break of the vase with the given id."},
-		{"slp", VbSlp, METH_VARARGS, "Sleep for delay seconds; interruptible by StopScripts."},
-		{"slp_until", VbSlpUntil, METH_VARARGS, "Sleep until the level game time reaches the given value; interruptible by StopScripts."},
-		{"plt", VbPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
-		{"rmv", VbRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
-		{"plc", VbPlc, METH_VARARGS, "Queue a plant from a dropped card (coin id) at (row, col)."},
-		{"rmv_plant", VbRmvPlant, METH_VARARGS, "Queue a shovel of the plant with the given id."},
-		{"get_zombies", VbGetZombies, METH_NOARGS, "Return a list of dicts describing the current zombies."},
-		{"get_plants", VbGetPlants, METH_NOARGS, "Return a list of dicts describing the current plants."},
-		{"get_cards", VbGetCards, METH_NOARGS, "Return a list of dicts describing the dropped seed cards."},
-		{"get_vases", VbGetVases, METH_NOARGS, "Return a list of dicts describing the vases on the field."},
-		{"time", VbGetTime, METH_NOARGS, "Return the current level game time in seconds (frozen while paused)."},
+	PyMethodDef gVxMethods[] = {
+		{"brk", VxBrk, METH_VARARGS, "Queue a vase break at (row, col)."},
+		{"brk_vase", VxBrkVase, METH_VARARGS, "Queue a break of the vase with the given id."},
+		{"slp", VxSlp, METH_VARARGS, "Sleep for delay seconds; interruptible by StopScripts."},
+		{"slp_until", VxSlpUntil, METH_VARARGS, "Sleep until the level game time reaches the given value; interruptible by StopScripts."},
+		{"plt", VxPlt, METH_VARARGS, "Queue a plant from bank slot card_id at (row, col)."},
+		{"rmv", VxRmv, METH_VARARGS, "Queue a shovel at (row, col)."},
+		{"plc", VxPlc, METH_VARARGS, "Queue a plant from a dropped card (coin id) at (row, col)."},
+		{"rmv_plant", VxRmvPlant, METH_VARARGS, "Queue a shovel of the plant with the given id."},
+		{"get_zombies", VxGetZombies, METH_NOARGS, "Return a list of dicts describing the current zombies."},
+		{"get_plants", VxGetPlants, METH_NOARGS, "Return a list of dicts describing the current plants."},
+		{"get_cards", VxGetCards, METH_NOARGS, "Return a list of dicts describing the dropped seed cards."},
+		{"get_vases", VxGetVases, METH_NOARGS, "Return a list of dicts describing the vases on the field."},
+		{"time", VxGetTime, METH_NOARGS, "Return the current level game time in seconds (frozen while paused)."},
 		{nullptr, nullptr, 0, nullptr},
 	};
 
-	PyModuleDef gVbModule = {
+	PyModuleDef gVxModule = {
 		PyModuleDef_HEAD_INIT,
-		"_vb",
+		"_vx",
 		"Vatrix scripting bridge (vase breaking).",
 		-1,
-		gVbMethods,
+		gVxMethods,
 	};
 }
 
-extern "C" PyMODINIT_FUNC PyInit__vb(void)
+extern "C" PyMODINIT_FUNC PyInit__vx(void)
 {
-	return PyModule_Create(&gVbModule);
+	return PyModule_Create(&gVxModule);
 }
 
 namespace VX
@@ -564,7 +564,7 @@ namespace VX
 	{
 		if (gPythonReady)
 			return;
-		PyImport_AppendInittab("_vb", PyInit__vb);
+		PyImport_AppendInittab("_vx", PyInit__vx);
 
 		PyConfig aConfig;
 		PyConfig_InitIsolatedConfig(&aConfig);
@@ -584,7 +584,7 @@ namespace VX
 		PyConfig_Clear(&aConfig);
 		if (PyStatus_IsError(aStatus))
 		{
-			ScriptLog("[vb] python init failed");
+			ScriptLog("[vx] python init failed");
 			return;
 		}
 		// vx: the game thread keeps no GIL; the script worker acquires it via PyGILState
@@ -620,7 +620,7 @@ namespace VX
 		gScriptThread = std::thread(ScriptThreadMain);
 	}
 
-	// vx: wake any vb.slp() wait so the script thread can raise KeyboardInterrupt by itself
+	// vx: wake any vx.slp() wait so the script thread can raise KeyboardInterrupt by itself
 	void VxRequestScriptStop()
 	{
 		{
@@ -677,7 +677,7 @@ namespace VX
 				// ponytail: script did not stop (C-extension busy loop); abandon the thread
 				// instead of freezing the game - the process exits eventually anyway
 				gScriptThread.detach();
-				ScriptLog("[vb] script did not stop within 3s; thread abandoned, restart the game");
+				ScriptLog("[vx] script did not stop within 3s; thread abandoned, restart the game");
 				gPythonReady = false;
 			}
 			else
@@ -776,7 +776,7 @@ namespace VX
 
 	void ProcessBoardQueue(Board* theBoard)
 	{
-		// vx: answer a pending vb.get_zombies() query on the game thread
+		// vx: answer a pending vx.get_zombies() query on the game thread
 		{
 			std::lock_guard<std::mutex> aLock(gQueryMutex);
 			if (gQueryPending)
@@ -898,7 +898,7 @@ namespace VX
 				GridItem* aPot = theBoard->GetScaryPotAt(aCommand.mCol, aCommand.mRow);
 				if (!aPot)
 				{
-					ScriptLog("[vb] no pot at (" + std::to_string(aCommand.mRow) + ", " + std::to_string(aCommand.mCol) + ")");
+					ScriptLog("[vx] no pot at (" + std::to_string(aCommand.mRow) + ", " + std::to_string(aCommand.mCol) + ")");
 					break;
 				}
 				theBoard->mChallenge->ScaryPotterOpenPot(aPot);

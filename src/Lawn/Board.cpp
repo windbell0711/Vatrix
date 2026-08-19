@@ -2297,7 +2297,10 @@ void Board::DisplayAdvice(std::string_view theAdvice, MessageStyle theMessageSty
 	}
 
 	mAdvice->SetLabel(theAdvice, theMessageStyle);
-	mHelpIndex = theHelpIndex;
+	// vx: transient status messages (ADVICE_NONE) must not wipe the 6-1 tutorial
+	// step (END etc.), which is carried across world-6 restarts to avoid replaying the tutorial
+	if (theHelpIndex != AdviceType::ADVICE_NONE || !(mHelpIndex >= ADVICE_6_1_START && mHelpIndex <= ADVICE_6_1_END))
+		mHelpIndex = theHelpIndex;
 }
 
 void Board::DisplayAdviceAgain(std::string_view theAdvice, MessageStyle theMessageStyle, AdviceType theHelpIndex)

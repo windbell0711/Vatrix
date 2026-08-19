@@ -1,6 +1,6 @@
 # Submit at 2026-08-16 10:05:02: 26310, 30759, 125
 # This script is written by Lilold, tested by Windbell.
-from vb import *
+from vx import *
 slp(1)
 aal = [0,0,0,0,0]
 for plant in get_plants():

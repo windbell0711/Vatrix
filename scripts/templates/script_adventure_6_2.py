@@ -1,4 +1,4 @@
-from vb import *
+from vx import *
 
 rmv(3, 5)  # remove a plant
 

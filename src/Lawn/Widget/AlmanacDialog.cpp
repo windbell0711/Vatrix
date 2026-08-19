@@ -41,7 +41,9 @@
 bool gZombieDefeated[NUM_ZOMBIE_TYPES] = { false };
 
 // vx: almanac index-page link target (GitHub)
-static const char kVatrixSiteURL[] = "https://github.com/windbell0711/Vatrix/blob/main/Properties/MANUAL.md";
+static const char kVatrixSiteURL[] = "https://link.windbell.uno/permanent/vatrix";
+// vx: index-page second link target
+static const char kAltSiteURL[] = "https://github.com/windbell0711/Vatrix/blob/main/Properties/MANUAL.md";
 
 AlmanacDialog::AlmanacDialog(LawnApp* theApp) : LawnDialog(theApp, DIALOG_ALMANAC, true, theApp->GetString("ALMANAC_HEADER", "Almanac"), "", "", BUTTONS_NONE)
 {
@@ -113,6 +115,13 @@ AlmanacDialog::AlmanacDialog(LawnApp* theApp) : LawnDialog(theApp, DIALOG_ALMANA
 	mVatrixButton->mDrawStoneButton = true;
 	mVatrixButton->mParentWidget = this;
 
+	// vx: second index-page entry linking to the Alt site
+	mAltButton = new GameButton(AlmanacDialog::ALMANAC_BUTTON_ALT);
+	mAltButton->SetLabel("Alt   ");
+	mAltButton->Resize(300, 508, 250, 48);
+	mAltButton->mDrawStoneButton = true;
+	mAltButton->mParentWidget = this;
+
 	SetPage(ALMANAC_PAGE_INDEX);
 	if (!mApp->mBoard || !mApp->mBoard->mPaused)
 		mApp->mMusic->MakeSureMusicIsPlaying(MUSIC_TUNE_CHOOSE_YOUR_SEEDS);
@@ -125,6 +134,7 @@ AlmanacDialog::~AlmanacDialog()
 	if (mPlantButton)	delete mPlantButton;
 	if (mZombieButton)	delete mZombieButton;
 	if (mVatrixButton)	delete mVatrixButton;
+	if (mAltButton)		delete mAltButton;
 
 	ClearPlantsAndZombies();
 }
@@ -217,6 +227,7 @@ void AlmanacDialog::SetPage(AlmanacPage thePage)
 		mPlantButton->mBtnNoDraw = false;
 		mZombieButton->mBtnNoDraw = false;
 		mVatrixButton->mBtnNoDraw = false;
+		mAltButton->mBtnNoDraw = false;
 	}
 	else
 	{
@@ -230,6 +241,7 @@ void AlmanacDialog::SetPage(AlmanacPage thePage)
 		mPlantButton->mBtnNoDraw = true;
 		mZombieButton->mBtnNoDraw = true;
 		mVatrixButton->mBtnNoDraw = true;
+		mAltButton->mBtnNoDraw = true;
 	}
 }
 
@@ -252,6 +264,7 @@ void AlmanacDialog::Update()
 	mPlantButton->Update();
 	mZombieButton->Update();
 	mVatrixButton->Update();
+	mAltButton->Update();
 	if (mPlant) mPlant->Update();
 	if (mZombie) mZombie->Update();
 	for (Zombie* aZombie : mZombiePerfTest)
@@ -265,7 +278,7 @@ void AlmanacDialog::Update()
 	int aMouseX = mApp->mWidgetManager->mLastMouseX;
 	int aMouseY = mApp->mWidgetManager->mLastMouseY;
 	if (SeedHitTest(aMouseX, aMouseY) != SeedType::SEED_NONE || ZombieHitTest(aMouseX, aMouseY) != ZombieType::ZOMBIE_INVALID || 
-		mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver() || mPlantButton->IsMouseOver() || mZombieButton->IsMouseOver() || mVatrixButton->IsMouseOver())
+		mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver() || mPlantButton->IsMouseOver() || mZombieButton->IsMouseOver() || mVatrixButton->IsMouseOver() || mAltButton->IsMouseOver())
 	{
 		mApp->SetCursor(CURSOR_HAND);
 	}
@@ -549,6 +562,7 @@ void AlmanacDialog::Draw(Graphics* g)
 	mPlantButton->Draw(g);
 	mZombieButton->Draw(g);
 	mVatrixButton->Draw(g);
+	mAltButton->Draw(g);
 }
 
 void AlmanacDialog::GetSeedPosition(SeedType theSeedType, int& x, int& y)
@@ -688,6 +702,13 @@ void AlmanacDialog::MouseUp(int x, int y, int theClickCount)
 			mApp->SwitchScreenMode(true, mApp->Is3DAccelerated());
 		SDL_OpenURL(kVatrixSiteURL);
 	}
+	else if (mAltButton->IsMouseOver())
+	{
+		// vx: leave fullscreen so the browser window is visible, then open the site
+		if (!mApp->mIsWindowed)
+			mApp->SwitchScreenMode(true, mApp->Is3DAccelerated());
+		SDL_OpenURL(kAltSiteURL);
+	}
 	else if (mCloseButton->IsMouseOver())	mApp->KillAlmanacDialog();
 	else if (mIndexButton->IsMouseOver())	SetPage(ALMANAC_PAGE_INDEX);
 }
@@ -701,6 +722,8 @@ void AlmanacDialog::MouseDown(int x, int y, int theClickCount)
 	if (mZombieButton->IsMouseOver())
 		mApp->PlaySample(Sexy::SOUND_GRAVEBUTTON);
 	if (mVatrixButton->IsMouseOver())
+		mApp->PlaySample(Sexy::SOUND_TAP);
+	if (mAltButton->IsMouseOver())
 		mApp->PlaySample(Sexy::SOUND_TAP);
 
 	SeedType aSeedType = SeedHitTest(x, y);

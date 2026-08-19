@@ -14,7 +14,14 @@
 [CRAZY_DAVE_9106] So I'll now give you this engine, and hope you bring back the trophy.
 [CRAZY_DAVE_9107] Good luck.
 
-[CRAZY_DAVE_9950] Finally ...
+[CRAZY_DAVE_9200] That zine is written by Dr. Zomboss.
+[CRAZY_DAVE_9201] Those zombies are gaining intelligence.
+[CRAZY_DAVE_9202] I'm afraid we should read that too...
+[CRAZY_DAVE_9203] ... to gain knowlege...
+[CRAZY_DAVE_9204] ... faster.
+
+[CRAZY_DAVE_9950] zhe guan hai mei zuo hao
+[CRAZY_DAVE_9951] ctrl + d
 
 [ADVICE_6_1_START] You're now at the Vatrix console. Try Clicking 'Open'.
 [ADVICE_6_1_DESTROY_POT] Don't break the vases yourself! Click 'Reset'.

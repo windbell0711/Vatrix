@@ -24,7 +24,7 @@
 - 6-10 出怪池加入海豚骑手、潜水僵尸、气球僵尸、舞王、矿工
 - 世界 6 关卡推进：6-7 ~ 6-9 通关脚本
 - 关卡初始化移入 C++（VxLevelInit），移除 Python 侧 vx_init_lvl.py
-- vb 脚本包重构：拆分为 basic/name/coroutine，新增 vb.coroutine
+- vx 脚本包重构：拆分为 basic/name/coroutine，新增 vx.coroutine
 - Ctrl+N 增加 100 阳光调试快捷键（原刷潜水僵尸调试键移至 V）
 - 新增 VX_HINT_3/4 提示图
 
@@ -56,7 +56,7 @@
 - 关卡脚本 6-2 ~ 6-7 与 adventure_info.csv 关卡数据更新
 
 ### 变更
-- 用户脚本延迟 500ms 启动（由 C++ 侧统一控制，移除 vb 包内硬编码 slp(0.5)）
+- 用户脚本延迟 500ms 启动（由 C++ 侧统一控制，移除 vx 包内硬编码 slp(0.5)）
 - get_zombies 快照新增 id 字段
 - 6-1 通关奖励改为图鉴（AWARD_ALMANAC）
 
@@ -72,7 +72,7 @@
 ### 新增
 - 冒险新增世界 6，5-10 改为自定义僵王关
 - 加入 Python 脚本系统与自包含运行时，关卡初始化（罐子布局、场景、卡槽、初始阳光）由 adventure_info.csv 驱动（vx_init_lvl）
-- 游戏内置代码编辑器，支持 vb 指令：破罐、休眠、种植、铲除与状态查询
+- 游戏内置代码编辑器，支持 vx 指令：破罐、休眠、种植、铲除与状态查询
 - 世界 6 Run/Submit 系统：
   - Run 试运行：不推进存档、不发奖励
   - Submit 官方验证：5 个测试点各用独立随机种子（random_seeds 列），全部通过才发放通关奖励（6-1 纸条、6-2 图鉴），失败可 Reset 重来

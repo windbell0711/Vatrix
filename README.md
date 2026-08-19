@@ -35,19 +35,19 @@
 
 世界 6（6-1~6-10）改为玩家驱动：进入关卡后脚本不会自动运行，画面下方的 **Open / Reset / Run / Submit** 按钮控制流程。点击 **Open** 打开游戏内编辑器（窗口右侧延伸 250px，变为 1050x600），可直接编写/修改当前关脚本（首次打开时优先用 scripts/templates/ 下同名文件初始化，无则新建空文件）；**Run** 为试玩（保存并重开本关，胜利不推进存档、不发奖励，编辑器保持原有开合状态），**Reset** 为同种子重开，**Submit** 为正式通关（胜利后推进存档并发奖）。编辑器面板内有 保存/运行/关闭，运行前自动保存到 `scripts/script_adventure_<世界>_<关号>.py`；若该文件在外部（VSCode/PyCharm）被修改而编辑器缓冲也有改动，会弹出覆盖/重新加载选择。
 
-### vb 包
+### vx 包
 
-关卡脚本 `import vb` 即可使用：
+关卡脚本 `import vx` 即可使用：
 
 | 函数 | 说明 |
 | :--- | :--- |
-| `vb.brk(row, col, delay=0)` | 打碎指定罐子，然后脚本阻塞 `delay` 秒 |
-| `vb.slp(delay)` | 脚本暂停 `delay` 秒 |
-| `vb.plt(row, col, card_id=0)` | 种下卡槽第 `card_id` 张卡片（0 基） |
-| `vb.rmv(row, col)` | 铲除指定格植物 |
-| `vb.get_zombies()` / `vb.get_plants()` | 场上僵尸 / 植物快照列表 |
-| `vb.get_cards()` / `vb.get_vases()` | 掉落卡片 / 罐子快照列表 |
-| `vb.consts` | 植物（`pt`）、僵尸（`zt`）、罐子内容（`vc`）等类型常量 |
+| `vx.brk(row, col, delay=0)` | 打碎指定罐子，然后脚本阻塞 `delay` 秒 |
+| `vx.slp(delay)` | 脚本暂停 `delay` 秒 |
+| `vx.plt(row, col, card_id=0)` | 种下卡槽第 `card_id` 张卡片（0 基） |
+| `vx.rmv(row, col)` | 铲除指定格植物 |
+| `vx.get_zombies()` / `vx.get_plants()` | 场上僵尸 / 植物快照列表 |
+| `vx.get_cards()` / `vx.get_vases()` | 掉落卡片 / 罐子快照列表 |
+| `vx.consts` | 植物（`pt`）、僵尸（`zt`）、罐子内容（`vc`）等类型常量 |
 
 动作类接口行列从 1 开始数；查询返回冻结 dataclass 快照（`typ` 为类型号），僵尸/植物/卡片/罐子对象分别提供 `rmv()`、`plc(row, col)` 等方法。快照默认不可修改，避免脚本污染游戏状态。
 

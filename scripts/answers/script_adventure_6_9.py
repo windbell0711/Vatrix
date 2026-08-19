@@ -1,6 +1,6 @@
 # Submit at 2026-08-16 18:43:34: 31785, 35042, 125
-from vb import *
-from vb.coroutine import Scheduler
+from vx import *
+from vx.coroutine import Scheduler
 import math
 
 # ===== utils =====

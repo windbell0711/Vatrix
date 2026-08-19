@@ -1,6 +1,6 @@
 # Submit at 2026-08-15 18:14:09: 26784, 27205, 0
 # This script is written and tested by Lilold.
-from vb import *
+from vx import *
 
 plt(3, 3)
 slp(0.1)
