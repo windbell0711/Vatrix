@@ -47,6 +47,8 @@ file(GLOB SOURCES CONFIGURE_DEPENDS
 	src/Lawn/Widget/*.cpp
 	src/Lawn/System/*.cpp
 )
+# vx: SetupWizard.cpp/.rc are the standalone wizard (vatrix-setup target), not part of the game
+list(FILTER SOURCES EXCLUDE REGEX "SetupWizard")
 
 # vx: in-game code editor (Dear ImGui + ImGuiColorTextEdit); desktop Windows + MinGW only
 if(VX_SCRIPT AND WIN32 AND NOT MSVC)
@@ -314,10 +316,14 @@ if (WIN32)
 			OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/icon.ico"
 	)
 
-	target_link_libraries(pvz-portable PRIVATE ws2_32 user32 gdi32 winmm imm32 shlwapi)
+	target_link_libraries(pvz-portable PRIVATE ws2_32 user32 gdi32 winmm imm32 shlwapi bcrypt)
 	target_compile_definitions(pvz-portable PRIVATE WINDOWS)
 	# vx: packaged exe is named Vatrix.exe
 	set_target_properties(pvz-portable PROPERTIES OUTPUT_NAME "Vatrix")
+	# vx: ship the resource hash manifest next to the exe (startup verification)
+	add_custom_command(TARGET pvz-portable POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${PROJECT_SOURCE_DIR}/resources.sha256" $<TARGET_FILE_DIR:pvz-portable>)
 
 	if(VX_SCRIPT AND VX_PYTHON_RUNTIME_DLL)
 		# vx: copy the fetched python runtime (python312.dll + vcruntime) next to the exe
@@ -468,3 +474,23 @@ if(WIN32 AND VATRIX_PROPERTY_FILES)
 	endforeach()
 	add_custom_target(vatrix_properties ALL DEPENDS ${VATRIX_SYNC_DEPS})
 endif()
+
+# vx: first-run setup wizard (VatrixSetup.exe, Windows only)
+if(WIN32)
+	add_executable(vatrix-setup src/SetupWizard.cpp src/SetupWizard.rc)
+	set_source_files_properties(
+		${CMAKE_CURRENT_SOURCE_DIR}/src/SetupWizard.rc
+		PROPERTIES
+			COMPILE_DEFINITIONS "APP_ICON_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/icon.ico\""
+			OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/icon.ico"
+	)
+	target_compile_definitions(vatrix-setup PRIVATE UNICODE _UNICODE)
+	target_compile_features(vatrix-setup PRIVATE cxx_std_20)
+	set_target_properties(vatrix-setup PROPERTIES CXX_EXTENSIONS OFF OUTPUT_NAME "VatrixSetup")
+	if(MSVC)
+		target_compile_options(vatrix-setup PRIVATE /utf-8)
+	endif()
+	target_link_libraries(vatrix-setup PRIVATE comctl32 comdlg32 shell32 ole32 user32 gdi32 bcrypt)
+	target_link_options(vatrix-setup PRIVATE -mwindows -municode)
+endif()
+

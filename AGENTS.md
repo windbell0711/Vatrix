@@ -44,8 +44,8 @@ ninja -C build-release
 
 - 显式指定 MinGW 编译器(默认 cmake 可能误选 MSVC)。Release 默认 CONSOLE=OFF、PVZ_DEBUG=OFF;`build-release/` 已被 git 忽略。
 - Python 运行时（VX_SCRIPT）来自 `third_party/python/tools/`（由 `fetch_python.ps1` 拉取的官方 NuGet python 3.12，git 忽略）：首次构建前先运行该脚本；打包时带 `python312.dll`、`vcruntime140.dll`、`vcruntime140_1.dll`、`python312/`（标准库，构建时自动同步）与空的 `userlibs/`（运行时自动创建）。
-- 运行时 DLL 来自 `D:/msys64/ucrt64/bin/`:`SDL2.dll`、`libopenmpt-0.dll`、`libpng16-16.dll`、`libjpeg-8.dll`、`zlib1.dll`、`libgcc_s_seh-1.dll`、`libstdc++-6.dll`、`libwinpthread-1.dll`、`libmpg123-0.dll`、`libvorbis-0.dll`、`libvorbisfile-3.dll`、`libogg-0.dll`。后 4 个是 `libopenmpt-0.dll` 的传递依赖,漏带会报“找不到 libmpg123-0.dll”。用 `objdump -p build-release/Vatrix.exe | Select-String "DLL Name"` 核对 exe,并对包内每个 DLL 各跑一次 `objdump -p` 检查传递依赖是否都在包内;SDL Mixer X 为静态链接,无需带 mixer DLL。
-- 组装 `dist/vatrix-win64/`(`dist/` 已被 git 忽略):exe + 上述 DLL + LICENSE + COPYING + `使用说明.txt`(写明玩家需自备 `main.pak` 和 `properties/`,包内不得包含)。
+- 运行时 DLL 来自 `D:/msys64/ucrt64/bin/`:`SDL2.dll`、`libopenmpt-0.dll`、`libpng16-16.dll`、`libjpeg-8.dll`、`zlib1.dll`、`libgcc_s_seh-1.dll`、`libstdc++-6.dll`、`libwinpthread-1.dll`、`libmpg123-0.dll`、`libvorbis-0.dll`、`libvorbisfile-3.dll`、`libogg-0.dll`。后 4 个是 `libopenmpt-0.dll` 的传递依赖,漏带会报“找不到 libmpg123-0.dll”。用 `objdump -p build-release/Vatrix.exe | Select-String "DLL Name"` 核对 exe,并对包内每个 DLL 各跑一次 `objdump -p` 检查传递依赖是否都在包内;SDL Mixer X 为静态链接,无需带 mixer DLL。`VatrixSetup.exe` 只额外依赖上述 MinGW 运行时(libgcc_s_seh-1.dll、libstdc++-6.dll),系统库无需打包。
+- 组装 `dist/vatrix-win64/`(`dist/` 已被 git 忽略):exe + `VatrixSetup.exe`(首次运行配置向导) + `resources.sha256`(启动时校验玩家资源的哈希清单,需与 exe 同目录)+ 上述 DLL + LICENSE + COPYING + `使用说明.txt`(写明玩家需自备 `main.pak` 和 `properties/`,包内不得包含;可先运行 `VatrixSetup.exe`,游戏缺资源时也会自动拉起)。
 - 有新提交后重新打包:只重跑 `ninja -C build-release` 并覆盖 exe、重新压缩即可;DLL 未变则无需重拷。
 
 ## Python 运行时获取

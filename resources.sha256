@@ -1,0 +1,8 @@
+# Vatrix: expected SHA-256 of player-supplied official resource files (relative to the resource dir).
+# Vatrix-owned files (VX_*, VatrixStrings.txt, MANUAL.md, adventure_info.csv) are NOT listed here.
+5878326408285cb01f83b4fa4edcc66d65e727f6d6ee88563b5b3b287dd259fc  main.pak
+4e7ff623b419e36feb578eaccb5e80b838290b01c2d2ae282a0648cecbd80290  properties/partner.xml
+ca5b57ce55e4c7dac8086656e7b63c41d56e1cc98a6208391f6fbfa800887537  properties/partner.xml.sig
+8bea233c40ddf74decf3ddd0a3d4cef8e1229ca3a756384e78d319aca0b63113  properties/partner_logo.jpg
+4a051495830ca117435c2972dda5af7a4355d33964d904c335eb140dcf2e904c  properties/default.xml
+41112aab62a796e9fe90c0654c127a8f2e053f3cc2ab6ac35aa3f8a99ab5578c  properties/Layout.xml

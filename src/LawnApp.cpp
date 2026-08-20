@@ -20,6 +20,7 @@
  */
 
 #include <time.h>
+#include <fstream>
 #include "LawnApp.h"
 #include "Resources.h"
 #include "Lawn/LawnCommon.h"
@@ -68,6 +69,12 @@
 #include "widget/WidgetManager.h"
 #include "misc/ResourceManager.h"
 #include <algorithm>
+
+#if defined(_WIN32)
+#include <windows.h>
+#include <filesystem>
+#include <string>
+#endif
 
 #include "widget/Checkbox.h"
 #include "widget/Dialog.h"
@@ -1275,6 +1282,150 @@ void BetaSubmitFunc()
 }
 */
 
+
+#if defined(_WIN32)
+#include <bcrypt.h>
+// vx: setup wizard helpers (Windows only)
+namespace VatrixSetupWizard
+{
+	bool HasGameData(const std::string& aResourceDir)
+	{
+		const std::filesystem::path aResDir = PathFromU8(aResourceDir);
+		return std::filesystem::is_regular_file(aResDir / "main.pak") &&
+		       std::filesystem::is_directory(aResDir / "properties");
+	}
+
+	// vx: SHA-256 of a file as lowercase hex; empty on failure
+	static std::string ComputeFileSha256(const std::filesystem::path& aPath)
+	{
+		std::ifstream aFile(aPath, std::ios::binary);
+		if (!aFile)
+		{
+			return {};
+		}
+
+		BCRYPT_ALG_HANDLE aAlg = nullptr;
+		if (BCryptOpenAlgorithmProvider(&aAlg, BCRYPT_SHA256_ALGORITHM, nullptr, 0) != 0)
+		{
+			return {};
+		}
+		BCRYPT_HASH_HANDLE aHash = nullptr;
+		std::string aResult;
+		if (BCryptCreateHash(aAlg, &aHash, nullptr, 0, nullptr, 0, 0) == 0)
+		{
+			char aBuf[1 << 16];
+			bool aOk = true;
+			while (aFile)
+			{
+				aFile.read(aBuf, sizeof(aBuf));
+				const std::streamsize aGot = aFile.gcount();
+				if (aGot > 0 && BCryptHashData(aHash, reinterpret_cast<PUCHAR>(aBuf),
+						static_cast<ULONG>(aGot), 0) != 0)
+				{
+					aOk = false;
+					break;
+				}
+			}
+			UCHAR aDigest[32] = {};
+			if (aOk && BCryptFinishHash(aHash, aDigest, sizeof(aDigest), 0) == 0)
+			{
+				static const char aHex[] = "0123456789abcdef";
+				aResult.reserve(sizeof(aDigest) * 2);
+				for (UCHAR aByte : aDigest)
+				{
+					aResult += aHex[aByte >> 4];
+					aResult += aHex[aByte & 0xF];
+				}
+			}
+			BCryptDestroyHash(aHash);
+		}
+		BCryptCloseAlgorithmProvider(aAlg, 0);
+		return aResult;
+	}
+
+	// vx: verify every file listed in resources.sha256 (next to the exe) against
+	// the resource dir; returns true when the manifest is absent or all match
+	bool VerifyResourceHashes(const std::string& aResourceDir)
+	{
+		wchar_t aExePath[MAX_PATH] = {};
+		if (!GetModuleFileNameW(nullptr, aExePath, MAX_PATH))
+		{
+			return true;
+		}
+		const std::filesystem::path aManifest =
+			std::filesystem::path(aExePath).parent_path() / L"resources.sha256";
+		std::ifstream aManifestFile(aManifest);
+		if (!aManifestFile)
+		{
+			return true;
+		}
+
+		const std::filesystem::path aResDir = PathFromU8(aResourceDir);
+		std::string aLine;
+		while (std::getline(aManifestFile, aLine))
+		{
+			if (!aLine.empty() && aLine.back() == '\r')
+			{
+				aLine.pop_back();
+			}
+			if (aLine.empty() || aLine[0] == '#')
+			{
+				continue;
+			}
+			// format: <sha256-hex>  <path relative to the resource dir>
+			if (aLine.size() < 66 || aLine.compare(64, 2, "  ") != 0)
+			{
+				return false;
+			}
+			std::string aRelPath = aLine.substr(66);
+			for (char& aCh : aRelPath)
+			{
+				if (aCh == '/')
+				{
+					aCh = '\\';
+				}
+			}
+			const std::string aExpected = aLine.substr(0, 64);
+			const std::string aActual = ComputeFileSha256(aResDir / aRelPath);
+			if (aActual != aExpected)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Run(bool aRepair)
+	{
+		wchar_t aExePath[MAX_PATH] = {};
+		if (!GetModuleFileNameW(nullptr, aExePath, MAX_PATH))
+		{
+			return;
+		}
+		const std::filesystem::path aWizardPath =
+			std::filesystem::path(aExePath).parent_path() / L"VatrixSetup.exe";
+		if (!std::filesystem::is_regular_file(aWizardPath))
+		{
+			return; // dev build without the packaged wizard
+		}
+
+		const std::wstring aCmdLine = L"\"" + aWizardPath.wstring() + L"\" --from-game" +
+			(aRepair ? L" --repair" : L"");
+		STARTUPINFOW aStartupInfo = {};
+		aStartupInfo.cb = sizeof(aStartupInfo);
+		PROCESS_INFORMATION aProcessInfo = {};
+		if (CreateProcessW(aWizardPath.c_str(), const_cast<wchar_t*>(aCmdLine.c_str()),
+				nullptr, nullptr, FALSE, 0, nullptr,
+				std::filesystem::path(aExePath).parent_path().c_str(),
+				&aStartupInfo, &aProcessInfo))
+		{
+			WaitForSingleObject(aProcessInfo.hProcess, INFINITE);
+			CloseHandle(aProcessInfo.hProcess);
+			CloseHandle(aProcessInfo.hThread);
+		}
+	}
+}
+#endif
 // GOTY @Patoke: 0x454C60
 void LawnApp::Init()
 {
@@ -1283,6 +1434,21 @@ void LawnApp::Init()
 	{
 		mOnlyAllowOneCopyToRun = true;
 	}
+
+#if defined(_WIN32)
+	// vx: first run without game data: run the setup wizard before the game window opens,
+	// so the game never shows as unresponsive and main.pak exists before it gets registered
+	if (!VatrixSetupWizard::HasGameData(mResourceDir))
+	{
+		VatrixSetupWizard::Run(false);
+	}
+	// vx: hash-verify the player-supplied resources; on mismatch run the wizard in
+	// repair mode so the player re-selects the correct main.pak
+	else if (!VatrixSetupWizard::VerifyResourceHashes(mResourceDir))
+	{
+		VatrixSetupWizard::Run(true);
+	}
+#endif
 
 	// GOTY @Patoke: 0x60C590
 	//if (!gSexyCache->Connected() &&
