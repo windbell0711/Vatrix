@@ -466,6 +466,11 @@ bool Board::LoadGame(const std::string& theFileName)
 	mApp->ClearUpdateBacklog();
 	ResetFPSStats();
 	UpdateLayers();
+	// vx: a loaded world-6 level needs its script control bar (StartLevel is not called on load)
+	if (mApp->IsVxScriptLevel())
+	{
+		VxCreateScriptControls();
+	}
 	return true;
 }
 
@@ -1832,6 +1837,33 @@ bool Board::ChooseSeedsOnCurrentLevel()
 	return (!mApp->IsFirstTimeAdventureMode() || mLevel > 7);
 }
 
+// vx: world-6 script control bar (6-1..6-4, 6-6..6-9); also created on game load,
+// where StartLevel is not called
+void Board::VxCreateScriptControls()
+{
+	if (mScriptButtons[0] != nullptr)
+		return;
+
+	const char* aLabels[4] = { "Open", "Reset", "Run", "Submit" };
+	// vx: ids keep their action semantics (101=Run, 102=Reset); only the on-screen order changes
+	const int aButtonIds[4] = { 100, 102, 101, 103 };
+	for (int i = 0; i < 4; i++)
+	{
+		mScriptButtons[i] = new GameButton(aButtonIds[i]);
+		mScriptButtons[i]->mDrawStoneButton = true;
+		mScriptButtons[i]->mTextOffsetY = 2; // vx: nudge the stone-button label down for true centering
+		mScriptButtons[i]->SetLabel(aLabels[i]);
+		mScriptButtons[i]->mParentWidget = this;
+		mScriptButtons[i]->Resize(142 + i * 132, 556, 120, 36);
+	}
+	mScriptCollapseButton = new GameButton(200);
+	mScriptCollapseButton->mDrawStoneButton = true;
+	mScriptCollapseButton->SetLabel("UI");
+	mScriptCollapseButton->mParentWidget = this;
+	mScriptCollapseButton->Resize(598, -10, 64, 46);
+	mScriptControlsVisible = true;
+}
+
 // GOTY @Patoke: 0x40E6A0
 void Board::StartLevel()
 {
@@ -1928,24 +1960,7 @@ void Board::StartLevel()
 	// vx: script control bar for the world-6 script levels (6-1..6-4, 6-6..6-9)
 	if (mApp->IsVxScriptLevel())
 	{
-		const char* aLabels[4] = { "Open", "Reset", "Run", "Submit" };
-		// vx: ids keep their action semantics (101=Run, 102=Reset); only the on-screen order changes
-		const int aButtonIds[4] = { 100, 102, 101, 103 };
-		for (int i = 0; i < 4; i++)
-		{
-			mScriptButtons[i] = new GameButton(aButtonIds[i]);
-			mScriptButtons[i]->mDrawStoneButton = true;
-			mScriptButtons[i]->mTextOffsetY = 2; // vx: nudge the stone-button label down for true centering
-			mScriptButtons[i]->SetLabel(aLabels[i]);
-			mScriptButtons[i]->mParentWidget = this;
-			mScriptButtons[i]->Resize(142 + i * 132, 556, 120, 36);
-		}
-		mScriptCollapseButton = new GameButton(200);
-		mScriptCollapseButton->mDrawStoneButton = true;
-		mScriptCollapseButton->SetLabel("UI");
-		mScriptCollapseButton->mParentWidget = this;
-		mScriptCollapseButton->Resize(598, -10, 64, 46);
-		mScriptControlsVisible = true;
+		VxCreateScriptControls();
 	}
 
 	mApp->mMusic->StartGameMusic();

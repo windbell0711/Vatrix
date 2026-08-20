@@ -289,6 +289,7 @@ public:
 	void							VxShovelPlantID(int thePlantID);
 	void							VxBreakVaseID(int theVaseID);
 	void							DisplayAdvice(std::string_view theAdvice, MessageStyle theMessageStyle, AdviceType theHelpIndex);
+	void							VxCreateScriptControls(); // vx: world-6 script control bar (also on game load)
 	void							StartLevel();
 	Plant*							AddPlant(int theGridX, int theGridY, SeedType theSeedType, SeedType theImitaterType = SeedType::SEED_NONE);
 	Projectile*						AddProjectile(int theX, int theY, int theRenderOrder, int theRow, ProjectileType theProjectileType);
