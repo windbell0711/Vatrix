@@ -2314,7 +2314,7 @@ void Board::DisplayAdvice(std::string_view theAdvice, MessageStyle theMessageSty
 	mAdvice->SetLabel(theAdvice, theMessageStyle);
 	// vx: transient status messages (ADVICE_NONE) must not wipe the 6-1 tutorial
 	// step (END etc.), which is carried across world-6 restarts to avoid replaying the tutorial
-	if (theHelpIndex != AdviceType::ADVICE_NONE || !(mHelpIndex >= ADVICE_6_1_START && mHelpIndex <= ADVICE_6_1_END))
+	if (theHelpIndex != AdviceType::ADVICE_NONE || !(mHelpIndex >= ADVICE_6_1_START && mHelpIndex <= ADVICE_6_1_SUBMIT))
 		mHelpIndex = theHelpIndex;
 }
 
@@ -5097,9 +5097,16 @@ void Board::MouseUp(int x, int y, int theClickCount)
 						break;
 					case 103: // Submit (official: 5-test verification, all AC then the save advances)
 						VX::VxEditorSave();
-						mApp->VxStartVerification(); // vx: 5 test points with different seeds
+						mApp->VxStartVerification();
 						mApp->mVxPendingRestart = 2;
 						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
+						if (mLevel == 51) {
+							if (mHelpIndex == ADVICE_6_1_START) {
+								DisplayAdvice("[ADVICE_6_1_DESTROY_POT]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_DESTROY_POT);
+							} else {
+								DisplayAdvice("[ADVICE_6_1_SUBMIT]", MESSAGE_STYLE_HINT_LONG, ADVICE_6_1_SUBMIT);
+							}
+						}
 						break;
 					}
 					break;

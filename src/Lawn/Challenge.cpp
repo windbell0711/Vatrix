@@ -4117,6 +4117,9 @@ void Challenge::ScaryPotterStart()
 			break;
 		case ADVICE_6_1_END:
 			break;
+		case ADVICE_6_1_SUBMIT:
+			mBoard->DisplayAdvice("[ADVICE_6_1_SUBMIT]", MESSAGE_STYLE_HINT_LONG, ADVICE_6_1_SUBMIT);
+			break;
 		default:
 			if (mBoard->mLevel == 51)
 				mBoard->DisplayAdvice("[ADVICE_6_1_START]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_START);

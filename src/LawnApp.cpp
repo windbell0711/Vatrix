@@ -107,7 +107,7 @@ static bool HasUnshownAchievements(PlayerInfo* thePlayerInfo)
 // vx: the 6-1 tutorial advice steps carried across in-session world-6 restarts
 static bool IsVxTutorialAdvice(AdviceType theHelp)
 {
-	return theHelp == AdviceType::ADVICE_6_1_START || theHelp == AdviceType::ADVICE_6_1_DESTROY_POT || theHelp == AdviceType::ADVICE_6_1_BUTTON_OPEN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN_2 || theHelp == AdviceType::ADVICE_6_1_END;
+	return theHelp == AdviceType::ADVICE_6_1_START || theHelp == AdviceType::ADVICE_6_1_DESTROY_POT || theHelp == AdviceType::ADVICE_6_1_BUTTON_OPEN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN || theHelp == AdviceType::ADVICE_6_1_BUTTON_RUN_2 || theHelp == AdviceType::ADVICE_6_1_END || theHelp == AdviceType::ADVICE_6_1_SUBMIT;
 }
 
 bool LawnGetCloseRequest()

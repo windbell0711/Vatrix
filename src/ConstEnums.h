@@ -99,6 +99,7 @@ enum AdviceType : int32_t
     ADVICE_6_1_BUTTON_RUN,
     ADVICE_6_1_BUTTON_RUN_2,
     ADVICE_6_1_END,
+    ADVICE_6_1_SUBMIT,
     NUM_ADVICE_TYPES
 };
 enum AlmanacPage : int32_t
