@@ -129,6 +129,8 @@ public:
 	// vx: resbank banner state carried over a Submit test-point restart (reset on a fresh Submit press)
 	int							mVxResBankX = 0;
 	bool						mVxResBankCollapsed = false;
+	// vx: game speed multiplier while a level is on screen (1 = normal, 4 = 4x); reverts to 1 outside levels
+	int							mVxGameSpeed = 1;
 	// vx: Submit verification: 5 test points with different seeds; results fill the resbank
 	bool						mVxVerifying = false;
 	int							mVxTestIndex = 0;

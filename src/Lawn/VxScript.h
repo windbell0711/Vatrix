@@ -53,7 +53,7 @@ namespace VX
 	bool ConsumePendingScriptRun();
 	bool IsTrialRun();
 	void ClearRunFlags();
-	// vx: seed carried into the next board (Run = fresh non-repeating, Reset = same as the current board)
+	// vx: seed carried into the next board (Run/Reset = fresh non-repeating, Submit = fixed test seeds)
 	void SetTrialSeed(int theSeed);
 	int TakeTrialSeed();
 	// vx: locked Submit runs freeze the script on disk (editor autosave suspended)

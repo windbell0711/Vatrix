@@ -90,7 +90,7 @@ Board::Board(LawnApp* theApp)
 
 	mApp->mEffectSystem->EffectSystemFreeAll();
 	mBoardRandSeed = mApp->mAppRandSeed;
-	// vx: a Run/Reset board carries a seed (Run = fresh, Reset = same); normal entries use the session seed
+	// vx: a Run/Reset board carries a fresh seed (Run/Reset = fresh, Submit = fixed test seeds); normal entries use the session seed
 	int aCarriedSeed = VX::TakeTrialSeed();
 	if (aCarriedSeed != 0)
 	{
@@ -223,8 +223,7 @@ Board::Board(LawnApp* theApp)
 	{
 		aBtn = nullptr;
 	}
-	mScriptCollapseButton = nullptr;
-	mScriptControlsVisible = true;
+	mScriptSpeedButton = nullptr;
 	mScriptStartGameTime = 0.0f;
 	mGameTime = 0.0f;
 	mLastGameTick = SDL_GetTicks();
@@ -295,7 +294,7 @@ Board::~Board()
 	{
 		delete aBtn;
 	}
-	delete mScriptCollapseButton;
+	delete mScriptSpeedButton;
 	mZombies.DataArrayDispose();
 	mPlants.DataArrayDispose();
 	mProjectiles.DataArrayDispose();
@@ -1856,12 +1855,12 @@ void Board::VxCreateScriptControls()
 		mScriptButtons[i]->mParentWidget = this;
 		mScriptButtons[i]->Resize(142 + i * 132, 556, 120, 36);
 	}
-	mScriptCollapseButton = new GameButton(200);
-	mScriptCollapseButton->mDrawStoneButton = true;
-	mScriptCollapseButton->SetLabel("UI");
-	mScriptCollapseButton->mParentWidget = this;
-	mScriptCollapseButton->Resize(598, -10, 64, 46);
-	mScriptControlsVisible = true;
+	// vx: speed button toggles the whole game between 1x and 4x; the label shows the current speed
+	mScriptSpeedButton = new GameButton(200);
+	mScriptSpeedButton->mDrawStoneButton = true;
+	mScriptSpeedButton->SetLabel(mApp->mVxGameSpeed > 1 ? "4x" : "1x");
+	mScriptSpeedButton->mParentWidget = this;
+	mScriptSpeedButton->Resize(598, -10, 64, 46);
 }
 
 // GOTY @Patoke: 0x40E6A0
@@ -4482,12 +4481,12 @@ bool Board::MouseHitTest(int x, int y, HitResult* theHitResult)
 	}
 
 	// vx: script control bar hover -> hand cursor
-	if (CanInteractWithBoardButtons() && mScriptCollapseButton && mScriptCollapseButton->IsMouseOver())
+	if (CanInteractWithBoardButtons() && mScriptSpeedButton && mScriptSpeedButton->IsMouseOver())
 	{
 		theHitResult->mObjectType = GameObjectType::OBJECT_TYPE_MENU_BUTTON;
 		return true;
 	}
-	if (CanInteractWithBoardButtons() && mScriptControlsVisible)
+	if (CanInteractWithBoardButtons())
 	{
 		for (GameButton* aBtn : mScriptButtons)
 		{
@@ -4989,7 +4988,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 	}
 
 	// vx: a Submit run is a locked run: gameplay clicks are blocked, but the UI
-	// buttons stay usable except Run/Submit (Menu/Open/Reset/UI work); a world-6
+	// buttons stay usable except Run/Submit (Menu/Open/Reset/Speed work); a world-6
 	// lose pause releases the lock so the player can still restart
 	bool aLockedRun = mScriptSubmitRun && !mScriptLosePaused;
 	if (!aLockedRun)
@@ -5054,16 +5053,19 @@ void Board::MouseUp(int x, int y, int theClickCount)
 		}
 	}
 
-	// vx: script control bar clicks: Open/Run/Reset/Submit
+	// vx: script control bar clicks: Speed/Open/Run/Reset/Submit
 	if (CanInteractWithBoardButtons() && theClickCount > 0)
 	{
-		if (mScriptCollapseButton && mScriptCollapseButton->IsMouseOver())
+		// vx: the speed button toggles 1x <-> 4x; locked during a Submit run so the
+		// real-time test-point measurements stay honest
+		if (mScriptSpeedButton && mScriptSpeedButton->IsMouseOver() && !aLockedRun)
 		{
-			mScriptCollapseButton->mIsOver = false;
-			mScriptCollapseButton->mIsDown = false;
-			mScriptControlsVisible = !mScriptControlsVisible;
+			mScriptSpeedButton->mIsOver = false;
+			mScriptSpeedButton->mIsDown = false;
+			mApp->mVxGameSpeed = (mApp->mVxGameSpeed >= 4) ? 1 : 4;
+			mScriptSpeedButton->SetLabel(mApp->mVxGameSpeed > 1 ? "4x" : "1x");
 		}
-		else if (mScriptControlsVisible)
+		else
 		{
 			for (GameButton* aBtn : mScriptButtons)
 			{
@@ -5090,7 +5092,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 							DisplayAdvice("[ADVICE_6_1_BUTTON_RUN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_RUN);
 						}
 						break;
-					case 102: // Reset (replay the level, same seed)
+					case 102: // Reset (replay the level like Run with a fresh random seed)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 3;
 						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
@@ -6247,20 +6249,18 @@ void Board::Update()
 	}
 	mMenuButton->Update();
 	// vx: script control bar updates
-	if (mScriptCollapseButton)
+	if (mScriptSpeedButton)
 	{
-		mScriptCollapseButton->mDisabled = aDisabled;
-		mScriptCollapseButton->Update();
+		// vx: the speed button is locked while a Submit run is being measured
+		mScriptSpeedButton->mDisabled = aDisabled || (mScriptSubmitRun && !mScriptLosePaused);
+		mScriptSpeedButton->Update();
 	}
-	if (mScriptControlsVisible)
+	for (GameButton* aBtn : mScriptButtons)
 	{
-		for (GameButton* aBtn : mScriptButtons)
-		{
-			if (!aBtn)
-				continue;
-			aBtn->mDisabled = aDisabled;
-			aBtn->Update();
-		}
+		if (!aBtn)
+			continue;
+		aBtn->mDisabled = aDisabled;
+		aBtn->Update();
 	}
 	// vx: editor panel actions (Run/Close) + 60s script watchdog for world 6
 	switch (VX::VxEditorTakePendingAction())
@@ -7826,10 +7826,10 @@ void Board::DrawTopRightUI(Graphics* g)
 		g->SetColor(GetFlashingColor(mMainCounter, 75));
 	}
 	mMenuButton->Draw(g);
-	// vx: collapse button for the script control bar
-	if (mScriptCollapseButton)
+	// vx: speed button for the script control bar
+	if (mScriptSpeedButton)
 	{
-		mScriptCollapseButton->Draw(g);
+		mScriptSpeedButton->Draw(g);
 	}
 	g->SetColorizeImages(false);
 
@@ -7895,14 +7895,11 @@ void Board::DrawUIBottom(Graphics* g)
 	}
 
 	// vx: script control bar (bottom center)
-	if (mScriptControlsVisible)
+	for (GameButton* aBtn : mScriptButtons)
 	{
-		for (GameButton* aBtn : mScriptButtons)
+		if (aBtn)
 		{
-			if (aBtn)
-			{
-				aBtn->Draw(g);
-			}
+			aBtn->Draw(g);
 		}
 	}
 }

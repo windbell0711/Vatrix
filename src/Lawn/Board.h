@@ -141,8 +141,7 @@ public:
 	GameButton*						mStoreButton;
 	// vx: world-6 script control bar (adventure 6-1..6-10 only)
 	GameButton*						mScriptButtons[4];
-	GameButton*						mScriptCollapseButton;
-	bool							mScriptControlsVisible;
+	GameButton*						mScriptSpeedButton; // vx: 1x/4x speed toggle (replaces the old UI collapse button)
 	float							mScriptStartGameTime; // vx: script start game time for the 60s watchdog
 	bool							mScriptSubmitRun; // vx: true during a Submit run: manual input is locked
 	bool							mScriptLosePaused; // vx: world-6 lose pause keeps the buttons clickable

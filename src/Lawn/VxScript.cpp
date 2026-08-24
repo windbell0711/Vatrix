@@ -76,7 +76,7 @@ namespace
 	int gPendingRunLevel = 0;
 	int gPendingRunMode = 0;
 	bool gTrialRun = false;
-	// vx: seed carried into the next board (Run = fresh, Reset = same as the current board)
+	// vx: seed carried into the next board (Run/Reset = fresh, Submit = fixed test seeds)
 	int gTrialSeed = 0;
 	// vx: strictly increasing per-session counter (random-ish base) keeps Run seeds unique
 	int gTrialSeedCounter = static_cast<int>(std::chrono::steady_clock::now().time_since_epoch().count() & 0xFFFFFF);
@@ -936,7 +936,7 @@ namespace VX
 		gTrialRun = !theSubmit;
 		if (!theSubmit)
 		{
-			gTrialSeed = gTrialSeedCounter += 7919; // vx: each Run click gets a fresh non-repeating seed
+			gTrialSeed = gTrialSeedCounter += 7919; // vx: each Run/Reset click gets a fresh non-repeating seed
 		}
 		else
 		{

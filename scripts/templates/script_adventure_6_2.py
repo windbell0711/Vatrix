@@ -1,7 +1,13 @@
 from vx import *
 
-rmv(3, 5)  # remove a plant
+# break the vase
+brk(3, 7)
 
-slp(0.618)  # sleep for 0.618 second
+# let program sleep for 2.25 seconds
+slp(2.25)
 
-plt(3, 5)  # plant a seed from the seedbank
+# plant the seed (from seedbank)
+plt(3, 4)
+
+# remove the plant
+rmv(3, 5)

@@ -108,12 +108,12 @@ const ZombieType gBossTacticCollapse[3] = {
 	ZombieType::ZOMBIE_POLEVAULTER
 };
 
-const ZombieType gBossTacticWeak[6] = {
+const ZombieType gBossTacticWeak[5] = {
 	ZombieType::ZOMBIE_POGO,
 	ZombieType::ZOMBIE_GARGANTUAR,
 	ZombieType::ZOMBIE_FOOTBALL,
 	ZombieType::ZOMBIE_JACK_IN_THE_BOX,
-	ZombieType::ZOMBIE_PAIL
+	ZombieType::ZOMBIE_FOOTBALL
 };
 
 const ZombieType gBossTacticStrong[4] = {
@@ -683,7 +683,7 @@ BossSummonDecision PickBossSummonV5(Board* theBoard, int theZombieAge, int theSp
 			theBoard,
 			aRowStates,
 			[](const RowState& a, const RowState& b) {
-				return sign((a.mZombieCount - a.mToughness / 2) - (b.mZombieCount - b.mToughness / 2));
+				return sign((a.mZombieCount * 5 - a.mToughness) - (b.mZombieCount * 5 - b.mToughness));
 			},
 			[](int aRow, const RowState& aRowState) { return aRowState.mZombieCount <= 3; }
 		);
@@ -814,12 +814,8 @@ BossFireballDecision PickBossFireballV5(Board* theBoard)
 			}
 		}
 	}
-	if (aJalapenoCount == 0)
-		aDecision.mIsFireBall = false;
-	else if (aIceShroomCount == 0)
+	if (aIceShroomCount == 0)
 		aDecision.mIsFireBall = true;
-	else if (aIceShroomCount == 1)
-		aDecision.mIsFireBall = (RandRangeInt(0, 4) == 0);
 	else
 		aDecision.mIsFireBall = false;
 	

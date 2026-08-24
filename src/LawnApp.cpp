@@ -1990,6 +1990,12 @@ void LawnApp::UpdatePlayTimeStats()
 
 void LawnApp::UpdateFrames()
 {
+	// vx: no level on screen (title/menus/selector/award) -> game speed back to 1x
+	if (!mBoard)
+	{
+		mVxGameSpeed = 1;
+	}
+
 	if ((!mActive || mMinimized) && mBoard)
 	{
 		mBoard->ResetFPSStats();
@@ -2008,14 +2014,14 @@ void LawnApp::UpdateFrames()
 		AdviceType aHelp = mBoard->mHelpIndex;
 		bool aKeepTutorial = !(aKind == 2 && mVxVerifying && mVxTestIndex >= 1);
 		mVxKeepHelpIndex = (aKeepTutorial && IsVxTutorialAdvice(aHelp)) ? aHelp : AdviceType::ADVICE_NONE;
+		// vx: every restart is a player-driven run: Run = fresh seed trial, Submit = fixed
+		// test seeds, Reset = same as Run (fresh random seed); Reset additionally aborts
+		// any in-progress Submit verification
+		VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
 		if (aKind == 3)
 		{
-			VX::ClearRunFlags();
-			VX::SetTrialSeed(mBoard->mBoardRandSeed); // vx: Reset replays the same seed
 			VxEndVerification(); // vx: Reset aborts any Submit verification
 		}
-		else
-			VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
 		if (aKind == 2 && mVxVerifying)
 		{
 			mVxPendingEditorOpen = true; // vx: keep the editor open across verification test restarts
@@ -2050,6 +2056,10 @@ void LawnApp::UpdateFrames()
 	else if (gFastMo)
 	{
 		aUpdateCount = 20;
+	}
+	else if (mVxGameSpeed > 1)
+	{
+		aUpdateCount = mVxGameSpeed; // vx: 1x/4x speed button
 	}
 
 	for (int i = 0; i < aUpdateCount; i++)

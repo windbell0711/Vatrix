@@ -28,7 +28,7 @@ enum
 	IDC_Q1LBL, IDC_Q1A, IDC_Q1B, IDC_Q1C, IDC_Q1D, IDC_HINT1,
 	IDC_Q2LBL, IDC_Q2A, IDC_Q2B, IDC_Q2C, IDC_Q2D, IDC_HINT2,
 	IDC_PAKLBL, IDC_PAK_EDIT, IDC_PAK_BROWSE, IDC_PAK_STATUS, IDC_PROPS_STATUS,
-	IDC_PAK_HINT, IDC_PAK_LINK,
+	IDC_PAK_HINT,
 	IDC_CHKLBL, IDC_CHK_DESK, IDC_CHK_MENU, IDC_SHORTCUT_NOTE,
 	IDC_SUMMARY, IDC_CHK_LAUNCH, IDC_DONE_NOTE,
 	IDC_BTN_BACK = 200, IDC_BTN_NEXT, IDC_BTN_CANCEL,
@@ -95,7 +95,7 @@ static HWND gTitle;
 static HWND gLicense, gAgree;
 static HWND gQ1Lbl, gQ1[4], gHint1;
 static HWND gQ2Lbl, gQ2[4], gHint2;
-static HWND gPakLbl, gPakEdit, gPakBrowse, gPakStatus, gPropsStatus, gPakHint, gPakLink;
+static HWND gPakLbl, gPakEdit, gPakBrowse, gPakStatus, gPropsStatus, gPakHint;
 static HWND gChkLbl, gChkDesk, gChkMenu, gShortcutNote;
 static HWND gSummary, gChkLaunch, gDoneNote;
 static HWND gBtnBack, gBtnNext, gBtnCancel;
@@ -107,9 +107,6 @@ static const wchar_t* gPageTitles[] = {
 	L"第 4 步 / 共 5 步 · 创建快捷方式",
 	L"第 5 步 / 共 5 步 · 完成",
 };
-
-// vx: operation-instructions webpage opened by the link on the main.pak page (TODO: fill in)
-static const wchar_t* gHelpUrl = L"https://pan.baidu.com/s/1ezUXYDc_ui88BLG8ShM6UQ?pwd=mv4e";
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -372,7 +369,6 @@ static void ShowPage(int aPage)
 	ShowWindow(gPakStatus, aPage == 2);
 	ShowWindow(gPropsStatus, aPage == 2);
 	ShowWindow(gPakHint, aPage == 2);
-	ShowWindow(gPakLink, aPage == 2);
 	ShowWindow(gChkLbl, aPage == 3);
 	ShowWindow(gChkDesk, aPage == 3);
 	ShowWindow(gChkMenu, aPage == 3);
@@ -614,9 +610,8 @@ static LRESULT CALLBACK WndProc(HWND aWnd, UINT aMsg, WPARAM aWParam, LPARAM aLP
 		gPakStatus   = MakeLabel(L"", 20, 152, 600, 24, IDC_PAK_STATUS);
 		gPropsStatus = MakeLabel(L"", 20, 182, 600, 24, IDC_PROPS_STATUS);
 		gPakHint = MakeEdit(
-			L"提示：如果您本地没有 植僵年度加强英文版 的原版游戏资源，请花费21元到Steam上购买GOTY原版，而不是点击下面的按钮免费下载游戏资源。",
+			L"提示：如果您本地没有 植僵年度加强英文版 的原版游戏资源，请到 Steam 商店购买 GOTY 原版（约21元）。本游戏不提供任何游戏资源的下载。",
 			20, 220, 600, 56, IDC_PAK_HINT);
-		gPakLink = MakeButton(L"游戏链接...", 20, 290, 140, 30, IDC_PAK_LINK);
 
 		// page 3: shortcuts
 		gChkLbl = MakeLabel(L"是否创建快捷方式？", 20, 52, 600, 24, IDC_CHKLBL);
@@ -682,22 +677,6 @@ static LRESULT CALLBACK WndProc(HWND aWnd, UINT aMsg, WPARAM aWParam, LPARAM aLP
 			if (aClicked)
 			{
 				BrowsePak();
-			}
-			break;
-		case IDC_PAK_LINK:
-			if (aClicked)
-			{
-				if (gHelpUrl[0] == L'\0')
-				{
-					MessageBoxW(gWnd, L"操作说明网页地址尚未配置，敬请期待。",
-						L"Vatrix 配置向导", MB_OK | MB_ICONINFORMATION);
-				}
-				else if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open",
-						gHelpUrl, nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
-				{
-					MessageBoxW(gWnd, (std::wstring(L"无法打开网页：") + gHelpUrl).c_str(),
-						L"Vatrix 配置向导", MB_OK | MB_ICONWARNING);
-				}
 			}
 			break;
 		case IDC_CHK_DESK:
