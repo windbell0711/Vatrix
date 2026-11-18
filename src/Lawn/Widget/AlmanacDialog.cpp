@@ -55,6 +55,8 @@ AlmanacDialog::AlmanacDialog(LawnApp* theApp) : LawnDialog(theApp, DIALOG_ALMANA
 	mPlant = nullptr;
 	mDrawStandardBack = false;
 	mLoadedResourceNames.push_back("DelayLoad_Almanac");
+	// vx: index page reuses the challenge background
+	mLoadedResourceNames.push_back("DelayLoad_ChallengeScreen");
 	for (size_t i = 0; i < LENGTH(mZombiePerfTest); i++) mZombiePerfTest[i] = nullptr;
 	LawnDialog::Resize(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
 
@@ -88,37 +90,17 @@ AlmanacDialog::AlmanacDialog(LawnApp* theApp) : LawnDialog(theApp, DIALOG_ALMANA
 	mIndexButton->mTextOffsetX = 8;
 	mIndexButton->mTextOffsetY = 1;
 
-	mPlantButton = new GameButton(AlmanacDialog::ALMANAC_BUTTON_PLANT);
-	mPlantButton->SetLabel("[VIEW_PLANTS]");
-	mPlantButton->mButtonImage = Sexy::IMAGE_SEEDCHOOSER_BUTTON;
-	mPlantButton->mOverImage = nullptr;
-	mPlantButton->mDownImage = nullptr;
-	mPlantButton->mDisabledImage = Sexy::IMAGE_SEEDCHOOSER_BUTTON_DISABLED;
-	mPlantButton->mOverOverlayImage = Sexy::IMAGE_SEEDCHOOSER_BUTTON_GLOW;
-	mPlantButton->SetFont(Sexy::FONT_DWARVENTODCRAFT18YELLOW);
-	mPlantButton->mColors[ButtonWidget::COLOR_LABEL] = Color::White;
-	mPlantButton->mColors[ButtonWidget::COLOR_LABEL_HILITE] = Color::White;
-	mPlantButton->Resize(130, 345, 156, 42);
-	mPlantButton->mTextOffsetY = -1;
-	mPlantButton->mParentWidget = this;
-
-	mZombieButton = new GameButton(AlmanacDialog::ALMANAC_BUTTON_ZOMBIE);
-	mZombieButton->SetLabel("[VIEW_ZOMBIES]");
-	mZombieButton->Resize(487, 345, 210, 48);
-	mZombieButton->mDrawStoneButton = true;
-	mZombieButton->mParentWidget = this;
-
 	// vx: third index-page entry linking to the Vatrix site
 	mVatrixButton = new GameButton(AlmanacDialog::ALMANAC_BUTTON_VATRIX);
 	mVatrixButton->SetLabel("Vatrix Docs   ");
-	mVatrixButton->Resize(300, 450, 250, 48);
+	mVatrixButton->Resize(300, 250, 250, 48);
 	mVatrixButton->mDrawStoneButton = true;
 	mVatrixButton->mParentWidget = this;
 
 	// vx: second index-page entry linking to the Alt site
 	mAltButton = new GameButton(AlmanacDialog::ALMANAC_BUTTON_ALT);
 	mAltButton->SetLabel("Alt   ");
-	mAltButton->Resize(300, 508, 250, 48);
+	mAltButton->Resize(300, 308, 250, 48);
 	mAltButton->mDrawStoneButton = true;
 	mAltButton->mParentWidget = this;
 
@@ -131,8 +113,6 @@ AlmanacDialog::~AlmanacDialog()
 {
 	if (mCloseButton)	delete mCloseButton;
 	if (mIndexButton)	delete mIndexButton;
-	if (mPlantButton)	delete mPlantButton;
-	if (mZombieButton)	delete mZombieButton;
 	if (mVatrixButton)	delete mVatrixButton;
 	if (mAltButton)		delete mAltButton;
 
@@ -210,22 +190,8 @@ void AlmanacDialog::SetPage(AlmanacPage thePage)
 
 	if (mOpenPage == AlmanacPage::ALMANAC_PAGE_INDEX)
 	{
-		mPlant = new Plant();
-		mPlant->mBoard = nullptr;
-		mPlant->mIsOnBoard = false;
-		mPlant->PlantInitialize(0, 0, SeedType::SEED_SUNFLOWER, SeedType::SEED_NONE);
-		mPlant->mX = ALMANAC_INDEXPLANT_POSITION_X;
-		mPlant->mY = ALMANAC_INDEXPLANT_POSITION_Y;
-
-		mZombie = new Zombie();
-		mZombie->mBoard = nullptr;
-		mZombie->ZombieInitialize(0, ZombieType::ZOMBIE_NORMAL, false, nullptr, Zombie::ZOMBIE_WAVE_UI);
-		mZombie->mPosX = ALMANAC_INDEXZOMBIE_POSITION_X;
-		mZombie->mPosY = ALMANAC_INDEXZOMBIE_POSITION_Y;
-
+		// vx: index page only keeps the two external-link buttons
 		mIndexButton->mBtnNoDraw = true;
-		mPlantButton->mBtnNoDraw = false;
-		mZombieButton->mBtnNoDraw = false;
 		mVatrixButton->mBtnNoDraw = false;
 		mAltButton->mBtnNoDraw = false;
 	}
@@ -238,8 +204,6 @@ void AlmanacDialog::SetPage(AlmanacPage thePage)
 		else return;
 
 		mIndexButton->mBtnNoDraw = false;
-		mPlantButton->mBtnNoDraw = true;
-		mZombieButton->mBtnNoDraw = true;
 		mVatrixButton->mBtnNoDraw = true;
 		mAltButton->mBtnNoDraw = true;
 	}
@@ -261,8 +225,6 @@ void AlmanacDialog::Update()
 {
 	mCloseButton->Update();
 	mIndexButton->Update();
-	mPlantButton->Update();
-	mZombieButton->Update();
 	mVatrixButton->Update();
 	mAltButton->Update();
 	if (mPlant) mPlant->Update();
@@ -278,7 +240,7 @@ void AlmanacDialog::Update()
 	int aMouseX = mApp->mWidgetManager->mLastMouseX;
 	int aMouseY = mApp->mWidgetManager->mLastMouseY;
 	if (SeedHitTest(aMouseX, aMouseY) != SeedType::SEED_NONE || ZombieHitTest(aMouseX, aMouseY) != ZombieType::ZOMBIE_INVALID || 
-		mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver() || mPlantButton->IsMouseOver() || mZombieButton->IsMouseOver() || mVatrixButton->IsMouseOver() || mAltButton->IsMouseOver())
+		mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver() || mVatrixButton->IsMouseOver() || mAltButton->IsMouseOver())
 	{
 		mApp->SetCursor(CURSOR_HAND);
 	}
@@ -298,21 +260,9 @@ ZombieType AlmanacDialog::GetZombieType(int theIndex)
 
 void AlmanacDialog::DrawIndex(Graphics* g)
 {
-	g->DrawImage(Sexy::IMAGE_ALMANAC_INDEXBACK, 0, 0);
+	// vx: use the challenge background for the almanac index page
+	g->DrawImage(Sexy::IMAGE_CHALLENGE_BACKGROUND, 0, 0);
 	PvzpDrawString(g, "[SUBURBAN_ALMANAC_INDEX]", BOARD_WIDTH / 2, 60, Sexy::FONT_HOUSEOFTERROR28, Color(220, 220, 220), DrawStringJustification::DS_ALIGN_CENTER);
-	
-	if (mPlant)
-	{
-		Graphics aPlantGraphics = Graphics(*g);
-		mPlant->BeginDraw(&aPlantGraphics);
-		mPlant->Draw(&aPlantGraphics);
-	}
-	if (mZombie)
-	{
-		Graphics aZombieGraphics = Graphics(*g);
-		mZombie->BeginDraw(&aZombieGraphics);
-		mZombie->Draw(&aZombieGraphics);
-	}
 }
 
 void AlmanacDialog::DrawPlants(Graphics* g)
@@ -559,8 +509,6 @@ void AlmanacDialog::Draw(Graphics* g)
 
 	mCloseButton->Draw(g);
 	mIndexButton->Draw(g);
-	mPlantButton->Draw(g);
-	mZombieButton->Draw(g);
 	mVatrixButton->Draw(g);
 	mAltButton->Draw(g);
 }
@@ -693,9 +641,7 @@ ZombieType AlmanacDialog::ZombieHitTest(int x, int y)
 void AlmanacDialog::MouseUp(int x, int y, int theClickCount)
 {
 	(void)x;(void)y;(void)theClickCount;
-	if (mPlantButton->IsMouseOver())		SetPage(ALMANAC_PAGE_PLANTS);
-	else if (mZombieButton->IsMouseOver())	SetPage(ALMANAC_PAGE_ZOMBIES);
-	else if (mVatrixButton->IsMouseOver())
+	if (mVatrixButton->IsMouseOver())
 	{
 		// vx: leave fullscreen so the browser window is visible, then open the site
 		if (!mApp->mIsWindowed)
@@ -717,10 +663,8 @@ void AlmanacDialog::MouseUp(int x, int y, int theClickCount)
 void AlmanacDialog::MouseDown(int x, int y, int theClickCount)
 {
 	(void)theClickCount;
-	if (mPlantButton->IsMouseOver() || mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver())
+	if (mCloseButton->IsMouseOver() || mIndexButton->IsMouseOver())
 		mApp->PlaySample(Sexy::SOUND_TAP);
-	if (mZombieButton->IsMouseOver())
-		mApp->PlaySample(Sexy::SOUND_GRAVEBUTTON);
 	if (mVatrixButton->IsMouseOver())
 		mApp->PlaySample(Sexy::SOUND_TAP);
 	if (mAltButton->IsMouseOver())

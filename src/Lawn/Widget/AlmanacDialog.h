@@ -31,10 +31,6 @@ constexpr const float			ALMANAC_PLANT_POSITION_X		= 578.0f;
 constexpr const float			ALMANAC_PLANT_POSITION_Y		= 140.0f;
 constexpr const float			ALMANAC_ZOMBIE_POSITION_X		= 559.0f;
 constexpr const float			ALMANAC_ZOMBIE_POSITION_Y		= 175.0f;
-constexpr const int				ALMANAC_INDEXPLANT_POSITION_X	= 167;
-constexpr const int				ALMANAC_INDEXPLANT_POSITION_Y	= 255;
-constexpr const float			ALMANAC_INDEXZOMBIE_POSITION_X	= 535.0f;
-constexpr const float			ALMANAC_INDEXZOMBIE_POSITION_Y	= 215.0f;
 
 class Plant;
 class Zombie;
@@ -47,19 +43,15 @@ private:
 	enum
 	{
 		ALMANAC_BUTTON_CLOSE = 0,
-		ALMANAC_BUTTON_PLANT = 1,
-		ALMANAC_BUTTON_ZOMBIE = 2,
-		ALMANAC_BUTTON_INDEX = 3,
-		ALMANAC_BUTTON_VATRIX = 4,
-		ALMANAC_BUTTON_ALT = 5
+		ALMANAC_BUTTON_INDEX = 1,
+		ALMANAC_BUTTON_VATRIX = 2,
+		ALMANAC_BUTTON_ALT = 3
 	};
 
 public:
 	LawnApp*					mApp;
 	GameButton*					mCloseButton;
 	GameButton*					mIndexButton;
-	GameButton*					mPlantButton;
-	GameButton*					mZombieButton;
 	// vx: index-page button that opens the Vatrix site in the browser
 	GameButton*					mVatrixButton;
 	// vx: index-page button below it that opens the Alt site in the browser
