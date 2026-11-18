@@ -102,7 +102,7 @@ Board::Board(LawnApp* theApp)
 	{
 		mBoardRandSeed = mApp->mVxTestSeeds[mApp->mVxTestIndex];
 		SRand(mBoardRandSeed);
-		mApp->mVxTestStartTicks = SDL_GetTicks(); // vx: test-point run start
+		mApp->mVxTestStartGameTime = 0.0f; // vx: the board clock starts at 0 for each test point
 	}
 	if (mApp->IsSurvivalMode())
 	{
@@ -326,8 +326,12 @@ Board::~Board()
 		// vx: close the code editor (restores the 800x600 window) before board state goes away
 		VX::VxEditorClose();
 	}
-	// vx: stop the player script worker before board state goes away
-	VX::StopScripts();
+	// vx: this board is deleted lazily, possibly after a replacement already started its
+	// script; only stop the worker if this board is still the current one
+	if (mApp->mBoard == this)
+	{
+		VX::StopScripts();
+	}
 }
 
 void BoardInitForPlayer()
@@ -5056,9 +5060,8 @@ void Board::MouseUp(int x, int y, int theClickCount)
 	// vx: script control bar clicks: Speed/Open/Run/Reset/Submit
 	if (CanInteractWithBoardButtons() && theClickCount > 0)
 	{
-		// vx: the speed button toggles 1x <-> 4x; locked during a Submit run so the
-		// real-time test-point measurements stay honest
-		if (mScriptSpeedButton && mScriptSpeedButton->IsMouseOver() && !aLockedRun)
+		// vx: the speed button toggles 1x <-> 4x and stays usable during a Submit run
+		if (mScriptSpeedButton && mScriptSpeedButton->IsMouseOver())
 		{
 			mScriptSpeedButton->mIsOver = false;
 			mScriptSpeedButton->mIsDown = false;
@@ -5092,7 +5095,7 @@ void Board::MouseUp(int x, int y, int theClickCount)
 							DisplayAdvice("[ADVICE_6_1_BUTTON_RUN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_RUN);
 						}
 						break;
-					case 102: // Reset (replay the level like Run with a fresh random seed)
+					case 102: // Reset (rebuild the level with a fresh seed; waits for Run)
 						VX::VxEditorSave();
 						mApp->mVxPendingRestart = 3;
 						mApp->mVxPendingEditorOpen = VX::VxEditorIsOpen();
@@ -6210,10 +6213,20 @@ void Board::UpdateGame()
 void Board::Update()
 {
 	PvzpHesitationBracket aHesitation("Board::Update");
-	// vx: per-frame delta feeds the script game clock (frozen by the pause branch below)
-	uint32_t aNowTick = SDL_GetTicks();
-	float aDtSec = (aNowTick - mLastGameTick) * 0.001f;
-	mLastGameTick = aNowTick;
+	// vx: only the first update of a rendered frame advances the script clock, scaled by the
+	// 1x/4x speed button so slp()/time() stay in sync with the game speed (pause freezes it)
+	if (mApp->mVxFrameFirstUpdate)
+	{
+		uint32_t aNowTick = SDL_GetTicks();
+		float aFrameDtSec = (aNowTick - mLastGameTick) * 0.001f;
+		mLastGameTick = aNowTick;
+		mApp->mVxFrameFirstUpdate = false;
+		if (!mPaused)
+		{
+			mGameTime += aFrameDtSec * mApp->mVxGameSpeed;
+			VX::VxUpdateGameTime(mGameTime);
+		}
+	}
 
 	Widget::Update();
 	MarkDirty();
@@ -6238,10 +6251,6 @@ void Board::Update()
 		return;
 	}
 
-	// vx: script game clock advances only when the game runs; pause freezes it
-	mGameTime += aDtSec;
-	VX::VxUpdateGameTime(mGameTime);
-
 	bool aDisabled = !CanInteractWithBoardButtons() || mIgnoreMouseUp;
 	if (!mMenuButton->mBtnNoDraw)
 	{
@@ -6251,8 +6260,7 @@ void Board::Update()
 	// vx: script control bar updates
 	if (mScriptSpeedButton)
 	{
-		// vx: the speed button is locked while a Submit run is being measured
-		mScriptSpeedButton->mDisabled = aDisabled || (mScriptSubmitRun && !mScriptLosePaused);
+		mScriptSpeedButton->mDisabled = aDisabled;
 		mScriptSpeedButton->Update();
 	}
 	for (GameButton* aBtn : mScriptButtons)

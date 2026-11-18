@@ -131,6 +131,8 @@ public:
 	bool						mVxResBankCollapsed = false;
 	// vx: game speed multiplier while a level is on screen (1 = normal, 4 = 4x); reverts to 1 outside levels
 	int							mVxGameSpeed = 1;
+	// vx: first board update of a rendered frame owns the script-clock advance (speed loop safe)
+	bool							mVxFrameFirstUpdate = false;
 	// vx: Submit verification: 5 test points with different seeds; results fill the resbank
 	bool						mVxVerifying = false;
 	int							mVxTestIndex = 0;
@@ -138,7 +140,7 @@ public:
 	int							mVxTestSeeds[5] = {};
 	static constexpr int		mVxTestCount = 5;
 	// vx: Submit verification per-test-point stats for the 6-x settlement screen
-	uint32_t					mVxTestStartTicks = 0;
+	float						mVxTestStartGameTime = 0.0f; // vx: speed-scaled board clock at test start
 	int							mVxTestDurations[5] = {};
 	int							mVxTestSuns[5] = {};
 	// vx: author best scores from the CSV statistics column for the settlement screen (-1 = unset)

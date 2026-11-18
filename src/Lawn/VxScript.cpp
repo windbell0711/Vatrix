@@ -260,10 +260,16 @@ except BaseException:
 	{
 		if (!gPythonReady)
 			return;
-		// vx: hard C++ delay: the user script only starts 0.5s after the level is created
+		// vx: the user script starts 0.5 game seconds after the level is created; using the
+		// script clock keeps the game-time timeline identical at 1x and 4x
 		{
 			std::unique_lock<std::mutex> aLock(gSleepMutex);
-			if (gSleepCv.wait_for(aLock, std::chrono::milliseconds(500), [] { return gSleepStop; }))
+			double aTargetTime = gVxGameTime + 0.5;
+			while (!gSleepStop && gVxGameTime < aTargetTime)
+			{
+				gSleepCv.wait_for(aLock, std::chrono::milliseconds(500));
+			}
+			if (gSleepStop)
 			{
 				// vx: stop requested before the script started; mark ended so StopScripts joins cleanly
 				std::lock_guard<std::mutex> aEndedLock(gScriptEndedMutex);

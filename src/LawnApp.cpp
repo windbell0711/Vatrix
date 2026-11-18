@@ -388,6 +388,9 @@ void LawnApp::KillBoard()
 		BetaRecordLevelStats();
 #endif
 */
+		// vx: stop the script worker synchronously; the board object is deleted lazily and
+		// its dtor must not kill a script that a replacement board already started
+		VX::StopScripts();
 		mBoard->DisposeBoard();
 		mWidgetManager->RemoveWidget(mBoard);
 		SafeDeleteWidget(mBoard);
@@ -1717,6 +1720,7 @@ void LawnApp::VxStartVerification()
 	mVxResBankX = BOARD_WIDTH; // vx: a fresh Submit press flies the banner in from the right edge again
 	mVxResBankCollapsed = false;
 	mVxTestIndex = 0;
+	mVxTestStartGameTime = 0.0f;
 	// vx: seeds come ONLY from the level's random_seeds column in adventure_info.csv, so the same
 	// script always runs the same 5 test points (no dependence on the app's session seed)
 	std::vector<int> aSeeds;
@@ -1751,7 +1755,8 @@ void LawnApp::VxEndVerification()
 // GOTY @Patoke: 0x4558E0
 void LawnApp::CheckForGameEnd()
 {
-	if (mBoard == nullptr || !mBoard->mLevelComplete)
+	// vx: a queued restart means this board is already settled; do not record it again
+	if (mBoard == nullptr || !mBoard->mLevelComplete || mVxPendingRestart != 0)
 		return;
 
 	// vx: Submit verification: a won test point records AC and immediately restarts the next one
@@ -1760,7 +1765,9 @@ void LawnApp::CheckForGameEnd()
 	{
 		VxRecordTestResult(1); // vx: AC
 		int aTestIndex = mVxTestIndex - 1;
-		mVxTestDurations[aTestIndex] = static_cast<int>(SDL_GetTicks() - mVxTestStartTicks);
+		// vx: score on the speed-scaled script clock, so 4x produces the same time as 1x
+		float aDurationSec = mBoard->mGameTime - mVxTestStartGameTime;
+		mVxTestDurations[aTestIndex] = aDurationSec > 0.0f ? static_cast<int>(aDurationSec * 1000.0f) : 0;
 		mVxTestSuns[aTestIndex] = mBoard ? mBoard->mSunMoney : 0;
 		bool aAllAC = true;
 		for (int i = 0; i < mVxTestCount; i++)
@@ -2014,12 +2021,12 @@ void LawnApp::UpdateFrames()
 		AdviceType aHelp = mBoard->mHelpIndex;
 		bool aKeepTutorial = !(aKind == 2 && mVxVerifying && mVxTestIndex >= 1);
 		mVxKeepHelpIndex = (aKeepTutorial && IsVxTutorialAdvice(aHelp)) ? aHelp : AdviceType::ADVICE_NONE;
-		// vx: every restart is a player-driven run: Run = fresh seed trial, Submit = fixed
-		// test seeds, Reset = same as Run (fresh random seed); Reset additionally aborts
-		// any in-progress Submit verification
+		// vx: Run/Submit start the script; Reset only rebuilds the level (fresh seed) and
+		// waits for the player to press Run (the 6-1 tutorial uses Reset to stop the script)
 		VX::RequestScriptRun(mBoard->mLevel, static_cast<int>(mGameMode), aKind == 2);
 		if (aKind == 3)
 		{
+			VX::ClearRunFlags(); // vx: drop the pending run, keep the fresh trial seed
 			VxEndVerification(); // vx: Reset aborts any Submit verification
 		}
 		if (aKind == 2 && mVxVerifying)
@@ -2062,8 +2069,12 @@ void LawnApp::UpdateFrames()
 		aUpdateCount = mVxGameSpeed; // vx: 1x/4x speed button
 	}
 
+	// vx: the script clock advances once per rendered frame (see Board::Update), not once per
+	// speed-loop iteration, so 4x does not count the extra updates' CPU time again
+	mVxFrameFirstUpdate = true;
 	for (int i = 0; i < aUpdateCount; i++)
 	{
+		Board* aBoardBefore = mBoard;
 		mAppCounter++;
 		
 		if (mBoard)
@@ -2080,6 +2091,11 @@ void LawnApp::UpdateFrames()
 		mMusic->MusicUpdate();
 
 		CheckForGameEnd();
+
+		// vx: a Submit test point win/loss queues a restart from inside the update; stop the
+		// remaining 4x iterations so one completed board cannot record several test points
+		if (mVxPendingRestart != 0 || mBoard != aBoardBefore)
+			break;
 	}
 }
 
