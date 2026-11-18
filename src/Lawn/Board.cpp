@@ -5082,6 +5082,12 @@ void Board::MouseUp(int x, int y, int theClickCount)
 					switch (aBtn->mId)
 					{
 					case 100: // Open (existing script; seeds a template on first use)
+						// vx: the docked editor needs a 16:9 or wider screen in fullscreen
+						if (!VX::VxEditorCanOpenInFullscreen(mApp->mWindow))
+						{
+							DisplayAdvice("[ADVICE_6_1_OPEN_FULLSCREEN]", MESSAGE_STYLE_HINT_STAY, ADVICE_NONE);
+							break;
+						}
 						VX::VxEditorOpenScript(mLevel, mApp->mWindow);
 						if (mHelpIndex == ADVICE_6_1_START || mHelpIndex == ADVICE_6_1_DESTROY_POT) {
 							DisplayAdvice("[ADVICE_6_1_BUTTON_OPEN]", MESSAGE_STYLE_HINT_STAY, ADVICE_6_1_BUTTON_OPEN);

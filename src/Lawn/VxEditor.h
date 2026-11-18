@@ -16,6 +16,8 @@ namespace VX
 	void VxEditorShutdown();
 	void VxEditorOpen(int theLevel, void* theWindow);
 	void VxEditorOpenScript(int theLevel, void* theWindow);
+	// vx: the docked editor needs a 16:9 or wider screen in fullscreen
+	bool VxEditorCanOpenInFullscreen(void* theWindow);
 	void VxEditorClose();
 	bool VxEditorIsOpen();
 	bool VxEditorDocked();

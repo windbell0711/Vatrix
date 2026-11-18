@@ -28,4 +28,5 @@
 [ADVICE_6_1_BUTTON_OPEN] Good job! Click 'Run' to inject the code into the game.
 [ADVICE_6_1_BUTTON_RUN] Now you see script brk(3,7) running. Click 'Reset' to stop.
 [ADVICE_6_1_END] This is the end of tutorial. Try to complement the code in the editor to break all vases and win the game!
+[ADVICE_6_1_OPEN_FULLSCREEN] The editor needs at least a 16:9 screen in fullscreen. Exit fullscreen, use maximize and then press 'Reset'.
 [ADVICE_6_1_SUBMIT] The script'll be tested for five times. Wait before it ends.

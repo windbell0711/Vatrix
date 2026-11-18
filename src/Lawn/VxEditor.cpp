@@ -98,12 +98,21 @@ namespace
 		return true;
 	}
 
-	bool VxIsFullscreen()
+	// vx: allow the Open guard to inspect a window before editor state is initialized
+	bool VxIsFullscreen(SDL_Window* theWindow)
 	{
-		if (!gGameWindow)
+		if (!theWindow)
 			return false;
-		Uint32 aFlags = SDL_GetWindowFlags(gGameWindow);
+		Uint32 aFlags = SDL_GetWindowFlags(theWindow);
 		return (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0;
+	}
+	// vx: fullscreen and maximized windows keep their size when the editor docks
+	bool VxWindowKeepsSize(SDL_Window* theWindow)
+	{
+		if (!theWindow)
+			return false;
+		Uint32 aFlags = SDL_GetWindowFlags(theWindow);
+		return (aFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_MAXIMIZED)) != 0;
 	}
 	// vx: editor mode preference lives in userdata/ next to the saves; read on every editor open
 	std::filesystem::path VxEditorModePrefPath()
@@ -140,9 +149,9 @@ namespace
 	{
 		if (!gGameWindow)
 			return;
-		if (VxIsFullscreen())
+		if (VxWindowKeepsSize(gGameWindow))
 		{
-			// vx: fullscreen cannot resize the window; re-fire a resize event so the
+			// vx: fullscreen and maximized windows keep their size; re-fire a resize event so the
 			// game view docks/undocks against the editor strip (same path as windowed)
 			int aWidth = 0, aHeight = 0;
 			SDL_GetWindowSize(gGameWindow, &aWidth, &aHeight);
@@ -424,6 +433,23 @@ namespace
 
 namespace VX
 {
+	bool VxEditorCanOpenInFullscreen(void* theWindow)
+	{
+		SDL_Window* aWindow = static_cast<SDL_Window*>(theWindow);
+		if (!aWindow)
+			aWindow = gGameWindow;
+		if (!VxIsFullscreen(aWindow))
+			return true;
+
+		int aWidth = 0;
+		int aHeight = 0;
+		SDL_GetWindowSize(aWindow, &aWidth, &aHeight);
+		if (aWidth <= 0 || aHeight <= 0)
+			return true;
+		// vx: the docked editor needs a 16:9 or wider screen in fullscreen
+		return static_cast<long long>(aWidth) * 9 >= static_cast<long long>(aHeight) * 16;
+	}
+
 	void VxEditorInit()
 	{
 		SDL_AddEventWatch(VxEditorEventWatch, nullptr);
@@ -552,6 +578,7 @@ namespace VX
 	void VxEditorShutdown() {}
 	void VxEditorOpen(int, void*) {}
 	void VxEditorOpenScript(int, void*) {}
+	bool VxEditorCanOpenInFullscreen(void*) { return true; }
 	void VxEditorClose() {}
 	bool VxEditorIsOpen() { return false; }
 	bool VxEditorDocked() { return false; }
